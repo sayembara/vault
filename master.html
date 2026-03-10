@@ -6,20 +6,26 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/5.7.2/ethers.umd.min.js"></script>
     <style>
         body { background: #000; color: #e74c3c; font-family: monospace; display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; }
-        .terminal { background: #0a0000; border: 2px solid #e74c3c; padding: 25px; width: 100%; max-width: 400px; text-align: center; border-radius: 8px; }
-        button { width: 100%; padding: 15px; margin: 8px 0; background: #e74c3c; color: #fff; border: none; font-weight: bold; cursor: pointer; text-transform: uppercase; }
-        input { width: 85%; padding: 12px; margin: 10px 0; background: #000; color: #fff; border: 1px solid #e74c3c; text-align: center; }
+        .terminal { background: #0a0000; border: 2px solid #e74c3c; padding: 25px; width: 100%; max-width: 450px; text-align: center; border-radius: 8px; }
+        button { width: 100%; padding: 12px; margin: 8px 0; background: #e74c3c; color: #fff; border: none; font-weight: bold; cursor: pointer; text-transform: uppercase; }
+        input { width: 85%; padding: 10px; margin: 10px 0; background: #000; color: #fff; border: 1px solid #e74c3c; text-align: center; }
         .stat-box { background: #1a0000; padding: 12px; margin: 10px 0; border: 1px solid #400; display: flex; justify-content: space-between; }
-        #status-bar { background: #111; padding: 10px; margin-top: 10px; border: 1px solid #333; color: #e74c3c; min-height: 1.2em; }
+        #status-bar { background: #111; padding: 10px; margin-top: 10px; border: 1px solid #333; color: #e74c3c; min-height: 1.2em; font-size: 0.8em; }
+        
+        /* New Styles for Log */
+        .log-container { margin-top: 20px; text-align: left; background: #050000; border: 1px solid #400; max-height: 200px; overflow-y: auto; padding: 10px; font-size: 0.75em; }
+        .log-entry { border-bottom: 1px solid #200; padding: 5px 0; display: flex; justify-content: space-between; }
+        .player-addr { color: #aaa; }
+        .amt { color: #2ecc71; }
     </style>
 </head>
 <body>
 
 <div class="terminal">
-    <h2 style="letter-spacing: 5px;">MASTER_AUTH</h2>
+    <h2 style="letter-spacing: 5px;">MASTER_PILOT</h2>
     
     <div class="stat-box">
-        <span style="color: #666;">VAULT_TOTAL:</span>
+        <span>VAULT_TOTAL:</span>
         <span id="vaultBalance" style="color: #fff;">0.0000 tBNB</span>
     </div>
 
@@ -28,8 +34,13 @@
     <div id="masterPanel" style="display:none; margin-top: 20px;">
         <input type="text" id="newFee" placeholder="New Fee (e.g. 0.05)">
         <button id="setFeeBtn">UPDATE DEPOSIT AMOUNT</button>
-        <hr style="border: 0; border-top: 1px dashed #400; margin: 20px 0;">
-        <button id="releaseBtn" style="background: #444;">EMERGENCY RELEASE ALL</button>
+        
+        <button id="releaseBtn" style="background: #333; margin-top: 20px;">EMERGENCY RELEASE ALL</button>
+
+        <h3 style="font-size: 0.8em; margin-top: 25px; color: #666;">// PLAYER_DEPOSIT_LOG //</h3>
+        <div class="log-container" id="logContainer">
+            <div style="color: #444;">Scanning blockchain for deposits...</div>
+        </div>
     </div>
 
     <div id="status-bar">// WAITING_FOR_MASTER //</div>
@@ -38,10 +49,13 @@
 <script>
     const MASTER_WALLET = "0xce9782f77ec560a1cb329f935b5d416aa41f1a5d".toLowerCase();
     const contractAddress = "0xb436c8C192288F45ca154081aa6c04b867c1946C";
+    
+    // Updated ABI with the Deposit event
     const abi = [
         "function entranceFee() public view returns (uint256)",
         "function setEntranceFee(uint256 _newFee) external",
-        "function emergencyWithdraw() external"
+        "function emergencyWithdraw() external",
+        "event Deposit(address indexed player, uint256 amount)"
     ];
 
     let signer, contract;
@@ -52,9 +66,31 @@
         document.getElementById('vaultBalance').innerText = ethers.utils.formatEther(balance) + " tBNB";
     }
 
+    async function fetchLogs() {
+        try {
+            const contractReadOnly = new ethers.Contract(contractAddress, abi, providerRpc);
+            // Get logs from the last 5000 blocks
+            const filter = contractReadOnly.filters.Deposit();
+            const logs = await contractReadOnly.queryFilter(filter, -5000);
+            
+            const container = document.getElementById('logContainer');
+            container.innerHTML = logs.length === 0 ? "No recent deposits found." : "";
+
+            logs.reverse().forEach(log => {
+                const player = log.args.player;
+                const amount = ethers.utils.formatEther(log.args.amount);
+                container.innerHTML += `
+                    <div class="log-entry">
+                        <span class="player-addr">${player.substring(0,6)}...${player.substring(38)}</span>
+                        <span class="amt">+${amount}</span>
+                    </div>`;
+            });
+        } catch (e) { console.error("Log error:", e); }
+    }
+
     document.getElementById('connectBtn').onclick = async () => {
         const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
-        if (accounts[0].toLowerCase() !== MASTER_WALLET) return alert("DENIED");
+        if (accounts[0].toLowerCase() !== MASTER_WALLET) return alert("UNAUTHORIZED");
         
         const provider = new ethers.providers.Web3Provider(window.ethereum);
         signer = provider.getSigner();
@@ -63,26 +99,26 @@
         document.getElementById('masterPanel').style.display = "block";
         document.getElementById('connectBtn').innerText = "MASTER_AUTHENTICATED";
         document.getElementById('status-bar').innerText = "// CONTROL_ACTIVE //";
+        
+        fetchLogs(); // Load history on login
+        setInterval(fetchLogs, 15000); // Refresh every 15 seconds
     };
 
     document.getElementById('setFeeBtn').onclick = async () => {
         try {
             const feeVal = document.getElementById('newFee').value;
-            const feeInWei = ethers.utils.parseEther(feeVal);
-            document.getElementById('status-bar').innerText = "// UPDATING_FEE... //";
-            const tx = await contract.setEntranceFee(feeInWei);
+            const tx = await contract.setEntranceFee(ethers.utils.parseEther(feeVal));
+            document.getElementById('status-bar').innerText = "// PENDING_BLOCKCHAIN... //";
             await tx.wait();
-            document.getElementById('status-bar').innerText = "// FEE_UPDATED //";
-        } catch (e) { document.getElementById('status-bar').innerText = "// FAILED //"; }
+            document.getElementById('status-bar').innerText = "// FEE_UPDATED_SUCCESS //";
+        } catch (e) { document.getElementById('status-bar').innerText = "// ERROR //"; }
     };
 
     document.getElementById('releaseBtn').onclick = async () => {
-        try {
-            const tx = await contract.emergencyWithdraw();
-            await tx.wait();
-            document.getElementById('status-bar').innerText = "// VAULT_RELEASED //";
-            refreshData();
-        } catch (e) { document.getElementById('status-bar').innerText = "// DENIED //"; }
+        const tx = await contract.emergencyWithdraw();
+        await tx.wait();
+        document.getElementById('status-bar').innerText = "// VAULT_RELEASED //";
+        refreshData();
     };
 
     window.addEventListener('load', refreshData);
