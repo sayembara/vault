@@ -2,22 +2,27 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>SANRAT VAULT</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/5.7.2/ethers.umd.min.js"></script>
     <style>
-        body { background: #000; color: #f3ba2f; font-family: monospace; display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; }
-        .terminal { background: #080808; border: 1px solid #333; padding: 25px; width: 100%; max-width: 380px; text-align: center; border-radius: 8px; box-shadow: 0 0 15px rgba(243, 186, 47, 0.2); }
-        button { width: 100%; padding: 15px; margin: 8px 0; background: #f3ba2f; color: #000; border: none; font-weight: bold; cursor: pointer; text-transform: uppercase; border-radius: 4px; }
+        body { background: #000; color: #f3ba2f; font-family: 'Courier New', monospace; display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; }
+        .terminal { background: #080808; border: 1px solid #333; padding: 25px; width: 100%; max-width: 380px; text-align: center; border-radius: 8px; box-shadow: 0 0 15px rgba(243, 186, 47, 0.1); }
+        button { width: 100%; padding: 15px; margin: 8px 0; background: #f3ba2f; color: #000; border: none; font-weight: bold; cursor: pointer; text-transform: uppercase; border-radius: 4px; transition: 0.2s; }
+        button:hover { background: #fff; }
         button:disabled { background: #1a1a1a; color: #444; cursor: not-allowed; }
         .stat-box { background: #111; padding: 12px; margin: 10px 0; border: 1px solid #222; font-size: 0.9em; display: flex; justify-content: space-between; }
         #status-bar { background: #111; padding: 10px; margin-top: 10px; font-size: 0.8em; border: 1px solid #222; color: #f3ba2f; min-height: 1.2em; border-left: 3px solid #f3ba2f; }
-        .organizer-btn { background: #444 !important; color: #fff !important; font-size: 0.7em !important; margin-top: 20px !important; }
+        
+        /* History Styles */
+        #player-history { margin-top: 20px; text-align: left; font-size: 0.75em; color: #888; border-top: 1px dashed #333; pt: 10px; }
+        .history-item { display: flex; justify-content: space-between; padding: 4px 0; border-bottom: 1px solid #111; }
     </style>
 </head>
 <body>
 
 <div class="terminal">
-    <h2 style="letter-spacing: 4px; color: #fff;">SANRAT_VAULT</h2>
+    <h2 style="letter-spacing: 4px; color: #fff; margin-bottom: 20px;">SANRAT_VAULT</h2>
     
     <div class="stat-box">
         <span>VAULT_TOTAL:</span>
@@ -25,125 +30,142 @@
     </div>
 
     <button id="connectBtn">1. CONNECT WALLET</button>
+    
     <button id="depositBtn" disabled>2. PAY ENTRANCE FEE <span id="displayFee">...</span> tBNB</button>
-    <button id="claimBtn" style="display:none; background: #2ecc71; color: #000;">3. CLAIM <span id="claimAmtLabel">0.0000</span> tBNB</button>
     
-    <button id="releaseBtn" class="organizer-btn" style="display:none;">RELEASE ALL FUNDS TO ORGANIZER</button>
-
+    <button id="claimBtn" style="display:none; background: #2ecc71; color: #000;">
+        3. CLAIM <span id="claimAmtLabel">0.0000</span> tBNB
+    </button>
+    
     <div id="status-bar">// SYSTEM_READY //</div>
+
+    <div id="player-history" style="display:none;">
+        <div style="padding-bottom: 5px; margin-bottom: 5px; color: #f3ba2f; font-size: 0.9em;">// YOUR_DEPOSITS //</div>
+        <div id="historyList">Scanning blockchain...</div>
+    </div>
 </div>
 
-<div class="stat-box">
-    <span>PLAYERS_JOINED:</span>
-    <span id="playerCount">0</span>
-</div>
-    
 <script>
-    const MASTER_WALLET = "0xce9782f77ec560a1cb329f935b5d416aa41f1a5d".toLowerCase();
-    const contractAddress = "0x8f752169dd88b22667c22f02e9e4c35dD217411d";
+    const contractAddress = "0xb436c8C192288F45ca154081aa6c04b867c1946C"; // Update if you redeployed
     const RENDER_URL = "https://sanrat-vault-backend.onrender.com";
+    
     const abi = [
         "function payEntranceFee() external payable",
         "function entranceFee() public view returns (uint256)",
         "function claimPrize(uint256 amount, bytes calldata signature) external",
-        "function emergencyWithdraw() external"
+        "event Deposit(address indexed player, uint256 amount)"
     ];
 
-    let signer, contract;
+    let signer, contract, userAddress;
     const providerRpc = new ethers.providers.JsonRpcProvider("https://data-seed-prebsc-1-s1.binance.org:8545/");
 
-async function refreshData() {
-    console.log("Refreshing data..."); // Check your Browser Console (F12) to see this
-    try {
-        const contractReadOnly = new ethers.Contract(contractAddress, abi, providerRpc);
-        
-        // Fetch the fee
-        const fee = await contractReadOnly.entranceFee();
-        const formattedFee = ethers.utils.formatEther(fee);
-        document.getElementById('displayFee').innerText = formattedFee;
-        
-        // Fetch the balance
-        const balance = await providerRpc.getBalance(contractAddress);
-        const formattedBalance = ethers.utils.formatEther(balance);
-        document.getElementById('vaultBalance').innerText = formattedBalance + " tBNB";
-        document.getElementById('claimAmtLabel').innerText = formattedBalance;
+    // 1. REFRESH DATA (Fee, Balance, History)
+    async function refreshData() {
+        try {
+            const contractReadOnly = new ethers.Contract(contractAddress, abi, providerRpc);
+            
+            // Get Vault Balance
+            const balance = await providerRpc.getBalance(contractAddress);
+            const formattedBalance = ethers.utils.formatEther(balance);
+            
+            // Get Entrance Fee
+            const fee = await contractReadOnly.entranceFee();
+            const formattedFee = ethers.utils.formatEther(fee);
 
-        console.log("Fee found:", formattedFee);
-    } catch (e) { 
-        console.error("Connection Error:", e);
-        document.getElementById('status-bar').innerText = "// CONNECTION_ERROR //";
+            // Update UI
+            document.getElementById('vaultBalance').innerText = formattedBalance + " tBNB";
+            document.getElementById('displayFee').innerText = formattedFee;
+            document.getElementById('claimAmtLabel').innerText = formattedBalance;
+
+            // Update Personal History if connected
+            if (userAddress) {
+                updatePlayerHistory(contractReadOnly);
+            }
+        } catch (e) { console.error("Refresh Error:", e); }
     }
-}
 
-document.getElementById('depositBtn').onclick = async () => {
-    try {
-        const currentFee = await contract.entranceFee();
-        document.getElementById('status-bar').innerText = "// WAITING_FOR_METAMASK... //";
-        
-        const tx = await contract.payEntranceFee({ value: currentFee });
-        
-        // Show this while it's in the mempool
-        document.getElementById('status-bar').innerText = "// MINING_TRANSACTION... //";
-        
-        // Wait for the blockchain to finish
-        const receipt = await tx.wait();
-        
-        // Once confirmed, update status and force a data refresh
-        if (receipt.status === 1) {
-            document.getElementById('status-bar').innerText = "// DEPOSIT_SUCCESSFUL //";
-            await refreshData(); 
-        }
-    } catch (e) { 
-        console.error(e);
-        document.getElementById('status-bar').innerText = "// TRANSACTION_INTERRUPTED //"; 
+    // 2. PLAYER HISTORY LOGIC
+    async function updatePlayerHistory(contractInstance) {
+        try {
+            const filter = contractInstance.filters.Deposit(userAddress);
+            const logs = await contractInstance.queryFilter(filter, -10000);
+            
+            const list = document.getElementById('historyList');
+            document.getElementById('player-history').style.display = "block";
+
+            if (logs.length === 0) {
+                list.innerHTML = "<div style='color:#444'>No deposits found.</div>";
+            } else {
+                list.innerHTML = logs.reverse().map(log => `
+                    <div class="history-item">
+                        <span>BLOCK #${log.blockNumber}</span>
+                        <span style="color: #2ecc71;">+${ethers.utils.formatEther(log.args.amount)}</span>
+                    </div>
+                `).join('');
+            }
+        } catch (e) { console.error("History Error:", e); }
     }
-};
 
+    // 3. CONNECT WALLET
+    document.getElementById('connectBtn').onclick = async () => {
+        if (!window.ethereum) return alert("Install MetaMask");
+        const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
+        userAddress = accounts[0];
+        
+        const provider = new ethers.providers.Web3Provider(window.ethereum);
+        signer = provider.getSigner();
+        contract = new ethers.Contract(contractAddress, abi, signer);
+        
+        document.getElementById('connectBtn').innerText = "WALLET_CONNECTED";
+        document.getElementById('depositBtn').disabled = false;
+        document.getElementById('claimBtn').style.display = "block";
+        document.getElementById('status-bar').innerText = "// ONLINE //";
+        
+        refreshData();
+    };
+
+    // 4. PAY ENTRANCE FEE
     document.getElementById('depositBtn').onclick = async () => {
         try {
             const currentFee = await contract.entranceFee();
+            document.getElementById('status-bar').innerText = "// WAITING_FOR_CONFIRMATION... //";
+            
             const tx = await contract.payEntranceFee({ value: currentFee });
-            document.getElementById('status-bar').innerText = "// MINING... //";
+            document.getElementById('status-bar').innerText = "// MINING_TRANSACTION... //";
+            
             await tx.wait();
+            document.getElementById('status-bar').innerText = "// DEPOSIT_SUCCESSFUL //";
             refreshData();
-        } catch (e) { document.getElementById('status-bar').innerText = "// FAILED //"; }
+        } catch (e) { 
+            document.getElementById('status-bar').innerText = "// TRANSACTION_FAILED //"; 
+        }
     };
 
+    // 5. CLAIM PRIZE
     document.getElementById('claimBtn').onclick = async () => {
         try {
-            const playerAddr = await signer.getAddress();
             const balance = await providerRpc.getBalance(contractAddress);
             const amountStr = ethers.utils.formatEther(balance);
-            
-            document.getElementById('status-bar').innerText = "// FETCHING_SIG... //";
-            const response = await fetch(`${RENDER_URL}/get-signature?playerAddress=${playerAddr}&amount=${amountStr}`);
+            if (balance.isZero()) return alert("Vault is empty!");
+
+            document.getElementById('status-bar').innerText = "// REQUESTING_SIGNATURE... //";
+            const response = await fetch(`${RENDER_URL}/get-signature?playerAddress=${userAddress}&amount=${amountStr}`);
             const data = await response.json();
 
+            document.getElementById('status-bar').innerText = "// EXECUTING_CLAIM... //";
             const tx = await contract.claimPrize(data.amountWei, data.signature);
             await tx.wait();
-            document.getElementById('status-bar').innerText = "// SUCCESS //";
+            
+            document.getElementById('status-bar').innerText = "// VAULT_CLAIMED //";
             refreshData();
-        } catch (e) { document.getElementById('status-bar').innerText = "// ERROR //"; }
+        } catch (e) { 
+            document.getElementById('status-bar').innerText = "// CLAIM_FAILED //"; 
+        }
     };
 
-    document.getElementById('releaseBtn').onclick = async () => {
-        try {
-            const tx = await contract.emergencyWithdraw();
-            await tx.wait();
-            document.getElementById('status-bar').innerText = "// RELEASED //";
-            refreshData();
-        } catch (e) { document.getElementById('status-bar').innerText = "// DENIED //"; }
-    };
-
+    // Auto-refresh every 5 seconds to catch fee updates or new deposits
+    setInterval(refreshData, 5000);
     window.addEventListener('load', refreshData);
-
-    // This tells the browser to refresh the Vault Balance and Fee every 10 seconds
-setInterval(refreshData, 10000);
 </script>
 </body>
 </html>
-
-
-
-
-
