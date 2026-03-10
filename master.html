@@ -15,18 +15,26 @@
 </head>
 <body>
 
-<div class="terminal">
-    <h2 style="letter-spacing: 5px; color: #e74c3c;">MASTER_PILOT</h2>
+<div class="terminal" style="border-color: #e74c3c;">
+    <h2 style="color: #e74c3c;">MASTER_CONTROL</h2>
     
     <div class="stat-box">
-        <span style="color: #666;">VAULT_TOTAL:</span>
-        <span id="vaultBalance" style="color: #fff;">0.0000 tBNB</span>
+        <span>VAULT_TOTAL:</span>
+        <span id="vaultBalance">0.0000 tBNB</span>
     </div>
 
-    <button id="connectBtn">INITIALIZE AUTH</button>
-    <button id="withdrawBtn">EXECUTE_EMERGENCY_WITHDRAW</button>
-    
-    <div id="status-bar">// WAITING_FOR_MASTER //</div>
+    <button id="connectBtn">AUTHENTICATE MASTER</button>
+
+    <div id="controls" style="display:none; margin-top:20px;">
+        <div style="margin-bottom: 20px;">
+            <input type="text" id="newFee" placeholder="New Fee (e.g. 0.05)" style="width: 80%; padding: 10px; margin-bottom: 5px; background: #000; color: #fff; border: 1px solid #e74c3c;">
+            <button id="setFeeBtn" style="background: #e74c3c; color: #fff;">SET NEW ENTRANCE FEE</button>
+        </div>
+
+        <button id="releaseBtn" style="background: #444; color: #fff;">EMERGENCY RELEASE ALL FUNDS</button>
+    </div>
+
+    <div id="status-bar">// WAITING_FOR_AUTH //</div>
 </div>
 
 <script>
@@ -46,15 +54,12 @@
         } catch (e) { console.error(e); }
     }
 
-    document.getElementById('connectBtn').onclick = async () => {
-        if (!window.ethereum) return alert("MetaMask not found!");
-        
-        try {
-            const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
-            if (accounts[0].toLowerCase() !== MASTER_WALLET) {
-                document.getElementById('status-bar').innerText = "// ACCESS_DENIED: NOT_OWNER //";
-                return;
-            }
+document.getElementById('connectBtn').onclick = async () => {
+        const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
+        if (accounts[0].toLowerCase() !== MASTER_WALLET) {
+            alert("ACCESS DENIED");
+            return;
+        }
 
             const provider = new ethers.providers.Web3Provider(window.ethereum);
             const signer = provider.getSigner();
@@ -65,6 +70,26 @@
             document.getElementById('withdrawBtn').style.display = "block";
             document.getElementById('status-bar').innerText = "// CONTROL_ACTIVE //";
 
+document.getElementById('setFeeBtn').onclick = async () => {
+        try {
+            const feeInput = document.getElementById('newFee').value;
+            const feeInWei = ethers.utils.parseEther(feeInput);
+            
+            document.getElementById('status-bar').innerText = "// UPDATING_FEE... //";
+            const tx = await contract.setEntranceFee(feeInWei);
+            await tx.wait();
+            document.getElementById('status-bar').innerText = "// FEE_UPDATED //";
+        } catch (e) {
+            document.getElementById('status-bar').innerText = "// UPDATE_FAILED //";
+        }
+    };
+
+    document.getElementById('releaseBtn').onclick = async () => {
+        const tx = await contract.emergencyWithdraw();
+        await tx.wait();
+        document.getElementById('status-bar').innerText = "// FUNDS_RELEASED //";
+    };
+    
             document.getElementById('withdrawBtn').onclick = async () => {
                 try {
                     document.getElementById('status-bar').innerText = "// INITIATING_DRAIN... //";
