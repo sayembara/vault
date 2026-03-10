@@ -107,22 +107,38 @@
     }
 
     // 3. CONNECT WALLET
-    document.getElementById('connectBtn').onclick = async () => {
-        if (!window.ethereum) return alert("Install MetaMask");
+document.getElementById('connectBtn').onclick = async () => {
+    console.log("Connect button clicked...");
+    
+    if (typeof window.ethereum === 'undefined') {
+        document.getElementById('status-bar').innerText = "// ERROR: INSTALL METAMASK //";
+        return alert("MetaMask not found! Please install the extension.");
+    }
+
+    try {
+        document.getElementById('status-bar').innerText = "// REQUESTING_AUTH... //";
+        
+        // This triggers the actual popup
         const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
-        userAddress = accounts[0];
         
-        const provider = new ethers.providers.Web3Provider(window.ethereum);
-        signer = provider.getSigner();
-        contract = new ethers.Contract(contractAddress, abi, signer);
-        
-        document.getElementById('connectBtn').innerText = "WALLET_CONNECTED";
-        document.getElementById('depositBtn').disabled = false;
-        document.getElementById('claimBtn').style.display = "block";
-        document.getElementById('status-bar').innerText = "// ONLINE //";
-        
-        refreshData();
-    };
+        if (accounts.length > 0) {
+            userAddress = accounts[0];
+            const provider = new ethers.providers.Web3Provider(window.ethereum);
+            signer = provider.getSigner();
+            contract = new ethers.Contract(contractAddress, abi, signer);
+
+            document.getElementById('connectBtn').innerText = "CONNECTED: " + userAddress.substring(0,6) + "...";
+            document.getElementById('depositBtn').disabled = false;
+            document.getElementById('claimBtn').style.display = "block";
+            document.getElementById('status-bar').innerText = "// WALLET_LINKED_SUCCESS //";
+            
+            refreshData(); // Start the logs and balance check
+        }
+    } catch (err) {
+        console.error(err);
+        document.getElementById('status-bar').innerText = "// CONNECTION_REJECTED //";
+    }
+};
 
     // 4. PAY ENTRANCE FEE
     document.getElementById('depositBtn').onclick = async () => {
@@ -169,3 +185,4 @@
 </script>
 </body>
 </html>
+
