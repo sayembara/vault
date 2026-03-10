@@ -33,6 +33,11 @@
     <div id="status-bar">// SYSTEM_READY //</div>
 </div>
 
+<div class="stat-box">
+    <span>PLAYERS_JOINED:</span>
+    <span id="playerCount">0</span>
+</div>
+    
 <script>
     const MASTER_WALLET = "0xce9782f77ec560a1cb329f935b5d416aa41f1a5d".toLowerCase();
     const contractAddress = "0x8f752169dd88b22667c22f02e9e4c35dD217411d";
@@ -47,18 +52,23 @@
     let signer, contract;
     const providerRpc = new ethers.providers.JsonRpcProvider("https://data-seed-prebsc-1-s1.binance.org:8545/");
 
-    async function refreshData() {
-        try {
-            const balance = await providerRpc.getBalance(contractAddress);
-            const contractReadOnly = new ethers.Contract(contractAddress, abi, providerRpc);
-            const fee = await contractReadOnly.entranceFee();
-            const formattedBalance = ethers.utils.formatEther(balance);
-            
-            document.getElementById('vaultBalance').innerText = formattedBalance + " tBNB";
-            document.getElementById('displayFee').innerText = ethers.utils.formatEther(fee);
-            document.getElementById('claimAmtLabel').innerText = formattedBalance;
-        } catch (e) { console.error(e); }
-    }
+async function refreshData() {
+    try {
+        const balance = await providerRpc.getBalance(contractAddress);
+        const contractReadOnly = new ethers.Contract(contractAddress, abi, providerRpc);
+        const fee = await contractReadOnly.entranceFee();
+        
+        // --- NEW: FETCH PLAYER COUNT ---
+        const filter = contractReadOnly.filters.Deposit();
+        const logs = await contractReadOnly.queryFilter(filter, -10000); // Check last 10k blocks
+        document.getElementById('playerCount').innerText = logs.length;
+        // -------------------------------
+
+        document.getElementById('vaultBalance').innerText = ethers.utils.formatEther(balance) + " tBNB";
+        document.getElementById('displayFee').innerText = ethers.utils.formatEther(fee);
+        document.getElementById('claimAmtLabel').innerText = ethers.utils.formatEther(balance);
+    } catch (e) { console.error(e); }
+}
 
     document.getElementById('connectBtn').onclick = async () => {
         const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
@@ -115,7 +125,11 @@
     };
 
     window.addEventListener('load', refreshData);
+
+    // This tells the browser to refresh the Vault Balance and Fee every 10 seconds
+setInterval(refreshData, 10000);
 </script>
 </body>
 </html>
+
 
