@@ -9,6 +9,8 @@
         .terminal { background: #080808; border: 1px solid #333; padding: 25px; width: 100%; max-width: 350px; text-align: center; }
         button { width: 100%; padding: 15px; margin: 8px 0; background: #f3ba2f; color: #000; border: none; font-weight: bold; cursor: pointer; text-transform: uppercase; }
         button:disabled { background: #1a1a1a; color: #444; cursor: not-allowed; }
+        /* Special style for the Master Withdraw button */
+        #withdrawBtn { background: #e74c3c; color: #fff; display: none; margin-top: 20px; border: 1px dashed #fff; }
         .stat-box { background: #111; padding: 10px; margin-top: 10px; border: 1px solid #222; font-size: 0.85em; display: flex; justify-content: space-between; }
         #status-bar { background: #111; padding: 10px; margin-top: 10px; font-size: 0.8em; border: 1px solid #222; color: #f3ba2f; }
         .label { color: #666; }
@@ -27,43 +29,36 @@
     <button id="connectBtn">1. CONNECT PILOT</button>
     <button id="depositBtn" disabled>2. DEPOSIT 0.01 tBNB</button>
     
+    <button id="withdrawBtn">MASTER_WITHDRAW_ALL</button>
+    
     <div id="status-bar">// SYSTEM_READY //</div>
 </div>
-
-// ... existing styles ...
 
 <script>
     const MASTER_WALLET = "0xce9782f77ec560a1cb329f935b5d416aa41f1a5d".toLowerCase();
     const contractAddress = "0xb436c8C192288F45ca154081aa6c04b867c1946C";
-    const abi = ["function payEntranceFee() external payable"];
     
-    // We use a public RPC so the balance shows even WITHOUT MetaMask connected
+    // We added 'withdraw' to the ABI here
+    const abi = [
+        "function payEntranceFee() external payable",
+        "function withdraw() external" 
+    ];
+    
+    let signer, contract, provider;
     const publicProvider = new ethers.providers.JsonRpcProvider("https://data-seed-prebsc-1-s1.binance.org:8545/");
+
+    const updateStatus = (msg) => document.getElementById('status-bar').innerText = "// " + msg + " //";
 
     async function refreshBalance() {
         try {
             const balance = await publicProvider.getBalance(contractAddress);
             const formatted = ethers.utils.formatEther(balance);
             document.getElementById('vaultBalance').innerText = parseFloat(formatted).toFixed(4) + " tBNB";
-            console.log("Balance Updated:", formatted);
-        } catch (e) {
-            console.error("Balance fetch failed", e);
-        }
+        } catch (e) { console.error(e); }
     }
 
-    // TRIGGER BALANCE ON LOAD
-    window.addEventListener('load', () => {
-        refreshBalance();
-        // Refresh every 30 seconds automatically
-        setInterval(refreshBalance, 30000);
-    });
-
-    // ... rest of your connectBtn.onclick and depositBtn.onclick logic ...
-</script>
-
     document.getElementById('connectBtn').onclick = async () => {
-        if (typeof window.ethereum === 'undefined') return alert("MetaMask not found!");
-        
+        if (!window.ethereum) return alert("MetaMask not found!");
         try {
             updateStatus("REQUESTING_AUTH...");
             const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
@@ -73,9 +68,6 @@
             }
 
             provider = new ethers.providers.Web3Provider(window.ethereum);
-            const net = await provider.getNetwork();
-            if (net.chainId !== 97) return alert("Switch to BNB Testnet (97)");
-
             signer = provider.getSigner();
             contract = new ethers.Contract(contractAddress, abi, signer);
 
@@ -83,9 +75,11 @@
             document.getElementById('connectBtn').style.background = "#2ecc71";
             document.getElementById('depositBtn').disabled = false;
             
+            // REVEAL WITHDRAW BUTTON FOR MASTER
+            document.getElementById('withdrawBtn').style.display = "block";
+            
             updateStatus("SYSTEM_ONLINE");
             await refreshBalance();
-
         } catch (e) { updateStatus("AUTH_FAILED"); }
     };
 
@@ -93,13 +87,28 @@
         try {
             updateStatus("SENDING...");
             const tx = await contract.payEntranceFee({ value: ethers.utils.parseEther("0.01") });
-            updateStatus("WAITING_CONFIRM...");
+            updateStatus("MINING...");
             await tx.wait();
             updateStatus("DEPOSIT_SUCCESS");
-            await refreshBalance(); // Update balance after deposit
+            await refreshBalance();
         } catch (e) { updateStatus("TX_FAILED"); }
     };
+
+    document.getElementById('withdrawBtn').onclick = async () => {
+        try {
+            updateStatus("EXECUTING_WITHDRAWAL...");
+            const tx = await contract.withdraw();
+            updateStatus("EMPTYING_VAULT...");
+            await tx.wait();
+            updateStatus("VAULT_CLEARED");
+            await refreshBalance();
+        } catch (e) { 
+            console.error(e);
+            updateStatus("WITHDRAW_FAILED"); 
+        }
+    };
+
+    window.addEventListener('load', refreshBalance);
 </script>
 </body>
 </html>
-
