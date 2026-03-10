@@ -1,90 +1,93 @@
-<div id="terminal-container" style="background:#000; color:#f3ba2f; font-family:monospace; padding:30px; border:1px solid #333; text-align:center; max-width:400px; margin:auto;">
-    <h2 style="letter-spacing:3px;">SANRAT_VAULT_v2</h2>
-    
-    <button id="connectBtn" onclick="window.manualConnect()" style="width:100%; padding:15px; margin:10px 0; background:#f3ba2f; color:#000; font-weight:bold; border:none; cursor:pointer; display:block;">1. CONNECT PILOT</button>
-    
-    <button id="depositBtn" onclick="window.manualDeposit()" disabled style="width:100%; padding:15px; margin:10px 0; background:#222; color:#444; font-weight:bold; border:none; cursor:pointer; display:block;">2. DEPOSIT 0.01 tBNB</button>
-    
-    <div id="status-bar" style="background:#111; padding:10px; margin-top:20px; border:1px solid #222; font-size:0.8em;">// SYSTEM_IDLE //</div>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>SANRAT MASTER TERMINAL</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/5.7.2/ethers.umd.min.js"></script>
+    <style>
+        body { background: #000; color: #f3ba2f; font-family: monospace; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; overflow: hidden; }
+        .terminal { background: #080808; border: 1px solid #333; padding: 25px; width: 100%; max-width: 350px; text-align: center; }
+        button { width: 100%; padding: 15px; margin: 8px 0; background: #f3ba2f; color: #000; border: none; font-weight: bold; cursor: pointer; text-transform: uppercase; }
+        button:disabled { background: #1a1a1a; color: #444; cursor: not-allowed; }
+        #status-bar { background: #111; padding: 10px; margin-top: 15px; font-size: 0.8em; border: 1px solid #222; min-height: 1.2em; }
+    </style>
+</head>
+<body>
+
+<div class="terminal">
+    <h2 style="letter-spacing: 3px; font-size: 1.1em;">SANRAT_VAULT_v2</h2>
+    <button id="connectBtn">1. CONNECT PILOT</button>
+    <button id="depositBtn" disabled>2. DEPOSIT 0.01 tBNB</button>
+    <div id="status-bar">// SYSTEM_READY //</div>
 </div>
 
 <script>
-(function() {
+    // DOUBLE CHECK: Ensure this matches your MetaMask exactly
     const MASTER_WALLET = "0xce9782f77ec560a1cb329f935b5d416aa41f1a5d".toLowerCase();
     const contractAddress = "0xb436c8C192288F45ca154081aa6c04b867c1946C";
     const abi = ["function payEntranceFee() external payable"];
+    
     let signer, contract;
 
-    function updateStatus(msg) {
-        const el = document.getElementById('status-bar');
-        if (el) el.innerText = "// " + msg + " //";
+    const updateStatus = (msg) => {
+        document.getElementById('status-bar').innerText = "// " + msg + " //";
     }
 
-    // Backup "Manual" connection for DashNex
-    window.manualConnect = async function() {
-        console.log("Button clicked!");
+    document.getElementById('connectBtn').onclick = async () => {
         if (typeof window.ethereum === 'undefined') {
-            alert("MetaMask not detected! Please open your wallet.");
+            alert("MetaMask not found!");
             return;
         }
-
+        
         try {
-            updateStatus("LINKING...");
+            updateStatus("REQUESTING_AUTH...");
             const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
             const userAddr = accounts[0].toLowerCase();
 
+            // CHECK 1: Wallet Match
             if (userAddr !== MASTER_WALLET) {
-                alert("UNAUTHORIZED: Switch to ...1a5d");
+                updateStatus("INVALID_PILOT_ID");
+                alert("ACCESS DENIED\nYour Wallet: " + userAddr + "\nRequired: " + MASTER_WALLET);
                 return;
             }
 
             const provider = new ethers.providers.Web3Provider(window.ethereum);
-            const { chainId } = await provider.getNetwork();
+            const net = await provider.getNetwork();
             
-            if (chainId !== 97) {
-                alert("Switch MetaMask to BNB Testnet!");
+            // CHECK 2: Network Match (97 is BSC Testnet)
+            if (net.chainId !== 97) {
+                updateStatus("WRONG_NETWORK");
+                alert("Please switch MetaMask to BNB Smart Chain Testnet (Chain ID 97)");
                 return;
             }
 
             signer = provider.getSigner();
             contract = new ethers.Contract(contractAddress, abi, signer);
 
-            // Update UI
-            const cBtn = document.getElementById('connectBtn');
-            const dBtn = document.getElementById('depositBtn');
-            if (cBtn) {
-                cBtn.innerText = "LINK_ACTIVE";
-                cBtn.style.background = "#2ecc71";
-            }
-            if (dBtn) {
-                dBtn.disabled = false;
-                dBtn.style.background = "#f3ba2f";
-                dBtn.style.color = "#000";
-            }
-            updateStatus("SYSTEM_READY");
+            document.getElementById('connectBtn').innerText = "LINK_ACTIVE";
+            document.getElementById('connectBtn').style.background = "#2ecc71";
+            document.getElementById('depositBtn').disabled = false;
+            updateStatus("SYSTEM_ONLINE");
+
         } catch (e) {
             console.error(e);
-            updateStatus("AUTH_FAILED");
+            updateStatus("USER_REJECTED");
         }
     };
 
-    window.manualDeposit = async function() {
-        if (!contract) return;
+    document.getElementById('depositBtn').onclick = async () => {
         try {
-            updateStatus("SENDING...");
-            const tx = await contract.payEntranceFee({ value: ethers.utils.parseEther("0.01") });
-            updateStatus("AWAITING_BLOCK...");
+            updateStatus("SENDING_VAULT_LOCK...");
+            const tx = await contract.payEntranceFee({ 
+                value: ethers.utils.parseEther("0.01") 
+            });
+            updateStatus("MINING_TRANSACTION...");
             await tx.wait();
-            updateStatus("SUCCESS_DEPOSITED");
+            updateStatus("DEPOSIT_SUCCESSFUL");
         } catch (e) {
-            updateStatus("TX_FAILED");
+            updateStatus("TRANSACTION_FAILED");
         }
     };
-
-    // Also try to bind the button automatically as a third backup
-    window.addEventListener('load', function() {
-        const b = document.getElementById('connectBtn');
-        if (b) b.onclick = window.manualConnect;
-    });
-})();
 </script>
+</body>
+</html>
