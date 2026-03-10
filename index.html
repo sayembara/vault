@@ -53,21 +53,26 @@
     const providerRpc = new ethers.providers.JsonRpcProvider("https://data-seed-prebsc-1-s1.binance.org:8545/");
 
 async function refreshData() {
+    console.log("Refreshing data..."); // Check your Browser Console (F12) to see this
     try {
-        const balance = await providerRpc.getBalance(contractAddress);
         const contractReadOnly = new ethers.Contract(contractAddress, abi, providerRpc);
-        const fee = await contractReadOnly.entranceFee();
         
-        // --- NEW: FETCH PLAYER COUNT ---
-        const filter = contractReadOnly.filters.Deposit();
-        const logs = await contractReadOnly.queryFilter(filter, -10000); // Check last 10k blocks
-        document.getElementById('playerCount').innerText = logs.length;
-        // -------------------------------
+        // Fetch the fee
+        const fee = await contractReadOnly.entranceFee();
+        const formattedFee = ethers.utils.formatEther(fee);
+        document.getElementById('displayFee').innerText = formattedFee;
+        
+        // Fetch the balance
+        const balance = await providerRpc.getBalance(contractAddress);
+        const formattedBalance = ethers.utils.formatEther(balance);
+        document.getElementById('vaultBalance').innerText = formattedBalance + " tBNB";
+        document.getElementById('claimAmtLabel').innerText = formattedBalance;
 
-        document.getElementById('vaultBalance').innerText = ethers.utils.formatEther(balance) + " tBNB";
-        document.getElementById('displayFee').innerText = ethers.utils.formatEther(fee);
-        document.getElementById('claimAmtLabel').innerText = ethers.utils.formatEther(balance);
-    } catch (e) { console.error(e); }
+        console.log("Fee found:", formattedFee);
+    } catch (e) { 
+        console.error("Connection Error:", e);
+        document.getElementById('status-bar').innerText = "// CONNECTION_ERROR //";
+    }
 }
 
     document.getElementById('connectBtn').onclick = async () => {
@@ -131,5 +136,6 @@ setInterval(refreshData, 10000);
 </script>
 </body>
 </html>
+
 
 
