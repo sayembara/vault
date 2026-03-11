@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>NUCLEAR_SPONSOR_V3.2_AUTOCYCLE</title>
+    <title>NUCLEAR_SPONSOR_V3.3_SYNC</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/5.7.2/ethers.umd.min.js"></script>
     <style>
         :root { --accent: #f3ba2f; --bg: #000; --panel: #0a0a0a; --border: #222; --boost: #3498db; --danger: #e74c3c; --success: #2ecc71; --disabled: #1a1a1a; }
@@ -13,9 +13,9 @@
         h3 { color: var(--accent); margin-top: 0; font-size: 0.9em; letter-spacing: 2px; border-bottom: 1px solid var(--border); padding-bottom: 10px; margin-bottom: 15px; }
         
         .buckets-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
-        .bucket { background: #080808; border: 1px solid #1a1a1a; padding: 10px; font-size: 0.8em; border-left: 3px solid #333; transition: all 0.3s; }
-        .bucket.past { background: var(--disabled); border-color: #333; opacity: 0.5; filter: grayscale(1); }
-        .bucket.active { border-color: var(--boost); background: #0f172a; box-shadow: 0 0 10px rgba(52, 152, 219, 0.2); }
+        .bucket { background: #080808; border: 1px solid #1a1a1a; padding: 10px; font-size: 0.8em; border-left: 3px solid #333; transition: all 0.2s ease-in-out; }
+        .bucket.past { background: var(--disabled); border-color: #333; opacity: 0.4; filter: grayscale(1); }
+        .bucket.active { border-color: var(--boost); background: #0f172a; box-shadow: 0 0 15px rgba(52, 152, 219, 0.3); transform: scale(1.02); z-index: 2; }
         
         .val-line { display: flex; justify-content: space-between; margin: 2px 0; }
         .n-text { color: var(--accent); } .b-text { color: var(--boost); }
@@ -81,7 +81,7 @@
         <div class="panel" style="border-color: var(--boost);">
             <h3>RACE_CONTROL_UNIT</h3>
             <div class="val-line" style="font-size:0.8em; margin-bottom:10px;">
-                <span>ACTIVE_ROUND:</span><span id="simActiveRound" style="color:var(--boost); font-weight:bold;">1</span>
+                <span>ACTIVE_ROUND:</span><span id="simActiveRound" style="color:var(--boost); font-weight:bold;">-</span>
             </div>
             <button class="btn-boost" id="btnInstantResolve">END ROUND & PAYOUT</button>
             <div id="sim-status" style="font-size:0.65em; color:var(--boost); text-align:center; margin-top:5px;">// STANDBY //</div>
@@ -128,37 +128,23 @@
             </div>`;
     }
 
-    // Sync Stats first to get the current round
-    onValue(ref(db, 'vault/stats'), (snap) => {
-        const stats = snap.val() || {};
-        currentActiveRound = stats.currentRound || 1;
-        document.getElementById('simActiveRound').innerText = currentActiveRound;
-        refreshBucketStyles(); 
-    });
-
-    // Sync Vault Data
-    onValue(ref(db, 'vault/season_v2'), (snap) => {
-        const data = snap.val() || {};
-        const config = data.config || { min: 0.5, max: 2.0 };
+    // MASTER REFRESH FUNCTION
+    function refreshUI(vaultData) {
+        if (!vaultData) return;
+        const config = vaultData.config || { min: 0.5, max: 2.0 };
         document.getElementById('lblMin').innerText = config.min;
         document.getElementById('lblMax').innerText = config.max;
-        document.getElementById('valOverflow').innerText = (data.overflowPool || 0).toFixed(3);
-        document.getElementById('valTotalDistributed').innerText = (data.totalDistributed || 0).toFixed(3);
+        document.getElementById('valOverflow').innerText = (vaultData.overflowPool || 0).toFixed(3);
+        document.getElementById('valTotalDistributed').innerText = (vaultData.totalDistributed || 0).toFixed(3);
 
         for(let i=1; i<=12; i++) {
-            const r = data[`round${i}`] || { n: 0, b: 0 };
+            const r = vaultData[`round${i}`] || { n: 0, b: 0 };
             document.getElementById(`rN${i}`).innerText = r.n.toFixed(3);
             document.getElementById(`rB${i}`).innerText = r.b.toFixed(3);
             document.getElementById(`rT${i}`).innerText = (r.n + r.b).toFixed(3);
-        }
-        refreshBucketStyles();
-    });
-
-    function refreshBucketStyles() {
-        for(let i=1; i<=12; i++) {
+            
             const card = document.getElementById(`bCard${i}`);
             const label = document.getElementById(`statusLabel${i}`);
-            if (!card) continue;
 
             if (i < currentActiveRound) {
                 card.className = "bucket past";
@@ -172,6 +158,22 @@
             }
         }
     }
+
+    // LISTENER 1: Monitor Stats for Round Number
+    onValue(ref(db, 'vault/stats'), async (snap) => {
+        const stats = snap.val() || {};
+        currentActiveRound = stats.currentRound || 1;
+        document.getElementById('simActiveRound').innerText = currentActiveRound;
+        
+        // Fetch vault data immediately to sync styles
+        const vSnap = await get(ref(db, 'vault/season_v2'));
+        refreshUI(vSnap.val());
+    });
+
+    // LISTENER 2: Monitor Vault for Money Changes
+    onValue(ref(db, 'vault/season_v2'), (snap) => {
+        refreshUI(snap.val());
+    });
 
     async function reallocate(targetData) {
         const config = targetData.config || { min: 0.5, max: 2.0 };
@@ -253,13 +255,12 @@
 
         const newTotalDist = (seasonSnap.val().totalDistributed || 0) + prize;
         
-        // 1. Drain active bucket
+        // Drain bucket
         await update(ref(db, 'vault/season_v2'), {
             [`round${curR}`]: { n: 0, b: 0 },
             totalDistributed: Number(newTotalDist.toFixed(4))
         });
 
-        // 2. Increment round
         const nextR = curR >= 12 ? 1 : curR + 1;
         
         await update(ref(db, 'vault/stats'), {
@@ -269,15 +270,13 @@
             carCount: 0
         });
 
-        // 3. AUTO-REFILL IF NEW SEASON
         if(nextR === 1) {
-            document.getElementById('sim-status').innerText = "// NEW SEASON INITIALIZING... //";
+            document.getElementById('sim-status').innerText = "// SEASON RESTARTING... //";
             const freshSnap = await get(ref(db, 'vault/season_v2'));
             const freshData = freshSnap.val();
-            // Pull any leftover overflow into the normal pool to refill the 12 rounds
             freshData.normalPool = freshData.overflowPool || 0;
             freshData.overflowPool = 0;
-            currentActiveRound = 1; // Force local state before reallocate
+            currentActiveRound = 1; 
             await reallocate(freshData);
         } else {
             document.getElementById('sim-status').innerText = `// R${curR} PAID OUT //`;
