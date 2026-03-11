@@ -159,6 +159,8 @@ document.getElementById('depositBtn').onclick = async () => {
     try {
         const snap = await getDoc(doc(db, "vault", "stats"));
         const round = snap.data().currentRound;
+        const statsSnap = await getDoc(doc(db, "vault", "stats"));
+        const currentRound = statsSnap.data().currentRound;
 
         const fee = await contract.entranceFee();
         const tx = await contract.payEntranceFee({ value: fee });
@@ -168,6 +170,7 @@ document.getElementById('depositBtn').onclick = async () => {
         await setDoc(doc(db, "registrations", userAddress.toLowerCase()), {
             paid: true,
             lastPaidRound: round
+            lastPaidRound: currentRound
         });
 
         await updateDoc(doc(db, "vault", "stats"), { carCount: increment(1) });
