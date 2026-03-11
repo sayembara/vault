@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>NUCLEAR_SPONSOR_V3.0</title>
+    <title>NUCLEAR_SPONSOR_V3.1</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/5.7.2/ethers.umd.min.js"></script>
     <style>
         :root { --accent: #f3ba2f; --bg: #000; --panel: #0a0a0a; --border: #222; --boost: #3498db; --danger: #e74c3c; --success: #2ecc71; --disabled: #1a1a1a; }
@@ -12,16 +12,14 @@
         .panel { background: var(--panel); border: 1px solid var(--border); padding: 20px; border-radius: 4px; margin-bottom: 20px; }
         h3 { color: var(--accent); margin-top: 0; font-size: 0.9em; letter-spacing: 2px; border-bottom: 1px solid var(--border); padding-bottom: 10px; margin-bottom: 15px; }
         
-        /* Buckets Grid */
         .buckets-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
-        .bucket { background: #080808; border: 1px solid #1a1a1a; padding: 10px; font-size: 0.8em; border-left: 3px solid #333; transition: all 0.3s; position: relative; }
+        .bucket { background: #080808; border: 1px solid #1a1a1a; padding: 10px; font-size: 0.8em; border-left: 3px solid #333; transition: all 0.3s; }
         .bucket.past { background: var(--disabled); border-color: #333; opacity: 0.5; filter: grayscale(1); }
         .bucket.active { border-color: var(--boost); background: #0f172a; box-shadow: 0 0 10px rgba(52, 152, 219, 0.2); }
         
         .val-line { display: flex; justify-content: space-between; margin: 2px 0; }
         .n-text { color: var(--accent); } .b-text { color: var(--boost); }
         
-        /* Summary Stats */
         .summary-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 10px; }
         .stat-card { background: #111; padding: 15px; border: 1px solid #222; text-align: center; }
         .stat-label { font-size: 0.6em; color: #666; display: block; text-transform: uppercase; }
@@ -78,7 +76,6 @@
             </select>
             <input type="number" id="sponsorAmt" placeholder="Amount tBNB">
             <button class="btn-acc" id="btnSponsor">INJECT_FUNDS</button>
-            <p style="font-size:0.55em; color:#666; text-align:center;">*Funds target Active + Future rounds.</p>
         </div>
 
         <div class="panel" style="border-color: var(--boost);">
@@ -131,7 +128,6 @@
             </div>`;
     }
 
-    // --- SYNC ---
     onValue(ref(db, 'vault/season_v2'), (snap) => {
         const data = snap.val() || {};
         const config = data.config || { min: 0.5, max: 2.0 };
@@ -157,7 +153,7 @@
                 label.innerText = `RND_${String(i).padStart(2,'0')} [LIVE]`;
             } else {
                 card.className = "bucket";
-                label.innerText = `RND_${String(i).padStart(2,'0')} [UPCOMING]`;
+                label.innerText = `RND_${String(i).padStart(2,'0')} [WAIT]`;
                 card.style.borderColor = r.n >= config.min ? '#f3ba2f' : '#222';
             }
         }
@@ -169,7 +165,6 @@
         document.getElementById('simActiveRound').innerText = currentActiveRound;
     });
 
-    // --- ALLOCATION (INCLUSIVE) ---
     async function reallocate(targetData) {
         const config = targetData.config || { min: 0.5, max: 2.0 };
         let remN = targetData.normalPool || 0;
@@ -188,7 +183,6 @@
             return;
         }
 
-        // Phase 1: Seq Min
         for (let i of eligible) {
             if (remN > 0) {
                 let add = Math.min(remN, config.min);
@@ -196,7 +190,6 @@
                 remN -= add;
             }
         }
-        // Phase 2: Equal Scale
         if (remN > 0) {
             let spacePer = config.max - config.min;
             let totalSpace = spacePer * eligible.length;
@@ -209,7 +202,6 @@
         }
         targetData.overflowPool = Number(((targetData.overflowPool || 0) + remN).toFixed(4));
         targetData.normalPool = 0;
-        // Boost
         if (remB > 0) {
             let split = remB / eligible.length;
             for (let i of eligible) targetData[`round${i}`].b = Number(split.toFixed(4));
@@ -218,7 +210,6 @@
         await set(ref(db, 'vault/season_v2'), targetData);
     }
 
-    // --- ACTIONS ---
     document.getElementById('btnSponsor').onclick = async () => {
         const amt = parseFloat(document.getElementById('sponsorAmt').value);
         if(!amt || amt <= 0) return;
@@ -254,26 +245,25 @@
 
         const newTotalDist = (seasonSnap.val().totalDistributed || 0) + prize;
         
-        // Handle Round 12 Loop
-        let nextR = curR + 1;
-        if(curR >= 12) {
-            nextR = 1;
-            document.getElementById('sim-status').innerText = "// SEASON COMPLETED - LOOPING TO R1 //";
-        } else {
-            document.getElementById('sim-status').innerText = `// R${curR} PAID TO ${winner.substring(0,6)}... //`;
-        }
-
+        // DRAIN ACTIVE BUCKET & UPDATE STATS
         await update(ref(db, 'vault/season_v2'), {
             [`round${curR}`]: { n: 0, b: 0 },
             totalDistributed: Number(newTotalDist.toFixed(4))
         });
 
+        // INCREMENT ROUND (OR LOOP TO 1)
+        const nextR = curR >= 12 ? 1 : curR + 1;
+        
         await update(ref(db, 'vault/stats'), {
             prizeAmount: Number(prize.toFixed(4)),
             winner: winner,
             currentRound: nextR,
             carCount: 0
         });
+
+        document.getElementById('sim-status').innerText = nextR === 1 
+            ? "// SEASON RESTARTING... //" 
+            : `// R${curR} PAID OUT //`;
     };
 
     document.getElementById('btnReset').onclick = async () => {
@@ -291,7 +281,7 @@
     };
 
     document.getElementById('btnZero').onclick = async () => {
-        if(!confirm("WIPE ENTIRE SEASON?")) return;
+        if(!confirm("HARD WIPE EVERYTHING?")) return;
         const fresh = { config:{min:0.5, max:2.0}, normalPool:0, boostPool:0, overflowPool:0, totalDistributed:0 };
         for(let i=1; i<=12; i++) fresh[`round${i}`] = {n:0, b:0};
         await set(ref(db, 'vault/season_v2'), fresh);
