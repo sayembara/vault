@@ -2,43 +2,39 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>MASTER_PILOT_V4</title>
+    <title>NUCLEAR_CONTROL_PANEL</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/5.7.2/ethers.umd.min.js"></script>
     <style>
         body { background: #000; color: #e74c3c; font-family: 'Courier New', monospace; display: flex; justify-content: center; padding: 20px; }
-        .terminal { background: #080808; border: 1px solid #e74c3c; padding: 25px; width: 480px; border-radius: 8px; box-shadow: 0 0 15px rgba(231, 76, 60, 0.2); }
+        .terminal { background: #080808; border: 1px solid #e74c3c; padding: 25px; width: 480px; border-radius: 8px; }
         .stat-box { background: #111; border: 1px solid #333; padding: 12px; margin: 10px 0; font-size: 0.85em; }
         .live-val { color: #fff; font-weight: bold; float: right; }
         input { width: 94%; padding: 10px; margin: 5px 0; background: #111; border: 1px solid #444; color: #fff; border-radius: 4px; }
-        button { width: 100%; padding: 12px; margin: 5px 0; background: #e74c3c; color: #fff; border: none; font-weight: bold; cursor: pointer; text-transform: uppercase; border-radius: 4px; }
+        button { width: 100%; padding: 12px; margin: 5px 0; background: #e74c3c; color: #fff; border: none; font-weight: bold; cursor: pointer; text-transform: uppercase; }
         #playerList { list-style: none; padding: 5px; font-size: 0.75em; color: #aaa; max-height: 100px; overflow-y: auto; border: 1px solid #222; margin-bottom: 10px;}
     </style>
 </head>
 <body>
 
 <div class="terminal">
-    <h2 style="text-align:center;">MASTER_V4</h2>
-    <button id="authBtn">AUTHENTICATE MASTER</button>
+    <h2 style="text-align:center;">CONTROL_PANEL</h2>
+    <button id="authBtn">AUTHENTICATE</button>
 
     <div id="controls" style="display:none;">
         <div class="stat-box">HOUSE_FUNDS <span class="live-val" id="valFunds">0</span></div>
         <div class="stat-box">PRIZE <span class="live-val" id="valPrize">0</span></div>
         <div class="stat-box">ENTRANCE_FEE <span class="live-val" id="valFee">0</span></div>
-        <div class="stat-box">MIN_CARS <span class="live-val" id="valMin">0</span></div>
-        <div class="stat-box">LOBBY <span class="live-val" id="valLobby">0</span></div>
+        <div class="stat-box">LOBBY_COUNT <span class="live-val" id="valLobby">0</span></div>
         <div id="winnerBanner" style="text-align:center; color:#f3ba2f; margin:10px 0; font-weight:bold;"></div>
         
-        <div style="font-size: 0.7em; color: #e74c3c;">// LOBBY_PLAYERS //</div>
         <ul id="playerList"></ul>
 
-        <input type="number" step="0.01" id="inpFunds" placeholder="Add tBNB to House">
+        <input type="number" step="0.01" id="inpFunds" placeholder="House Deposit">
         <button id="btnFunds">DEPOSIT</button>
-        <input type="number" step="0.01" id="inpPrize" placeholder="Set Prize Pool">
+        <input type="number" step="0.01" id="inpPrize" placeholder="Prize Pool">
         <button id="btnPrize">SET PRIZE</button>
-        <input type="number" step="0.001" id="inpFee" placeholder="Set Entrance Fee">
+        <input type="number" step="0.001" id="inpFee" placeholder="Fee Amount">
         <button id="btnFee">SET FEE</button>
-        <input type="number" id="inpMin" placeholder="Set Min Cars">
-        <button id="btnMin">SET MIN CARS</button>
         <button id="btnRunRace" style="background:#f3ba2f; color:#000;">⚡ FORCE RUN RACE ⚡</button>
         <button id="btnReset" style="background:#2ecc71; color:#000;">START NEXT ROUND</button>
     </div>
@@ -80,14 +76,13 @@
             document.getElementById('valFunds').innerText = d.totalFunds + " tBNB";
             document.getElementById('valPrize').innerText = d.prizeAmount + " tBNB";
             document.getElementById('valFee').innerText = d.entranceFee + " tBNB";
-            document.getElementById('valMin').innerText = d.minCars;
             document.getElementById('valLobby').innerText = d.carCount;
-            document.getElementById('winnerBanner').innerText = d.winner === "none" ? "" : "🏆 WINNER: " + d.winner;
-            updateListUI();
+            document.getElementById('winnerBanner').innerText = d.winner === "none" ? "" : "WINNER: " + d.winner;
+            updateList();
         });
     }
 
-    async function updateListUI() {
+    async function updateList() {
         const snap = await get(ref(db, 'registrations'));
         const list = document.getElementById('playerList');
         list.innerHTML = "";
@@ -95,7 +90,7 @@
         if (!data) return;
         for (let w in data) {
             if (data[w].lastPaidRound === currentRound) {
-                list.innerHTML += `<li style="border-bottom:1px solid #222; padding:2px;">${w.substring(0,20)}...</li>`;
+                list.innerHTML += `<li style="border-bottom:1px solid #222;">${w.substring(0,15)}... READY</li>`;
             }
         }
     }
@@ -104,24 +99,16 @@
         const val = parseFloat(document.getElementById('inpFunds').value);
         const s = await get(ref(db, 'vault/stats'));
         await update(ref(db, 'vault/stats'), { totalFunds: Number(((s.val().totalFunds || 0) + val).toFixed(4)) });
-        document.getElementById('inpFunds').value = "";
     };
 
     document.getElementById('btnPrize').onclick = async () => {
         const val = parseFloat(document.getElementById('inpPrize').value);
         const s = await get(ref(db, 'vault/stats'));
         await update(ref(db, 'vault/stats'), { prizeAmount: val, totalFunds: Number((s.val().totalFunds - val).toFixed(4)) });
-        document.getElementById('inpPrize').value = "";
     };
 
     document.getElementById('btnFee').onclick = async () => {
         await update(ref(db, 'vault/stats'), { entranceFee: parseFloat(document.getElementById('inpFee').value) });
-        document.getElementById('inpFee').value = "";
-    };
-
-    document.getElementById('btnMin').onclick = async () => {
-        await update(ref(db, 'vault/stats'), { minCars: parseInt(document.getElementById('inpMin').value) });
-        document.getElementById('inpMin').value = "";
     };
 
     document.getElementById('btnRunRace').onclick = async () => {
@@ -129,7 +116,7 @@
         const regs = snap.val();
         let pool = [];
         for (let w in regs) if (regs[w].lastPaidRound === currentRound) pool.push(w);
-        if (pool.length === 0) return alert("Empty Lobby!");
+        if (pool.length === 0) return alert("Empty!");
         const winner = pool[Math.floor(Math.random() * pool.length)];
         await update(ref(db, 'vault/stats'), { winner: winner.toLowerCase() });
     };
@@ -144,7 +131,6 @@
             entranceFee: d.entranceFee || 0.01,
             prizeAmount: d.prizeAmount || 0
         });
-        alert("New Round Started.");
     };
 </script>
 </body>
