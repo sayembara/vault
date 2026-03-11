@@ -26,19 +26,22 @@
         <span id="prizeDisplay">0.00 tBNB</span>
     </div>
 
+    <div class="stat-box">
+        <span>CARS_IN_LOBBY:</span>
+        <span id="carCountDisplay">0 / 0</span>
+    </div>
+
     <button id="connectBtn">1. CONNECT WALLET</button>
-    <button id="depositBtn" disabled>2. REGISTER CAR (<span id="displayFee">...</span> tBNB)</button>
-    
+    <button id="depositBtn" disabled>2. REGISTER CAR (<span id="displayFee">0.00</span> tBNB)</button>
     <button id="claimBtn">3. CLAIM WINNINGS</button>
     
-    <div id="status-bar">// WAITING_FOR_CONNECTION //</div>
+    <div id="status-bar">// OFFLINE //</div>
 </div>
 
 <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
     import { getDatabase, ref, onValue, get, update, runTransaction } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
 
-    // --- 1. CONFIGURATION ---
     const firebaseConfig = {
         apiKey: "YOUR_API_KEY",
         authDomain: "nuclearf1-94a6b.firebaseapp.com",
@@ -54,36 +57,29 @@
     const contractAddress = "0xb436c8C192288F45ca154081aa6c04b867c1946C";
     const RENDER_URL = "https://sanrat-vault-backend.onrender.com";
 
-    const abi = [
-        "function payEntranceFee() external payable",
-        "function entranceFee() public view returns (uint256)",
-        "function claimPrize(uint256 amount, bytes calldata signature) external"
-    ];
-
+    const abi = ["function payEntranceFee() external payable", "function entranceFee() public view returns (uint256)", "function claimPrize(uint256 amount, bytes calldata signature) external"];
     let signer, contract, userAddress, currentRound;
-    const providerRpc = new ethers.providers.JsonRpcProvider("https://data-seed-prebsc-1-s1.binance.org:8545/");
 
-    // --- 2. REAL-TIME LOBBY SYNC ---
     function startLobbySync() {
-        const statsRef = ref(db, 'vault/stats');
-        onValue(statsRef, (snapshot) => {
+        onValue(ref(db, 'vault/stats'), (snapshot) => {
             const data = snapshot.val();
             if (!data) return;
 
             currentRound = data.currentRound || 1;
             document.getElementById('prizeDisplay').innerText = data.prizeAmount + " tBNB";
+            document.getElementById('carCountDisplay').innerText = `${data.carCount} / ${data.minCars}`;
+            document.getElementById('displayFee').innerText = data.entranceFee || "0.00";
             
-            // Check for Winner
             const walletLower = userAddress ? userAddress.toLowerCase() : "";
             if (data.winner !== "none" && data.winner === walletLower) {
                 document.getElementById('claimBtn').style.display = "block";
                 document.getElementById('depositBtn').style.display = "none";
-                document.getElementById('status-bar').innerText = "🏆 YOU WON THE RACE!\nCLAIM YOUR PRIZE NOW.";
+                document.getElementById('status-bar').innerText = "🏆 WINNER DETECTED!\nCLAIM YOUR PRIZE.";
             } else if (data.winner !== "none") {
-                document.getElementById('status-bar').innerText = `RACE OVER.\nWINNER: ${data.winner.substring(0,10)}...`;
+                document.getElementById('status-bar').innerText = `RACE FINISHED.\nWINNER: ${data.winner.substring(0,10)}...`;
                 document.getElementById('claimBtn').style.display = "none";
             } else {
-                document.getElementById('status-bar').innerText = `LOBBY: ${data.carCount} / ${data.minCars} READY`;
+                document.getElementById('status-bar').innerText = `STATUS: WAITING FOR START`;
                 document.getElementById('claimBtn').style.display = "none";
                 document.getElementById('depositBtn').style.display = "block";
                 if(userAddress) checkRegistrationStatus();
@@ -91,83 +87,49 @@
         });
     }
 
-    // --- 3. PERSISTENCE CHECK ---
     async function checkRegistrationStatus() {
         const regSnap = await get(ref(db, `registrations/${userAddress.toLowerCase()}`));
         const regData = regSnap.val();
-
         if (regData && regData.lastPaidRound === currentRound) {
             document.getElementById('depositBtn').disabled = true;
             document.getElementById('depositBtn').innerText = "REGISTERED ✅";
         } else {
             document.getElementById('depositBtn').disabled = false;
-            document.getElementById('depositBtn').innerText = `2. REGISTER CAR (${document.getElementById('displayFee').innerText} tBNB)`;
+            document.getElementById('depositBtn').innerText = `2. REGISTER CAR`;
         }
     }
 
-    // --- 4. BUTTON ACTIONS ---
     document.getElementById('connectBtn').onclick = async () => {
         const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
         userAddress = accounts[0];
         const provider = new ethers.providers.Web3Provider(window.ethereum);
         signer = provider.getSigner();
         contract = new ethers.Contract(contractAddress, abi, signer);
-        
         document.getElementById('connectBtn').innerText = "CONNECTED";
-        document.getElementById('connectBtn').style.borderColor = "#2ecc71";
-        
-        // Load fee and start sync
-        const fee = await new ethers.Contract(contractAddress, abi, providerRpc).entranceFee();
-        document.getElementById('displayFee').innerText = ethers.utils.formatEther(fee);
-        
         startLobbySync();
     };
 
     document.getElementById('depositBtn').onclick = async () => {
         try {
-            document.getElementById('status-bar').innerText = "// WAITING_FOR_WALLET... //";
-            const fee = await contract.entranceFee();
-            const tx = await contract.payEntranceFee({ value: fee });
-            
-            document.getElementById('status-bar').innerText = "// MINING_TRANSACTION... //";
+            document.getElementById('status-bar').innerText = "// SIGNING... //";
+            const tx = await contract.payEntranceFee({ value: ethers.utils.parseEther(document.getElementById('displayFee').innerText) });
             await tx.wait();
-
-            // WRITE TO REALTIME DATABASE
-            await update(ref(db, `registrations/${userAddress.toLowerCase()}`), {
-                paid: true,
-                lastPaidRound: currentRound
-            });
-
-            // Increment carCount safely
-            await runTransaction(ref(db, 'vault/stats/carCount'), (count) => {
-                return (count || 0) + 1;
-            });
-
-            document.getElementById('status-bar').innerText = "// REGISTRATION_SUCCESSFUL //";
-            checkRegistrationStatus();
-        } catch (e) {
-            console.error(e);
-            document.getElementById('status-bar').innerText = "// TRANSACTION_FAILED //";
-        }
+            await update(ref(db, `registrations/${userAddress.toLowerCase()}`), { paid: true, lastPaidRound: currentRound });
+            await runTransaction(ref(db, 'vault/stats/carCount'), (c) => (c || 0) + 1);
+            document.getElementById('status-bar').innerText = "// REGISTERED! //";
+        } catch (e) { document.getElementById('status-bar').innerText = "// ERROR //"; }
     };
 
     document.getElementById('claimBtn').onclick = async () => {
         try {
-            document.getElementById('status-bar').innerText = "// REQUESTING_SIGNATURE... //";
             const prizeAmt = document.getElementById('prizeDisplay').innerText.split(' ')[0];
-            
-            const response = await fetch(`${RENDER_URL}/get-signature?playerAddress=${userAddress}&amount=${prizeAmt}`);
-            const data = await response.json();
-
+            const res = await fetch(`${RENDER_URL}/get-signature?playerAddress=${userAddress}&amount=${prizeAmt}`);
+            const data = await res.json();
             const tx = await contract.claimPrize(data.amountWei, data.signature);
             await tx.wait();
-            
-            document.getElementById('status-bar').innerText = "// PRIZE_CLAIMED_SUCCESSFULLY //";
-            // Reset winner status for this player locally
+            document.getElementById('status-bar').innerText = "// CLAIMED! //";
             document.getElementById('claimBtn').style.display = "none";
-        } catch (e) {
-            document.getElementById('status-bar').innerText = "// CLAIM_FAILED //";
-        }
+        } catch (e) { document.getElementById('status-bar').innerText = "// CLAIM FAILED //"; }
     };
 </script>
 </body>
