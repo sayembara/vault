@@ -3,18 +3,18 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>NUCLEAR_SPONSOR_V2_2</title>
+    <title>NUCLEAR_SPONSOR_V2.5_CORE</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/5.7.2/ethers.umd.min.js"></script>
     <style>
         :root { --accent: #f3ba2f; --bg: #000; --panel: #0a0a0a; --border: #222; --boost: #3498db; --danger: #e74c3c; --success: #2ecc71; }
         body { background: var(--bg); color: #fff; font-family: 'Courier New', monospace; margin: 0; padding: 20px; display: flex; justify-content: center; }
-        .container { width: 100%; max-width: 1000px; display: grid; grid-template-columns: 1fr 320px; gap: 20px; }
+        .container { width: 100%; max-width: 1100px; display: grid; grid-template-columns: 1fr 340px; gap: 20px; }
         .panel { background: var(--panel); border: 1px solid var(--border); padding: 20px; border-radius: 4px; margin-bottom: 20px; }
         h3 { color: var(--accent); margin-top: 0; font-size: 0.9em; letter-spacing: 2px; border-bottom: 1px solid var(--border); padding-bottom: 10px; margin-bottom: 15px; }
         
-        /* Buckets */
+        /* Buckets Grid */
         .buckets-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
-        .bucket { background: #080808; border: 1px solid #1a1a1a; padding: 10px; font-size: 0.8em; border-left: 3px solid #333; transition: border-color 0.3s; }
+        .bucket { background: #080808; border: 1px solid #1a1a1a; padding: 10px; font-size: 0.8em; border-left: 3px solid #333; transition: all 0.3s; }
         .val-line { display: flex; justify-content: space-between; margin: 2px 0; }
         .n-text { color: var(--accent); } .b-text { color: var(--boost); }
         
@@ -22,13 +22,13 @@
         input, select { width: 100%; padding: 12px; background: #000; border: 1px solid #333; color: #fff; margin-bottom: 10px; box-sizing: border-box; }
         button { width: 100%; padding: 14px; border: none; font-weight: bold; cursor: pointer; text-transform: uppercase; margin-bottom: 8px; font-size: 0.75em; }
         .btn-acc { background: var(--accent); color: #000; }
+        .btn-boost { background: var(--boost); color: #fff; }
         .btn-danger { background: var(--danger); color: #fff; }
         .btn-ghost { background: transparent; border: 1px solid #444; color: #888; }
         
-        /* Overflow Persistent Display */
-        #overflow-status { background: #050505; border: 1px solid #222; padding: 15px; text-align: center; margin-top: 15px; border-radius: 4px; }
-        .overflow-label { font-size: 0.65em; color: #666; display: block; margin-bottom: 5px; }
+        #overflow-status { background: #050505; border: 1px solid #222; padding: 15px; text-align: center; margin-top: 15px; }
         .overflow-val { font-size: 1.2em; color: var(--success); font-weight: bold; }
+        .active-round-glow { border-color: var(--boost) !important; background: #0f172a !important; box-shadow: 0 0 10px rgba(52, 152, 219, 0.2); }
     </style>
 </head>
 <body>
@@ -38,10 +38,9 @@
         <div class="panel">
             <h3>SEASON_VAULT_SENSORS</h3>
             <div class="buckets-grid" id="bucketDisplay"></div>
-            
             <div id="overflow-status">
-                <span class="overflow-label">PHASE_4 // SEASON_OVERFLOW_POOL</span>
-                <span class="overflow-val" id="valOverflow">0.000</span> <span style="font-size: 0.8em; color: var(--success);">tBNB</span>
+                <span style="font-size: 0.65em; color: #666; display: block;">PHASE_4 // SEASON_OVERFLOW</span>
+                <span class="overflow-val" id="valOverflow">0.000</span> <span style="color:var(--success)">tBNB</span>
             </div>
         </div>
 
@@ -71,10 +70,19 @@
             <button class="btn-acc" id="btnSponsor">EXECUTE_FUNDING</button>
         </div>
 
+        <div class="panel" style="border-color: var(--boost);">
+            <h3>SIMULATION_ENGINE</h3>
+            <div class="val-line" style="font-size:0.8em; margin-bottom:10px;">
+                <span>ACTIVE_ROUND:</span><span id="simActiveRound" style="color:var(--boost); font-weight:bold;">1</span>
+            </div>
+            <button class="btn-boost" id="btnAdvanceRound">START_30S_RACE</button>
+            <div id="sim-status" style="font-size:0.65em; color:var(--boost); text-align:center; margin-top:5px;">// READY //</div>
+        </div>
+
         <div class="panel">
             <h3>SYSTEM_CONTROLS</h3>
-            <button class="btn-danger" id="btnReset">RESET_AND_REALLOCATE</button>
-            <button class="btn-ghost" id="btnZero">SET_TO_ZERO (WIPE)</button>
+            <button class="btn-danger" id="btnReset">RESET_REALLOCATE</button>
+            <button class="btn-ghost" id="btnZero">HARD_WIPE (0.00)</button>
         </div>
 
         <div class="panel">
@@ -101,12 +109,12 @@
     const app = initializeApp(firebaseConfig);
     const db = getDatabase(app);
 
-    // Initial UI Grid
+    // Build UI
     const grid = document.getElementById('bucketDisplay');
     for(let i=1; i<=12; i++) {
         grid.innerHTML += `
             <div class="bucket" id="bCard${i}">
-                <div style="color:#555; margin-bottom:5px; font-size:0.7em;">RND_${String(i).padStart(2, '0')}</div>
+                <div style="color:#555; margin-bottom:5px; font-size:0.7em;">RND_${String(i).padStart(2,'0')}</div>
                 <div class="val-line">N: <span class="n-text" id="rN${i}">0.00</span></div>
                 <div class="val-line">B: <span class="b-text" id="rB${i}">0.00</span></div>
                 <div class="val-line" style="border-top:1px solid #222; margin-top:5px; padding-top:2px; font-weight:bold;">
@@ -115,13 +123,12 @@
             </div>`;
     }
 
-    // Live Sync
+    // --- DATA SYNC ---
     onValue(ref(db, 'vault/season_v2'), (snap) => {
         const data = snap.val() || {};
         const config = data.config || { min: 0.5, max: 2.0 };
         document.getElementById('lblMin').innerText = config.min;
         document.getElementById('lblMax').innerText = config.max;
-        
         document.getElementById('valOverflow').innerText = (data.overflowPool || 0).toFixed(3);
 
         for(let i=1; i<=12; i++) {
@@ -129,30 +136,29 @@
             document.getElementById(`rN${i}`).innerText = r.n.toFixed(3);
             document.getElementById(`rB${i}`).innerText = r.b.toFixed(3);
             document.getElementById(`rT${i}`).innerText = (r.n + r.b).toFixed(3);
-            
-            // Visual Indicator: Gold border if Normal Min is met
             document.getElementById(`bCard${i}`).style.borderColor = r.n >= config.min ? '#f3ba2f' : '#222';
         }
     });
 
-    onValue(ref(db, 'sponsors'), (snap) => {
-        const data = snap.val() || {};
-        const sorted = Object.entries(data).sort((a,b) => b[1] - a[1]).slice(0, 5);
-        document.getElementById('leaderboard').innerHTML = sorted.map(s => 
-            `<div class="leader-item"><span>${s[0].substring(0,10)}...</span><span>${s[1].toFixed(2)} tBNB</span></div>`
-        ).join('');
+    onValue(ref(db, 'vault/stats'), (snap) => {
+        const stats = snap.val() || {};
+        const cur = stats.currentRound || 1;
+        document.getElementById('simActiveRound').innerText = cur;
+        // Highlight active round bucket
+        for(let i=1; i<=12; i++) {
+            document.getElementById(`bCard${i}`).classList.toggle('active-round-glow', i === cur);
+        }
     });
 
-    // --- REALLOCATION ENGINE ---
+    // --- ALLOCATION ENGINE ---
     async function reallocate(targetData) {
         const config = targetData.config || { min: 0.5, max: 2.0 };
         let remN = targetData.normalPool || 0;
         let remB = targetData.boostPool || 0;
 
-        // Clear Rounds
         for(let i=1; i<=12; i++) targetData[`round${i}`] = { n: 0, b: 0 };
 
-        // 1. Sequential Normal (Phase 1)
+        // Phase 1: Sequential
         for(let i=1; i<=12; i++) {
             if(remN > 0) {
                 let add = Math.min(remN, config.min);
@@ -160,44 +166,34 @@
                 remN -= add;
             }
         }
-
-        // 2. Scaling Normal (Phase 2)
+        // Phase 2: Scaling
         if(remN > 0) {
-            let spacePerRound = config.max - config.min;
-            if(spacePerRound > 0) {
-                let totalSpace = spacePerRound * 12;
-                let addTotal = Math.min(remN, totalSpace);
-                let perRound = addTotal / 12;
-                for(let i=1; i<=12; i++) targetData[`round${i}`].n = Number((targetData[`round${i}`].n + perRound).toFixed(4));
-                remN -= addTotal;
-            }
+            let space = (config.max - config.min) * 12;
+            let addTotal = Math.min(remN, space);
+            let perRound = addTotal / 12;
+            for(let i=1; i<=12; i++) targetData[`round${i}`].n = Number((targetData[`round${i}`].n + perRound).toFixed(4));
+            remN -= addTotal;
         }
-
-        // 3. Overflow (Phase 4)
+        // Phase 4: Overflow
         targetData.overflowPool = Number(((targetData.overflowPool || 0) + remN).toFixed(4));
         targetData.normalPool = 0; 
-
-        // 4. Boost (Equal Split)
+        // Boost
         if(remB > 0) {
             let split = remB / 12;
             for(let i=1; i<=12; i++) targetData[`round${i}`].b = Number(split.toFixed(4));
             targetData.boostPool = 0;
         }
-
         await set(ref(db, 'vault/season_v2'), targetData);
     }
 
     // --- BUTTON ACTIONS ---
-
     document.getElementById('btnSponsor').onclick = async () => {
         const amt = parseFloat(document.getElementById('sponsorAmt').value);
-        const mode = document.getElementById('modeSelect').value;
         if(!amt || amt <= 0) return;
-
+        const mode = document.getElementById('modeSelect').value;
         const snap = await get(ref(db, 'vault/season_v2'));
         const data = snap.val() || {};
         
-        // Accumulate everything for re-calculation
         let totalN = (data.normalPool || 0) + (mode === 'normal' ? amt : 0) + (data.overflowPool || 0);
         let totalB = (data.boostPool || 0) + (mode === 'boost' ? amt : 0);
         data.overflowPool = 0;
@@ -206,9 +202,7 @@
             const r = data[`round${i}`] || { n: 0, b: 0 };
             totalN += r.n; totalB += r.b;
         }
-
-        data.normalPool = totalN;
-        data.boostPool = totalB;
+        data.normalPool = totalN; data.boostPool = totalB;
         await reallocate(data);
         document.getElementById('sponsorAmt').value = "";
     };
@@ -219,39 +213,71 @@
         let totalN = (data.normalPool || 0) + (data.overflowPool || 0);
         let totalB = (data.boostPool || 0);
         data.overflowPool = 0;
-
         for(let i=1; i<=12; i++) {
             const r = data[`round${i}`] || { n: 0, b: 0 };
             totalN += r.n; totalB += r.b;
         }
-        
-        data.normalPool = totalN;
-        data.boostPool = totalB;
+        data.normalPool = totalN; data.boostPool = totalB;
         await reallocate(data);
     };
 
+    // --- RACE SIMULATION ---
+    document.getElementById('btnAdvanceRound').onclick = async () => {
+        const statsSnap = await get(ref(db, 'vault/stats'));
+        const seasonSnap = await get(ref(db, 'vault/season_v2'));
+        
+        const curR = statsSnap.val().currentRound || 1;
+        const bucket = seasonSnap.val()[`round${curR}`] || {n:0, b:0};
+        const prize = bucket.n + bucket.b;
+
+        if(prize <= 0) return alert("BUCKET_EMPTY: Cannot start race.");
+
+        let timeLeft = 30;
+        document.getElementById('btnAdvanceRound').disabled = true;
+        
+        const timer = setInterval(async () => {
+            timeLeft--;
+            document.getElementById('sim-status').innerText = `// RACE_LIVE: ${timeLeft}s //`;
+            if(timeLeft <= 0) {
+                clearInterval(timer);
+                await resolveRace(curR, prize);
+            }
+        }, 1000);
+    };
+
+    async function resolveRace(roundNum, prize) {
+        document.getElementById('sim-status').innerText = "// SELECTING_WINNER... //";
+        const regSnap = await get(ref(db, 'registrations'));
+        const players = regSnap.val() || {};
+        const entrants = Object.keys(players).filter(a => players[a].lastPaidRound === roundNum);
+
+        let winner = entrants.length > 0 ? entrants[Math.floor(Math.random()*entrants.length)] : "none";
+        
+        // 1. Drain Bucket
+        await update(ref(db, `vault/season_v2/round${roundNum}`), { n: 0, b: 0 });
+
+        // 2. Update Stats (Next Round & Winner)
+        const nextR = roundNum >= 12 ? 1 : roundNum + 1;
+        await update(ref(db, 'vault/stats'), {
+            prizeAmount: Number(prize.toFixed(4)),
+            winner: winner,
+            currentRound: nextR,
+            carCount: 0
+        });
+
+        document.getElementById('sim-status').innerText = `// FINISHED: ${winner.substring(0,6)}... //`;
+        document.getElementById('btnAdvanceRound').disabled = false;
+    }
+
     document.getElementById('btnZero').onclick = async () => {
-        if(!confirm("HARD WIPE?")) return;
-        const fresh = { config: { min: 0.5, max: 2.0 }, normalPool: 0, boostPool: 0, overflowPool: 0 };
-        for(let i=1; i<=12; i++) fresh[`round${i}`] = { n: 0, b: 0 };
+        if(!confirm("WIPE ALL?")) return;
+        const fresh = { config:{min:0.5, max:2.0}, normalPool:0, boostPool:0, overflowPool:0 };
+        for(let i=1; i<=12; i++) fresh[`round${i}`] = {n:0, b:0};
         await set(ref(db, 'vault/season_v2'), fresh);
     };
 
-    document.getElementById('btnSetMin').onclick = async () => {
-        const val = parseFloat(document.getElementById('setMin').value);
-        if(!isNaN(val)) {
-            await update(ref(db, 'vault/season_v2/config'), { min: val });
-            document.getElementById('setMin').value = "";
-        }
-    };
-
-    document.getElementById('btnSetMax').onclick = async () => {
-        const val = parseFloat(document.getElementById('setMax').value);
-        if(!isNaN(val)) {
-            await update(ref(db, 'vault/season_v2/config'), { max: val });
-            document.getElementById('setMax').value = "";
-        }
-    };
+    document.getElementById('btnSetMin').onclick = () => update(ref(db, 'vault/season_v2/config'), { min: parseFloat(document.getElementById('setMin').value) });
+    document.getElementById('btnSetMax').onclick = () => update(ref(db, 'vault/season_v2/config'), { max: parseFloat(document.getElementById('setMax').value) });
 </script>
 </body>
 </html>
