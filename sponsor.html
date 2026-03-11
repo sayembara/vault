@@ -128,35 +128,44 @@
     }
 
     // --- WEB3 AUTHENTICATION ---
-    document.getElementById('btnConnect').onclick = async () => {
-        if(!window.ethereum) return alert("Install MetaMask");
-        
-        try {
-            const provider = new ethers.providers.Web3Provider(window.ethereum);
-            await provider.send("eth_requestAccounts", []);
-            const signer = provider.getSigner();
-            const address = (await signer.getAddress()).toLowerCase();
+    // --- UPDATED AUTHENTICATION LOGIC ---
+document.getElementById('btnConnect').onclick = async () => {
+    const errorLog = document.getElementById('auth-error');
+    errorLog.innerText = "INITIALIZING...";
 
-            if(address !== MASTER_ADMIN_WALLET) {
-                document.getElementById('auth-error').innerText = "ERROR: UNAUTHORIZED_WALLET";
-                return;
-            }
+    if(!window.ethereum) return alert("MetaMask not found.");
+    
+    try {
+        const provider = new ethers.providers.Web3Provider(window.ethereum);
+        await provider.send("eth_requestAccounts", []);
+        const signer = provider.getSigner();
+        const address = (await signer.getAddress()).toLowerCase();
 
-            // Proof of Ownership Signature
-            const message = "NUCLEAR_F1_ADMIN_LOGIN_" + new Date().toDateString();
-            await signer.signMessage(message);
-
-            // Once signed, we sign in anonymously to Firebase to satisfy "auth != null"
-            await signInAnonymously(auth);
-            
-            document.getElementById('auth-gate').style.display = 'none';
-            document.getElementById('dashboard').style.display = 'grid';
-            startSync();
-
-        } catch (err) {
-            document.getElementById('auth-error').innerText = "SIGNATURE_REJECTED";
+        // 1. ADDRESS VALIDATION
+        if(address !== MASTER_ADMIN_WALLET.toLowerCase()) {
+            errorLog.innerText = `DENIED: Connected ${address.substring(0,6)}... but expected ${MASTER_ADMIN_WALLET.substring(0,6)}...`;
+            return;
         }
-    };
+
+        // 2. SIGNATURE CHALLENGE
+        errorLog.innerText = "PENDING SIGNATURE...";
+        const message = "NUCLEAR_F1_ADMIN_AUTH_VERIFY_" + new Date().toDateString();
+        await signer.signMessage(message);
+
+        // 3. FIREBASE HANDSHAKE
+        errorLog.innerText = "AUTHORIZING DATABASE...";
+        await signInAnonymously(auth);
+        
+        // SUCCESS
+        document.getElementById('auth-gate').style.display = 'none';
+        document.getElementById('dashboard').style.display = 'grid';
+        startSync();
+
+    } catch (err) {
+        console.error(err);
+        errorLog.innerText = "AUTH_FAILED: " + (err.code === 4001 ? "SIGNATURE_REJECTED" : "FIREBASE_CONFIG_ERROR");
+    }
+};
 
     function startSync() {
         onValue(ref(db, 'vault/stats'), snap => {
