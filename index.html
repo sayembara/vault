@@ -10,7 +10,7 @@
         .terminal { background: #080808; border: 1px solid #333; padding: 25px; width: 100%; max-width: 380px; text-align: center; border-radius: 8px; box-shadow: 0 0 15px rgba(243, 186, 47, 0.1); }
         button { width: 100%; padding: 15px; margin: 8px 0; background: #f3ba2f; color: #000; border: none; font-weight: bold; cursor: pointer; text-transform: uppercase; border-radius: 4px; transition: 0.2s; }
         button:hover { background: #fff; }
-        button:disabled { background: #1a1a1a; color: #444; cursor: not-allowed; }
+        button:disabled { background: #1a1a1a; color: #444; cursor: not-allowed; border: 1px solid #333; }
         .stat-box { background: #111; padding: 12px; margin: 10px 0; border: 1px solid #222; font-size: 0.9em; display: flex; justify-content: space-between; }
         #status-bar { background: #111; padding: 10px; margin-top: 10px; font-size: 0.8em; border: 1px solid #222; color: #f3ba2f; min-height: 1.2em; border-left: 3px solid #f3ba2f; white-space: pre-wrap; }
         #claimBtn { background: #2ecc71; color: #000; display: none; }
@@ -21,6 +21,11 @@
 <div class="terminal">
     <h2 style="letter-spacing: 4px; color: #fff; margin-bottom: 20px;">RACE_LOBBY</h2>
     
+    <div class="stat-box">
+        <span>YOUR_WALLET:</span>
+        <span id="userBalance">0.00 tBNB</span>
+    </div>
+
     <div class="stat-box">
         <span>CURRENT_PRIZE:</span>
         <span id="prizeDisplay">0.00 tBNB</span>
@@ -33,7 +38,7 @@
 
     <button id="connectBtn">1. CONNECT WALLET</button>
     <button id="depositBtn" disabled>2. REGISTER CAR (<span id="displayFee">0.00</span> tBNB)</button>
-    <button id="claimBtn">3. CLAIM WINNINGS</button>
+    <button id="claimBtn">3. CLAIM <span id="claimAmtDisplay">0.00</span> tBNB</button>
     
     <div id="status-bar">// OFFLINE //</div>
 </div>
@@ -60,16 +65,26 @@
     const abi = ["function payEntranceFee() external payable", "function entranceFee() public view returns (uint256)", "function claimPrize(uint256 amount, bytes calldata signature) external"];
     let signer, contract, userAddress, currentRound;
 
+    async function updateBalance() {
+        if (signer) {
+            const bal = await signer.getBalance();
+            document.getElementById('userBalance').innerText = parseFloat(ethers.utils.formatEther(bal)).toFixed(4) + " tBNB";
+        }
+    }
+
     function startLobbySync() {
-        onValue(ref(db, 'vault/stats'), (snapshot) => {
+        onValue(ref(db, 'vault/stats'), async (snapshot) => {
             const data = snapshot.val();
             if (!data) return;
 
             currentRound = data.currentRound || 1;
             document.getElementById('prizeDisplay').innerText = data.prizeAmount + " tBNB";
+            document.getElementById('claimAmtDisplay').innerText = data.prizeAmount;
             document.getElementById('carCountDisplay').innerText = `${data.carCount} / ${data.minCars}`;
             document.getElementById('displayFee').innerText = data.entranceFee || "0.00";
             
+            await updateBalance();
+
             const walletLower = userAddress ? userAddress.toLowerCase() : "";
             if (data.winner !== "none" && data.winner === walletLower) {
                 document.getElementById('claimBtn').style.display = "block";
@@ -111,13 +126,21 @@
 
     document.getElementById('depositBtn').onclick = async () => {
         try {
+            const feeVal = document.getElementById('displayFee').innerText;
+            if(!feeVal || feeVal === "0.00") throw new Error("Fee not loaded");
+            
             document.getElementById('status-bar').innerText = "// SIGNING... //";
-            const tx = await contract.payEntranceFee({ value: ethers.utils.parseEther(document.getElementById('displayFee').innerText) });
+            const tx = await contract.payEntranceFee({ value: ethers.utils.parseEther(feeVal) });
             await tx.wait();
+            
             await update(ref(db, `registrations/${userAddress.toLowerCase()}`), { paid: true, lastPaidRound: currentRound });
             await runTransaction(ref(db, 'vault/stats/carCount'), (c) => (c || 0) + 1);
             document.getElementById('status-bar').innerText = "// REGISTERED! //";
-        } catch (e) { document.getElementById('status-bar').innerText = "// ERROR //"; }
+            await updateBalance();
+        } catch (e) { 
+            console.error(e);
+            document.getElementById('status-bar').innerText = "// ERROR //"; 
+        }
     };
 
     document.getElementById('claimBtn').onclick = async () => {
@@ -129,6 +152,7 @@
             await tx.wait();
             document.getElementById('status-bar').innerText = "// CLAIMED! //";
             document.getElementById('claimBtn').style.display = "none";
+            await updateBalance();
         } catch (e) { document.getElementById('status-bar').innerText = "// CLAIM FAILED //"; }
     };
 </script>
