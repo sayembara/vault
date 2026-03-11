@@ -61,28 +61,35 @@
         document.getElementById('status-bar').innerText = "// CONTROL_ACTIVE //";
     };
 
-    document.getElementById('setFeeBtn').onclick = async () => {
-        try {
-            const feeVal = document.getElementById('newFee').value;
-            if(!feeVal || isNaN(feeVal)) return alert("Enter a valid number");
+document.getElementById('setFeeBtn').onclick = async () => {
+    try {
+        const feeVal = document.getElementById('newFee').value;
+        if (!feeVal) return alert("Please enter a value (e.g., 0.02)");
+        
+        const feeWei = ethers.utils.parseEther(feeVal);
+        document.getElementById('status-bar').innerText = "// CHECKING_PERMISSIONS... //";
 
-            // Convert tBNB to Wei (e.g., 0.01 -> 10000000000000000)
-            const feeInWei = ethers.utils.parseEther(feeVal);
-            
-            document.getElementById('status-bar').innerText = "// PENDING_METAMASK... //";
-            
-            // Calling the function
-            const tx = await contract.setEntranceFee(feeInWei);
-            document.getElementById('status-bar').innerText = "// MINING_TRANSACTION... //";
-            
-            await tx.wait();
-            document.getElementById('status-bar').innerText = "// FEE_UPDATED_SUCCESSFULLY //";
-            document.getElementById('newFee').value = "";
-        } catch (e) {
-            console.error(e);
-            document.getElementById('status-bar').innerText = "// TRANSACTION_FAILED //";
+        // Let's verify you are the owner before sending the tx
+        const contractOwner = await contract.owner();
+        const currentAddress = await signer.getAddress();
+
+        if (contractOwner.toLowerCase() !== currentAddress.toLowerCase()) {
+            document.getElementById('status-bar').innerText = "// ERROR: YOU_ARE_NOT_THE_OWNER //";
+            console.error("Owner is:", contractOwner, "You are:", currentAddress);
+            return;
         }
-    };
+
+        document.getElementById('status-bar').innerText = "// SENDING_TX_TO_BLOCKCHAIN... //";
+        const tx = await contract.setEntranceFee(feeWei);
+        await tx.wait();
+        
+        document.getElementById('status-bar').innerText = "// FEE_UPDATED_SUCCESSFULLY //";
+    } catch (e) {
+        console.error("Full Error:", e);
+        // This will catch if the function name is wrong or network is down
+        document.getElementById('status-bar').innerText = "// ERROR: TX_REVERTED //";
+    }
+};
 
     document.getElementById('releaseBtn').onclick = async () => {
         try {
