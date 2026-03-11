@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>NUCLEAR_SPONSOR_V2.9_FULL</title>
+    <title>NUCLEAR_SPONSOR_V3.0</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/5.7.2/ethers.umd.min.js"></script>
     <style>
         :root { --accent: #f3ba2f; --bg: #000; --panel: #0a0a0a; --border: #222; --boost: #3498db; --danger: #e74c3c; --success: #2ecc71; --disabled: #1a1a1a; }
@@ -14,7 +14,7 @@
         
         /* Buckets Grid */
         .buckets-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
-        .bucket { background: #080808; border: 1px solid #1a1a1a; padding: 10px; font-size: 0.8em; border-left: 3px solid #333; transition: all 0.3s; }
+        .bucket { background: #080808; border: 1px solid #1a1a1a; padding: 10px; font-size: 0.8em; border-left: 3px solid #333; transition: all 0.3s; position: relative; }
         .bucket.past { background: var(--disabled); border-color: #333; opacity: 0.5; filter: grayscale(1); }
         .bucket.active { border-color: var(--boost); background: #0f172a; box-shadow: 0 0 10px rgba(52, 152, 219, 0.2); }
         
@@ -26,9 +26,8 @@
         .stat-card { background: #111; padding: 15px; border: 1px solid #222; text-align: center; }
         .stat-label { font-size: 0.6em; color: #666; display: block; text-transform: uppercase; }
 
-        /* UI Elements */
-        input, select { width: 100%; padding: 12px; background: #000; border: 1px solid #333; color: #fff; margin-bottom: 10px; box-sizing: border-box; }
-        button { width: 100%; padding: 14px; border: none; font-weight: bold; cursor: pointer; text-transform: uppercase; margin-bottom: 8px; font-size: 0.75em; }
+        input, select { width: 100%; padding: 12px; background: #000; border: 1px solid #333; color: #fff; margin-bottom: 10px; box-sizing: border-box; font-family: inherit; }
+        button { width: 100%; padding: 14px; border: none; font-weight: bold; cursor: pointer; text-transform: uppercase; margin-bottom: 8px; font-size: 0.75em; font-family: inherit; }
         .btn-acc { background: var(--accent); color: #000; }
         .btn-boost { background: var(--boost); color: #fff; }
         .btn-danger { background: var(--danger); color: #fff; }
@@ -45,11 +44,11 @@
             
             <div class="summary-grid">
                 <div class="stat-card" style="border-color: var(--success);">
-                    <span class="stat-label">Season Overflow</span>
+                    <span class="stat-label">Vault Overflow</span>
                     <span class="stat-value" id="valOverflow" style="color:var(--success)">0.000</span>
                 </div>
                 <div class="stat-card" style="border-color: var(--boost);">
-                    <span class="stat-label">Total Distributed</span>
+                    <span class="stat-label">Season Total Payout</span>
                     <span class="stat-value" id="valTotalDistributed" style="color:var(--boost)">0.000</span>
                 </div>
             </div>
@@ -59,12 +58,12 @@
             <h3>GLOBAL_CONSTRAINTS</h3>
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
                 <div>
-                    <input type="number" id="setMin" step="0.1" placeholder="New Min">
-                    <button class="btn-acc" id="btnSetMin">UPDATE_MIN [<span id="lblMin">...</span>]</button>
+                    <input type="number" id="setMin" step="0.1" placeholder="Min Per Round">
+                    <button class="btn-acc" id="btnSetMin">SET_MIN [<span id="lblMin">...</span>]</button>
                 </div>
                 <div>
-                    <input type="number" id="setMax" step="0.1" placeholder="New Max">
-                    <button class="btn-acc" id="btnSetMax">UPDATE_MAX [<span id="lblMax">...</span>]</button>
+                    <input type="number" id="setMax" step="0.1" placeholder="Max Per Round">
+                    <button class="btn-acc" id="btnSetMax">SET_MAX [<span id="lblMax">...</span>]</button>
                 </div>
             </div>
         </div>
@@ -74,27 +73,27 @@
         <div class="panel">
             <h3>SPONSOR_INJECTION</h3>
             <select id="modeSelect">
-                <option value="normal">NORMAL_FUNDING</option>
-                <option value="boost">BOOST_INJECTION</option>
+                <option value="normal">NORMAL_POOL (PHASE 1-2)</option>
+                <option value="boost">BOOST_POOL (FIXED SPLIT)</option>
             </select>
             <input type="number" id="sponsorAmt" placeholder="Amount tBNB">
-            <button class="btn-acc" id="btnSponsor">EXECUTE_FUNDING</button>
-            <p style="font-size:0.55em; color:#666; text-align:center;">*Funds inclusive of active round.</p>
+            <button class="btn-acc" id="btnSponsor">INJECT_FUNDS</button>
+            <p style="font-size:0.55em; color:#666; text-align:center;">*Funds target Active + Future rounds.</p>
         </div>
 
         <div class="panel" style="border-color: var(--boost);">
-            <h3>MANUAL_RACE_CONTROL</h3>
+            <h3>RACE_CONTROL_UNIT</h3>
             <div class="val-line" style="font-size:0.8em; margin-bottom:10px;">
                 <span>ACTIVE_ROUND:</span><span id="simActiveRound" style="color:var(--boost); font-weight:bold;">1</span>
             </div>
-            <button class="btn-boost" id="btnInstantResolve">END RACE & PAYOUT</button>
-            <div id="sim-status" style="font-size:0.65em; color:var(--boost); text-align:center; margin-top:5px;">// READY //</div>
+            <button class="btn-boost" id="btnInstantResolve">END ROUND & PAYOUT</button>
+            <div id="sim-status" style="font-size:0.65em; color:var(--boost); text-align:center; margin-top:5px;">// STANDBY //</div>
         </div>
 
         <div class="panel">
-            <h3>SYSTEM_CONTROLS</h3>
-            <button class="btn-danger" id="btnReset">RESET_ALL_ELIGIBLE</button>
-            <button class="btn-ghost" id="btnZero">HARD_WIPE (FULL)</button>
+            <h3>SYSTEM_PURGE</h3>
+            <button class="btn-danger" id="btnReset">REALLOCATE_CURRENT</button>
+            <button class="btn-ghost" id="btnZero">FULL_SEASON_WIPE</button>
         </div>
     </div>
 </div>
@@ -132,7 +131,7 @@
             </div>`;
     }
 
-    // --- SYNC ENGINE ---
+    // --- SYNC ---
     onValue(ref(db, 'vault/season_v2'), (snap) => {
         const data = snap.val() || {};
         const config = data.config || { min: 0.5, max: 2.0 };
@@ -152,13 +151,13 @@
             
             if (i < currentActiveRound) {
                 card.className = "bucket past";
-                label.innerText = `RND_${String(i).padStart(2,'0')} (DONE)`;
+                label.innerText = `RND_${String(i).padStart(2,'0')} [DONE]`;
             } else if (i === currentActiveRound) {
                 card.className = "bucket active";
-                label.innerText = `RND_${String(i).padStart(2,'0')} (LIVE)`;
+                label.innerText = `RND_${String(i).padStart(2,'0')} [LIVE]`;
             } else {
                 card.className = "bucket";
-                label.innerText = `RND_${String(i).padStart(2,'0')} (WAITING)`;
+                label.innerText = `RND_${String(i).padStart(2,'0')} [UPCOMING]`;
                 card.style.borderColor = r.n >= config.min ? '#f3ba2f' : '#222';
             }
         }
@@ -170,27 +169,26 @@
         document.getElementById('simActiveRound').innerText = currentActiveRound;
     });
 
-    // --- ALLOCATION LOGIC (INCLUSIVE OF ACTIVE) ---
+    // --- ALLOCATION (INCLUSIVE) ---
     async function reallocate(targetData) {
         const config = targetData.config || { min: 0.5, max: 2.0 };
         let remN = targetData.normalPool || 0;
         let remB = targetData.boostPool || 0;
 
-        // ELIGIBLE: Active + Upcoming
         let eligible = [];
         for (let i = currentActiveRound; i <= 12; i++) {
             eligible.push(i);
-            targetData[`round${i}`] = { n: 0, b: 0 }; // Wipe eligible rounds
+            targetData[`round${i}`] = { n: 0, b: 0 };
         }
 
         if (eligible.length === 0) {
             targetData.overflowPool = Number(((targetData.overflowPool || 0) + remN).toFixed(4));
-            targetData.normalPool = 0; targetData.boostPool = 0;
+            targetData.normalPool = 0;
             await set(ref(db, 'vault/season_v2'), targetData);
             return;
         }
 
-        // Phase 1: Sequential Min
+        // Phase 1: Seq Min
         for (let i of eligible) {
             if (remN > 0) {
                 let add = Math.min(remN, config.min);
@@ -198,7 +196,7 @@
                 remN -= add;
             }
         }
-        // Phase 2: Equal Scaling
+        // Phase 2: Equal Scale
         if (remN > 0) {
             let spacePer = config.max - config.min;
             let totalSpace = spacePer * eligible.length;
@@ -209,10 +207,9 @@
             }
             remN -= addTotal;
         }
-        // Phase 4: Overflow
         targetData.overflowPool = Number(((targetData.overflowPool || 0) + remN).toFixed(4));
         targetData.normalPool = 0;
-        // Boost split
+        // Boost
         if (remB > 0) {
             let split = remB / eligible.length;
             for (let i of eligible) targetData[`round${i}`].b = Number(split.toFixed(4));
@@ -256,20 +253,27 @@
         let winner = entrants.length > 0 ? entrants[Math.floor(Math.random()*entrants.length)] : "none";
 
         const newTotalDist = (seasonSnap.val().totalDistributed || 0) + prize;
+        
+        // Handle Round 12 Loop
+        let nextR = curR + 1;
+        if(curR >= 12) {
+            nextR = 1;
+            document.getElementById('sim-status').innerText = "// SEASON COMPLETED - LOOPING TO R1 //";
+        } else {
+            document.getElementById('sim-status').innerText = `// R${curR} PAID TO ${winner.substring(0,6)}... //`;
+        }
+
         await update(ref(db, 'vault/season_v2'), {
             [`round${curR}`]: { n: 0, b: 0 },
             totalDistributed: Number(newTotalDist.toFixed(4))
         });
 
-        const nextR = curR >= 12 ? 1 : curR + 1;
         await update(ref(db, 'vault/stats'), {
             prizeAmount: Number(prize.toFixed(4)),
             winner: winner,
             currentRound: nextR,
             carCount: 0
         });
-
-        document.getElementById('sim-status').innerText = `// PAID: ${winner.substring(0,6)}... //`;
     };
 
     document.getElementById('btnReset').onclick = async () => {
@@ -287,7 +291,7 @@
     };
 
     document.getElementById('btnZero').onclick = async () => {
-        if(!confirm("WIPE SEASON DATA?")) return;
+        if(!confirm("WIPE ENTIRE SEASON?")) return;
         const fresh = { config:{min:0.5, max:2.0}, normalPool:0, boostPool:0, overflowPool:0, totalDistributed:0 };
         for(let i=1; i<=12; i++) fresh[`round${i}`] = {n:0, b:0};
         await set(ref(db, 'vault/season_v2'), fresh);
