@@ -2,106 +2,112 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>MASTER CONTROL</title>
+    <title>MASTER_CONTROL_CENTER</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/5.7.2/ethers.umd.min.js"></script>
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+        import { getFirestore, doc, updateDoc, onSnapshot, getDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
+        // ADD YOUR FIREBASE CONFIG HERE
+        const firebaseConfig = { ... };
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+
+        // CONFIG & CONTRACT
+        const MASTER_WALLET = "0xce9782f77ec560a1cb329f935b5d416aa41f1a5d".toLowerCase();
+        const contractAddress = "0xb436c8C192288F45ca154081aa6c04b867c1946C";
+        const abi = [
+            "function owner() view returns (address)",
+            "function setEntranceFee(uint256) external",
+            "function emergencyWithdraw() external"
+        ];
+
+        let signer, contract;
+
+        // AUTH & DASHBOARD
+        window.connectMaster = async () => {
+            const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
+            if (accounts[0].toLowerCase() !== MASTER_WALLET) return alert("UNAUTHORIZED");
+            const provider = new ethers.providers.Web3Provider(window.ethereum);
+            signer = provider.getSigner();
+            contract = new ethers.Contract(contractAddress, abi, signer);
+            document.getElementById('controls').style.display = "block";
+        };
+
+        // 1. FUND MANAGEMENT
+        window.depositToFunds = async () => {
+            const amt = parseFloat(document.getElementById('depositAmt').value);
+            const snap = await getDoc(doc(db, "vault", "stats"));
+            await updateDoc(doc(db, "vault", "stats"), { totalFunds: (snap.data().totalFunds || 0) + amt });
+            alert("Funds added to Virtual Balance");
+        };
+
+        window.resetFunds = async () => {
+            if(confirm("Reset all virtual stats?")) {
+                await updateDoc(doc(db, "vault", "stats"), { totalFunds: 0, prizeAmount: 0, carCount: 0, winner: "none" });
+            }
+        };
+
+        // 2. PRIZE & RULES
+        window.setPrize = async () => {
+            const p = parseFloat(document.getElementById('prizeInp').value);
+            const snap = await getDoc(doc(db, "vault", "stats"));
+            if (snap.data().totalFunds < p) return alert("Add more funds first!");
+            await updateDoc(doc(db, "vault", "stats"), { 
+                prizeAmount: p, 
+                totalFunds: snap.data().totalFunds - p 
+            });
+        };
+
+        window.setMinCars = async () => {
+            const m = parseInt(document.getElementById('minInp').value);
+            await updateDoc(doc(db, "vault", "stats"), { minCars: m });
+        };
+
+        // 3. RACE CONTROL
+        window.forceStart = async () => {
+            await updateDoc(doc(db, "vault", "stats"), { winner: "none", carCount: 0 });
+            alert("Race Reset for Round 2!");
+        };
+
+        window.assignWinner = async () => {
+            const addr = prompt("Enter Winner Wallet Address:");
+            if (addr) await updateDoc(doc(db, "vault", "stats"), { winner: addr.toLowerCase() });
+        };
+
+        // REAL-TIME LISTENER
+        onSnapshot(doc(db, "vault", "stats"), (d) => {
+            const s = d.data();
+            document.getElementById('statBox').innerText = `FUNDS: ${s.totalFunds} | PRIZE: ${s.prizeAmount} | CARS: ${s.carCount}/${s.minCars}`;
+            document.getElementById('winnerBox').innerText = `WINNER: ${s.winner}`;
+            document.getElementById('startBtn').style.display = (s.carCount >= s.minCars) ? "block" : "none";
+        });
+    </script>
     <style>
-        body { background: #000; color: #e74c3c; font-family: monospace; display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; }
-        .terminal { background: #0a0000; border: 2px solid #e74c3c; padding: 25px; width: 100%; max-width: 400px; text-align: center; border-radius: 8px; }
-        button { width: 100%; padding: 12px; margin: 8px 0; background: #e74c3c; color: #fff; border: none; font-weight: bold; cursor: pointer; text-transform: uppercase; }
-        input { width: 85%; padding: 10px; margin: 10px 0; background: #000; color: #fff; border: 1px solid #e74c3c; text-align: center; }
-        #status-bar { background: #111; padding: 10px; margin-top: 10px; border: 1px solid #333; color: #e74c3c; min-height: 1.2em; font-size: 0.8em; }
+        body { background: #000; color: #e74c3c; font-family: monospace; padding: 20px; }
+        .card { border: 2px solid #e74c3c; padding: 20px; max-width: 450px; margin: auto; }
+        input { width: 90%; background: #111; border: 1px solid #e74c3c; color: #fff; padding: 10px; margin: 5px 0; }
+        button { width: 100%; padding: 10px; background: #e74c3c; color: #fff; border: none; margin: 5px 0; cursor: pointer; font-weight: bold; }
     </style>
 </head>
 <body>
-
-<div class="terminal">
-    <h2 style="letter-spacing: 5px;">MASTER_PILOT</h2>
-    
-    <button id="connectBtn">INITIALIZE MASTER LINK</button>
-
-    <div id="masterPanel" style="display:none; margin-top: 20px;">
-        <input type="text" id="newFee" placeholder="New Fee (e.g. 0.05)">
-        <button id="setFeeBtn">UPDATE DEPOSIT AMOUNT (tBNB)</button>
-        <button id="releaseBtn" style="background: #333; margin-top: 15px;">EMERGENCY RELEASE ALL</button>
+    <div class="card">
+        <h2>MASTER_PILOT</h2>
+        <button onclick="connectMaster()">AUTHENTICATE</button>
+        <div id="statBox">...</div>
+        <div id="winnerBox" style="color:#fff">...</div>
+        
+        <div id="controls" style="display:none">
+            <input type="number" id="depositAmt" placeholder="Add to Virtual Funds">
+            <button onclick="depositToFunds()">DEPOSIT TO HOUSE</button>
+            <input type="number" id="prizeInp" placeholder="Prize for Winner">
+            <button onclick="setPrize()">SET PRIZE AMOUNT</button>
+            <input type="number" id="minInp" placeholder="Min Cars Required">
+            <button onclick="setMinCars()">SET MIN CARS</button>
+            <button id="startBtn" onclick="forceStart()" style="background:#2ecc71; color:#000">FORCE START ROUND</button>
+            <button onclick="assignWinner()" style="background:#f3ba2f; color:#000">ASSIGN WINNER ADDRESS</button>
+            <button onclick="resetFunds()" style="background:#333">RESET EVERYTHING</button>
+        </div>
     </div>
-
-    <div id="status-bar">// WAITING_FOR_AUTH //</div>
-</div>
-
-<script>
-    const MASTER_WALLET = "0xce9782f77ec560a1cb329f935b5d416aa41f1a5d".toLowerCase();
-    const contractAddress = "0x8d94991716004222745944333f1B72529f031190";
-    
-    // Ensure this matches your Solidity exactly!
-const abi = [
-    "function entranceFee() public view returns (uint256)",
-    "function setEntranceFee(uint256)", 
-    "function owner() public view returns (address)",
-    "function emergencyWithdraw()"
-];
-
-    let signer, contract;
-
-    document.getElementById('connectBtn').onclick = async () => {
-        if (!window.ethereum) return alert("Please install MetaMask");
-        
-        const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
-        const userAddr = accounts[0].toLowerCase();
-
-        if (userAddr !== MASTER_WALLET) {
-            document.getElementById('status-bar').innerText = "// ACCESS_DENIED //";
-            return alert("UNAUTHORIZED: Use Master Wallet");
-        }
-        
-        const provider = new ethers.providers.Web3Provider(window.ethereum);
-        signer = provider.getSigner();
-        contract = new ethers.Contract(contractAddress, abi, signer);
-
-        document.getElementById('masterPanel').style.display = "block";
-        document.getElementById('connectBtn').innerText = "MASTER_AUTHENTICATED";
-        document.getElementById('status-bar').innerText = "// CONTROL_ACTIVE //";
-    };
-
-document.getElementById('setFeeBtn').onclick = async () => {
-    try {
-        const feeVal = document.getElementById('newFee').value;
-        if (!feeVal) return alert("Enter a value");
-
-        // Convert the input to Wei
-        const feeWei = ethers.utils.parseEther(feeVal);
-        
-        document.getElementById('status-bar').innerText = "// INITIATING_HIGH_GAS_TX... //";
-
-        // We use a high Gas Limit (300,000) to stop the 'Revert' error
-        // Some Testnet nodes require more gas than they estimate
-        const tx = await contract.setEntranceFee(feeWei, { 
-            gasLimit: 300000 
-        });
-
-        document.getElementById('status-bar').innerText = "// MINING_ON_CHAIN... //";
-        
-        const receipt = await tx.wait();
-        
-        if (receipt.status === 1) {
-            document.getElementById('status-bar').innerText = "// SUCCESS: FEE_UPDATED //";
-        } else {
-            document.getElementById('status-bar').innerText = "// FAILED: BLOCKCHAIN_REJECTED //";
-        }
-    } catch (e) {
-        console.error("Master Control Error:", e);
-        document.getElementById('status-bar').innerText = "// ERROR: TX_REVERTED //";
-    }
-};
-
-    document.getElementById('releaseBtn').onclick = async () => {
-        try {
-            const tx = await contract.emergencyWithdraw();
-            await tx.wait();
-            document.getElementById('status-bar').innerText = "// VAULT_RELEASED //";
-        } catch (e) {
-            document.getElementById('status-bar').innerText = "// RELEASE_FAILED //";
-        }
-    };
-</script>
 </body>
 </html>
