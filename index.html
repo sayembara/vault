@@ -13,136 +13,100 @@
         button:disabled { background: #1a1a1a; color: #444; cursor: not-allowed; }
         .stat-box { background: #111; padding: 12px; margin: 10px 0; border: 1px solid #222; font-size: 0.9em; display: flex; justify-content: space-between; }
         #status-bar { background: #111; padding: 10px; margin-top: 10px; font-size: 0.8em; border: 1px solid #222; color: #f3ba2f; min-height: 1.2em; border-left: 3px solid #f3ba2f; white-space: pre-wrap; }
-        #player-history { margin-top: 20px; text-align: left; font-size: 0.75em; color: #888; border-top: 1px dashed #333; padding-top: 10px; }
-        .history-item { display: flex; justify-content: space-between; margin-bottom: 4px; }
+        #claimBtn { background: #2ecc71; color: #000; display: none; }
     </style>
 </head>
 <body>
 
 <div class="terminal">
-    <h2 style="letter-spacing: 4px; color: #fff; margin-bottom: 20px;">RACE_LOBBY_V1</h2>
+    <h2 style="letter-spacing: 4px; color: #fff; margin-bottom: 20px;">RACE_LOBBY</h2>
     
     <div class="stat-box">
         <span>CURRENT_PRIZE:</span>
         <span id="prizeDisplay">0.00 tBNB</span>
     </div>
 
-    <button id="connectBtn">1. INITIALIZE MASTER LINK</button>
+    <button id="connectBtn">1. CONNECT WALLET</button>
     <button id="depositBtn" disabled>2. REGISTER CAR (<span id="displayFee">...</span> tBNB)</button>
     
-    <button id="claimBtn" style="display:none; background: #2ecc71; color: #000;">3. CLAIM RACE PRIZE</button>
+    <button id="claimBtn">3. CLAIM WINNINGS</button>
     
-    <div id="status-bar">// WAITING_FOR_AUTH //</div>
-
-    <div id="player-history" style="display:none;">
-        <div style="color: #f3ba2f; font-size: 0.8em; margin-bottom: 5px;">// RECENT_REGISTRATIONS //</div>
-        <div id="historyList">Scanning...</div>
-    </div>
+    <div id="status-bar">// WAITING_FOR_CONNECTION //</div>
 </div>
 
 <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-    import { getFirestore, doc, onSnapshot, updateDoc, increment } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+    import { getDatabase, ref, onValue, get, update, runTransaction } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
 
-    // --- 1. CONFIGURATION (Replace with your actual keys) ---
+    // --- 1. CONFIGURATION ---
     const firebaseConfig = {
         apiKey: "YOUR_API_KEY",
-        authDomain: "YOUR_PROJECT.firebaseapp.com",
-        projectId: "YOUR_PROJECT_ID",
-        storageBucket: "YOUR_PROJECT.appspot.com",
+        authDomain: "nuclearf1-94a6b.firebaseapp.com",
+        databaseURL: "https://nuclearf1-94a6b-default-rtdb.asia-southeast1.firebasedatabase.app",
+        projectId: "nuclearf1-94a6b",
+        storageBucket: "nuclearf1-94a6b.appspot.com",
         messagingSenderId: "YOUR_SENDER_ID",
         appId: "YOUR_APP_ID"
     };
 
     const app = initializeApp(firebaseConfig);
-    const db = getFirestore(app);
+    const db = getDatabase(app);
     const contractAddress = "0xb436c8C192288F45ca154081aa6c04b867c1946C";
     const RENDER_URL = "https://sanrat-vault-backend.onrender.com";
 
     const abi = [
         "function payEntranceFee() external payable",
         "function entranceFee() public view returns (uint256)",
-        "function claimPrize(uint256 amount, bytes calldata signature) external",
-        "event Deposit(address indexed player, uint256 amount)"
+        "function claimPrize(uint256 amount, bytes calldata signature) external"
     ];
 
-    let signer, contract, userAddress;
+    let signer, contract, userAddress, currentRound;
     const providerRpc = new ethers.providers.JsonRpcProvider("https://data-seed-prebsc-1-s1.binance.org:8545/");
 
-    // --- 2. FIREBASE REAL-TIME SYNC ---
-    onSnapshot(doc(db, "vault", "stats"), (snapshot) => {
-        if (!snapshot.exists()) return;
-        const data = snapshot.data();
-        
-        // Update Prize display from Firebase
-        document.getElementById('prizeDisplay').innerText = data.prizeAmount + " tBNB";
-        
-        const currentWallet = userAddress ? userAddress.toLowerCase() : "";
+    // --- 2. REAL-TIME LOBBY SYNC ---
+    function startLobbySync() {
+        const statsRef = ref(db, 'vault/stats');
+        onValue(statsRef, (snapshot) => {
+            const data = snapshot.val();
+            if (!data) return;
 
-        // WINNER & LOBBY LOGIC
-        if (data.winner !== "none") {
-            if (data.winner === currentWallet) {
-                document.getElementById('claimBtn').style.display = "block";
-                document.getElementById('status-bar').innerText = "🏆 WINNER DETECTED: ACCESS GRANTED.\nCLICK 'CLAIM' TO WITHDRAW PRIZE.";
-            } else {
-                document.getElementById('claimBtn').style.display = "none";
-                document.getElementById('status-bar').innerText = `// RACE_FINISHED //\nWINNER: ${data.winner.substring(0,10)}...`;
-            }
-        } else {
-            // No winner yet, show lobby status
-            document.getElementById('claimBtn').style.display = "none";
-            document.getElementById('status-bar').innerText = `// LOBBY_OPEN //\nCARS: ${data.carCount} / ${data.minCars} READY`;
-        }
-    });
-
-    // --- 3. BLOCKCHAIN LOGIC ---
-    async function refreshBlockchainData() {
-        try {
-            const contractReadOnly = new ethers.Contract(contractAddress, abi, providerRpc);
-            const fee = await contractReadOnly.entranceFee();
-            document.getElementById('displayFee').innerText = ethers.utils.formatEther(fee);
+            currentRound = data.currentRound || 1;
+            document.getElementById('prizeDisplay').innerText = data.prizeAmount + " tBNB";
             
-            if (userAddress) {
-                updatePlayerHistory(contractReadOnly);
-            }
-        } catch (e) { console.error("Chain Read Error:", e); }
-    }
-
-async function checkRegistration(address) {
-    const regRef = doc(db, "registrations", address.toLowerCase());
-    const regSnap = await getDoc(regRef);
-
-    if (regSnap.exists() && regSnap.data().paid === true) {
-        // Player already paid for this round
-        document.getElementById('depositBtn').disabled = true;
-        document.getElementById('depositBtn').innerText = "REGISTERED ✅";
-        document.getElementById('status-bar').innerText = "// ENTRY_DETECTED: READY_TO_RACE //";
-    } else {
-        document.getElementById('depositBtn').disabled = false;
-        document.getElementById('depositBtn').innerText = "2. REGISTER CAR";
-    }
-}
-    
-    async function updatePlayerHistory(contractInstance) {
-        try {
-            const filter = contractInstance.filters.Deposit(userAddress);
-            const logs = await contractInstance.queryFilter(filter, -5000);
-            const list = document.getElementById('historyList');
-            if (logs.length === 0) {
-                list.innerHTML = "No registrations found.";
+            // Check for Winner
+            const walletLower = userAddress ? userAddress.toLowerCase() : "";
+            if (data.winner !== "none" && data.winner === walletLower) {
+                document.getElementById('claimBtn').style.display = "block";
+                document.getElementById('depositBtn').style.display = "none";
+                document.getElementById('status-bar').innerText = "🏆 YOU WON THE RACE!\nCLAIM YOUR PRIZE NOW.";
+            } else if (data.winner !== "none") {
+                document.getElementById('status-bar').innerText = `RACE OVER.\nWINNER: ${data.winner.substring(0,10)}...`;
+                document.getElementById('claimBtn').style.display = "none";
             } else {
-                list.innerHTML = logs.reverse().slice(0, 3).map(log => `
-                    <div class="history-item">
-                        <span>BLOCK ${log.blockNumber}</span>
-                        <span style="color: #2ecc71;">SUCCESS</span>
-                    </div>
-                `).join('');
+                document.getElementById('status-bar').innerText = `LOBBY: ${data.carCount} / ${data.minCars} READY`;
+                document.getElementById('claimBtn').style.display = "none";
+                document.getElementById('depositBtn').style.display = "block";
+                if(userAddress) checkRegistrationStatus();
             }
-        } catch (e) { console.error("History Error:", e); }
+        });
     }
 
+    // --- 3. PERSISTENCE CHECK ---
+    async function checkRegistrationStatus() {
+        const regSnap = await get(ref(db, `registrations/${userAddress.toLowerCase()}`));
+        const regData = regSnap.val();
+
+        if (regData && regData.lastPaidRound === currentRound) {
+            document.getElementById('depositBtn').disabled = true;
+            document.getElementById('depositBtn').innerText = "REGISTERED ✅";
+        } else {
+            document.getElementById('depositBtn').disabled = false;
+            document.getElementById('depositBtn').innerText = `2. REGISTER CAR (${document.getElementById('displayFee').innerText} tBNB)`;
+        }
+    }
+
+    // --- 4. BUTTON ACTIONS ---
     document.getElementById('connectBtn').onclick = async () => {
-        if (!window.ethereum) return alert("Please install MetaMask");
         const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
         userAddress = accounts[0];
         const provider = new ethers.providers.Web3Provider(window.ethereum);
@@ -150,63 +114,61 @@ async function checkRegistration(address) {
         contract = new ethers.Contract(contractAddress, abi, signer);
         
         document.getElementById('connectBtn').innerText = "CONNECTED";
-        document.getElementById('depositBtn').disabled = false;
-        document.getElementById('player-history').style.display = "block";
-        refreshBlockchainData();
+        document.getElementById('connectBtn').style.borderColor = "#2ecc71";
+        
+        // Load fee and start sync
+        const fee = await new ethers.Contract(contractAddress, abi, providerRpc).entranceFee();
+        document.getElementById('displayFee').innerText = ethers.utils.formatEther(fee);
+        
+        startLobbySync();
     };
 
-document.getElementById('depositBtn').onclick = async () => {
-    try {
-        const snap = await getDoc(doc(db, "vault", "stats"));
-        const round = snap.data().currentRound;
-        const statsSnap = await getDoc(doc(db, "vault", "stats"));
-        const currentRound = statsSnap.data().currentRound;
+    document.getElementById('depositBtn').onclick = async () => {
+        try {
+            document.getElementById('status-bar').innerText = "// WAITING_FOR_WALLET... //";
+            const fee = await contract.entranceFee();
+            const tx = await contract.payEntranceFee({ value: fee });
+            
+            document.getElementById('status-bar').innerText = "// MINING_TRANSACTION... //";
+            await tx.wait();
 
-        const fee = await contract.entranceFee();
-        const tx = await contract.payEntranceFee({ value: fee });
-        await tx.wait();
+            // WRITE TO REALTIME DATABASE
+            await update(ref(db, `registrations/${userAddress.toLowerCase()}`), {
+                paid: true,
+                lastPaidRound: currentRound
+            });
 
-        // Save the registration with the current Round ID
-        await setDoc(doc(db, "registrations", userAddress.toLowerCase()), {
-            paid: true,
-            lastPaidRound: round
-            lastPaidRound: currentRound
-        });
+            // Increment carCount safely
+            await runTransaction(ref(db, 'vault/stats/carCount'), (count) => {
+                return (count || 0) + 1;
+            });
 
-        await updateDoc(doc(db, "vault", "stats"), { carCount: increment(1) });
-    } catch (e) { console.error(e); }
-};
+            document.getElementById('status-bar').innerText = "// REGISTRATION_SUCCESSFUL //";
+            checkRegistrationStatus();
+        } catch (e) {
+            console.error(e);
+            document.getElementById('status-bar').innerText = "// TRANSACTION_FAILED //";
+        }
+    };
 
     document.getElementById('claimBtn').onclick = async () => {
         try {
-            document.getElementById('status-bar').innerText = "// VERIFYING_WINNER_CREDENTIALS... //";
-            
-            // Get winner amount from Firebase state
-            const snap = await ethers.utils.fetchJson(`${window.location.origin}/prize-check-placeholder`); // Or just use data from snapshot
-            // For now, using a fixed amount or getting it from Firebase logic
+            document.getElementById('status-bar').innerText = "// REQUESTING_SIGNATURE... //";
             const prizeAmt = document.getElementById('prizeDisplay').innerText.split(' ')[0];
-
+            
             const response = await fetch(`${RENDER_URL}/get-signature?playerAddress=${userAddress}&amount=${prizeAmt}`);
             const data = await response.json();
 
             const tx = await contract.claimPrize(data.amountWei, data.signature);
-            document.getElementById('status-bar').innerText = "// WITHDRAWING_PRIZE... //";
             await tx.wait();
             
-            document.getElementById('status-bar').innerText = "// PRIZE_SECURED_IN_WALLET //";
-            
-            // Auto-reset winner to none in Firebase after successful claim
-            await updateDoc(doc(db, "vault", "stats"), { winner: "none" });
-        } catch (e) { 
-            document.getElementById('status-bar').innerText = "// CLAIM_ERROR_CHECK_CONSOLE //"; 
-            console.error(e);
+            document.getElementById('status-bar').innerText = "// PRIZE_CLAIMED_SUCCESSFULLY //";
+            // Reset winner status for this player locally
+            document.getElementById('claimBtn').style.display = "none";
+        } catch (e) {
+            document.getElementById('status-bar').innerText = "// CLAIM_FAILED //";
         }
     };
-
-    window.addEventListener('load', refreshBlockchainData);
-    setInterval(refreshBlockchainData, 10000);
 </script>
 </body>
 </html>
-
-
