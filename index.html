@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>NUCLEAR_F1_DASHBOARD</title>
+    <title>NUCLEAR_RACING_DASHBOARD</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/5.7.2/ethers.umd.min.js"></script>
     <style>
         :root { --accent: #f3ba2f; --bg: #000; --panel: #0a0a0a; --border: #222; --text-dim: #666; }
@@ -39,7 +39,7 @@
         <div class="panel" style="margin-top:20px;">
             <h3>PLAYER_GARAGE</h3>
             <div class="garage-item"><span>PROTOTYPE_01</span><span style="color:var(--accent)">READY</span></div>
-            <div class="garage-item" style="opacity:0.3;"><span>F1_STREAK_X</span><span>LOCKED</span></div>
+            <div class="garage-item" style="opacity:0.3;"><span>STR-X_PILOT</span><span>LOCKED</span></div>
         </div>
     </div>
     <div class="main-col">
@@ -74,19 +74,24 @@
     const abi = ["function payEntranceFee() external payable", "function claimPrize(uint256 amount, bytes calldata signature) external"];
     
     let signer, contract, userAddress, currentRound;
+    let liveFee = "0";
 
     async function syncData() {
         if (!signer || !userAddress) return;
-        const bal = await signer.getBalance();
-        document.getElementById('userBalance').innerText = parseFloat(ethers.utils.formatEther(bal)).toFixed(4) + " tBNB";
-        const regSnap = await get(ref(db, `registrations/${userAddress.toLowerCase()}`));
-        const regData = regSnap.val();
-        const btn = document.getElementById('depositBtn');
-        if (regData && regData.lastPaidRound === currentRound) {
-            btn.disabled = true; btn.innerText = "REGISTERED ✅";
-        } else {
-            btn.disabled = false; btn.innerText = `REGISTER_CAR`;
-        }
+        try {
+            const bal = await signer.getBalance();
+            document.getElementById('userBalance').innerText = parseFloat(ethers.utils.formatEther(bal)).toFixed(4) + " tBNB";
+            
+            const regSnap = await get(ref(db, `registrations/${userAddress.toLowerCase()}`));
+            const regData = regSnap.val();
+            const btn = document.getElementById('depositBtn');
+
+            if (regData && regData.lastPaidRound === currentRound) {
+                btn.disabled = true; btn.innerText = "REGISTERED ✅";
+            } else {
+                btn.disabled = false; btn.innerText = `REGISTER_CAR`;
+            }
+        } catch(e) { console.error("Sync error:", e); }
     }
 
     function startLobby() {
@@ -94,50 +99,47 @@
             const data = snap.val();
             if (!data) return;
             currentRound = data.currentRound || 1;
+            liveFee = data.entranceFee ? data.entranceFee.toString() : "0.01";
+
             document.getElementById('prizeDisplay').innerText = data.prizeAmount + " tBNB";
             document.getElementById('carCountDisplay').innerText = `${data.carCount} / ${data.minCars}`;
-            document.getElementById('displayFee').innerText = data.entranceFee || "0.01";
+            document.getElementById('displayFee').innerText = liveFee;
+            
             await syncData();
+
             const walletLower = userAddress.toLowerCase();
             if (data.winner !== "none" && data.winner === walletLower) {
                 document.getElementById('claimBtn').style.display = "block";
                 document.getElementById('depositBtn').style.display = "none";
-                document.getElementById('status-bar').innerText = "// YOU WON! //";
+                document.getElementById('status-bar').innerText = "// WINNER DETECTED //";
             } else {
                 document.getElementById('claimBtn').style.display = "none";
                 document.getElementById('depositBtn').style.display = "block";
-                document.getElementById('status-bar').innerText = data.winner !== "none" ? "// ROUND ENDED //" : "// LOBBY ACTIVE //";
+                document.getElementById('status-bar').innerText = data.winner !== "none" ? "// ROUND OVER //" : "// LOBBY ACTIVE //";
             }
         });
     }
 
     document.getElementById('connectBtn').onclick = async () => {
-        const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
-        userAddress = accounts[0];
-        const provider = new ethers.providers.Web3Provider(window.ethereum);
-        
-        // Network Check (BSC Testnet is 97 or 0x61)
-        const { chainId } = await provider.getNetwork();
-        if (chainId !== 97) {
-            alert("Please switch to BSC Testnet!");
-            return;
-        }
-
-        signer = provider.getSigner();
-        contract = new ethers.Contract(contractAddress, abi, signer);
-        document.getElementById('connectBtn').innerText = "LINKED";
-        document.getElementById('connectBtn').disabled = true;
-        startLobby();
+        try {
+            const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
+            userAddress = accounts[0];
+            const provider = new ethers.providers.Web3Provider(window.ethereum);
+            signer = provider.getSigner();
+            contract = new ethers.Contract(contractAddress, abi, signer);
+            document.getElementById('connectBtn').innerText = "LINKED";
+            document.getElementById('connectBtn').disabled = true;
+            startLobby();
+        } catch(e) { alert("Connect failed"); }
     };
 
     document.getElementById('depositBtn').onclick = async () => {
         try {
-            const feeVal = document.getElementById('displayFee').innerText;
+            if (liveFee === "0" || !liveFee) return alert("System Syncing... try again in 1s.");
             document.getElementById('status-bar').innerText = "// PENDING WALLET... //";
             
-            // Hard Gas Limit to prevent TX_ERROR/Gas Estimation failure
             const tx = await contract.payEntranceFee({ 
-                value: ethers.utils.parseEther(feeVal),
+                value: ethers.utils.parseEther(liveFee),
                 gasLimit: 150000 
             });
             
@@ -151,7 +153,6 @@
         } catch (e) { 
             console.error(e);
             document.getElementById('status-bar').innerText = "// TX_ERROR //"; 
-            alert("Error: " + (e.data?.message || e.message));
         }
     };
 
