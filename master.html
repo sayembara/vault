@@ -2,53 +2,51 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>MASTER_PILOT_CONTROL_V3</title>
+    <title>MASTER_PILOT_FINAL</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/5.7.2/ethers.umd.min.js"></script>
     <style>
         body { background: #000; color: #e74c3c; font-family: 'Courier New', monospace; display: flex; justify-content: center; padding: 20px; }
         .terminal { background: #080808; border: 1px solid #e74c3c; padding: 25px; width: 480px; border-radius: 8px; box-shadow: 0 0 15px rgba(231, 76, 60, 0.2); }
         .stat-box { background: #111; border: 1px solid #333; padding: 12px; margin: 10px 0; font-size: 0.85em; }
-        .live-val { color: #fff; font-weight: bold; float: right; }
-        input { width: 94%; padding: 10px; margin: 5px 0; background: #111; border: 1px solid #e74c3c; color: #fff; border-radius: 4px; }
+        .live-val { color: #fff; font-weight: bold; float: right; font-size: 1.1em; }
+        .label { color: #e74c3c; font-weight: bold; }
+        input { width: 94%; padding: 10px; margin: 5px 0; background: #111; border: 1px solid #444; color: #fff; border-radius: 4px; }
         button { width: 100%; padding: 12px; margin: 5px 0; background: #e74c3c; color: #fff; border: none; font-weight: bold; cursor: pointer; text-transform: uppercase; border-radius: 4px; }
-        button:disabled { opacity: 0.5; cursor: not-allowed; }
+        button:hover { background: #fff; color: #e74c3c; }
         #playerList { list-style: none; padding: 0; margin-top: 10px; font-size: 0.75em; color: #aaa; max-height: 120px; overflow-y: auto; border: 1px solid #222; padding: 5px; }
         .player-entry { padding: 4px; border-bottom: 1px solid #222; display: flex; justify-content: space-between; }
-        #auth-status { text-align: center; font-size: 0.7em; margin-bottom: 10px; color: #888; }
     </style>
 </head>
 <body>
 
 <div class="terminal">
-    <h2 style="text-align:center; letter-spacing: 5px; margin-bottom: 5px;">MASTER_V3</h2>
-    <div id="auth-status">// STATUS: OFFLINE //</div>
-    
-    <button id="connectMasterBtn">AUTHENTICATE MASTER</button>
+    <h2 style="text-align:center; letter-spacing: 5px;">MASTER_V4</h2>
+    <button id="authBtn">1. AUTHENTICATE MASTER</button>
 
     <div id="controls" style="display:none;">
-        <div class="stat-box">HOUSE_FUNDS <span class="live-val" id="houseFunds">0 tBNB</span></div>
-        <div class="stat-box">SET_PRIZE <span class="live-val" id="currentPrize">0 tBNB</span></div>
-        <div class="stat-box">MIN_CARS_REQ <span class="live-val" id="minCars">0</span></div>
-        <div class="stat-box" style="border-color: #2ecc71;">LOBBY_COUNT <span class="live-val" id="carCount">0</span></div>
+        <div class="stat-box"><span class="label">HOUSE_FUNDS:</span> <span class="live-val" id="valFunds">0</span></div>
+        <div class="stat-box"><span class="label">SET_PRIZE:</span> <span class="live-val" id="valPrize">0</span></div>
+        <div class="stat-box"><span class="label">MIN_CARS:</span> <span class="live-val" id="valMin">0</span></div>
+        <div class="stat-box" style="border-color: #2ecc71;"><span class="label">LOBBY_COUNT:</span> <span class="live-val" id="valLobby">0</span></div>
         
-        <div style="font-size: 0.7em; color: #e74c3c; margin-top: 15px;">// CURRENT_ROUND_LOBBY //</div>
-        <ul id="playerList"><li>Waiting for entries...</li></ul>
+        <div id="winnerBanner" style="text-align:center; color: #f3ba2f; font-weight: bold; margin: 10px 0;"></div>
+
+        <ul id="playerList"><li>Waiting for cars...</li></ul>
 
         <hr style="border: 0.5px dashed #333; margin: 20px 0;">
 
-        <input type="number" step="0.01" id="depositAmt" placeholder="Add tBNB to House">
-        <button id="addFundsBtn">DEPOSIT TO HOUSE</button>
+        <input type="number" step="0.01" id="inpFunds" placeholder="Add tBNB to House">
+        <button id="btnFunds">DEPOSIT TO HOUSE</button>
 
-        <input type="number" step="0.01" id="prizeInp" placeholder="New Prize Amount">
-        <button id="setPrizeBtn">SET PRIZE AMOUNT</button>
+        <input type="number" step="0.01" id="inpPrize" placeholder="New Prize Amount">
+        <button id="btnPrize">SET PRIZE AMOUNT</button>
 
-        <input type="number" id="minInp" placeholder="New Min Cars">
-        <button id="setMinCarsBtn">SET MIN CARS</button>
+        <input type="number" id="inpMin" placeholder="New Min Cars">
+        <button id="btnMin">SET MIN CARS</button>
 
-        <button id="pickWinnerBtn" style="background:#f3ba2f; color:#000">RANDOMIZE WINNER</button>
-        <div id="winnerDisplay" style="text-align:center; margin: 10px; font-weight: bold; color: #fff; font-size: 0.8em;"></div>
-        
-        <button id="startBtn" style="background:#2ecc71; color:#000">RESET FOR NEXT ROUND</button>
+        <br>
+        <button id="btnRunRace" style="background:#f3ba2f; color:#000; height: 60px; font-size: 1.2em;">⚡ FORCE RUN RACE ⚡</button>
+        <button id="btnReset" style="background:#2ecc71; color:#000">START NEXT ROUND (CLEARS LOBBY)</button>
     </div>
 </div>
 
@@ -56,150 +54,102 @@
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
     import { getFirestore, doc, updateDoc, onSnapshot, getDoc, collection, query, where, getDocs } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
-    // --- PASTE YOUR FIREBASE CONFIG HERE ---
-    const firebaseConfig = {
-        apiKey: "YOUR_API_KEY",
-        authDomain: "YOUR_PROJECT.firebaseapp.com",
-        projectId: "YOUR_PROJECT_ID",
-        storageBucket: "YOUR_PROJECT.appspot.com",
-        messagingSenderId: "YOUR_SENDER_ID",
-        appId: "YOUR_APP_ID"
-    };
-
+    const firebaseConfig = { /* PASTE YOUR CONFIG HERE */ };
     const app = initializeApp(firebaseConfig);
     const db = getFirestore(app);
 
-    // EXACT WALLET (Ensure no spaces)
     const MASTER_WALLET = "0xce9782f77ec560a1cb329f935b5d416aa41f1a5d".toLowerCase();
     const statsRef = doc(db, "vault", "stats");
+    let currentRound = 1;
 
-    let currentRoundID = 1;
-
-    // --- BUTTON: CONNECT & AUTH ---
-    document.getElementById('connectMasterBtn').onclick = async () => {
-        console.log("Auth button triggered...");
-        try {
-            if (!window.ethereum) return alert("Install MetaMask!");
-            
-            const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
-            const connectedUser = accounts[0].toLowerCase();
-            
-            console.log("Connected Wallet:", connectedUser);
-            console.log("Target Wallet:", MASTER_WALLET);
-
-            if (connectedUser === MASTER_WALLET) {
-                document.getElementById('controls').style.display = "block";
-                document.getElementById('connectMasterBtn').style.display = "none";
-                document.getElementById('auth-status').innerText = "// ACCESS_GRANTED //";
-                document.getElementById('auth-status').style.color = "#2ecc71";
-                startListeners();
-            } else {
-                alert("UNAUTHORIZED WALLET. Check Console (F12) to see your address.");
-            }
-        } catch (err) {
-            console.error("Auth Error:", err);
-        }
+    // --- AUTHENTICATION ---
+    document.getElementById('authBtn').onclick = async () => {
+        const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
+        if (accounts[0].toLowerCase() === MASTER_WALLET) {
+            document.getElementById('controls').style.display = "block";
+            document.getElementById('authBtn').style.display = "none";
+            initSystem();
+        } else { alert("ACCESS DENIED"); }
     };
 
-    // --- DATA LISTENERS ---
-    function startListeners() {
+    function initSystem() {
+        // Real-time listener for current values
         onSnapshot(statsRef, (snapshot) => {
-            if (!snapshot.exists()) return;
-            const data = snapshot.data();
-            currentRoundID = data.currentRound || 1;
-
-            document.getElementById('houseFunds').innerText = data.totalFunds + " tBNB";
-            document.getElementById('currentPrize').innerText = data.prizeAmount + " tBNB";
-            document.getElementById('carCount').innerText = data.carCount;
-            document.getElementById('minCars').innerText = data.minCars;
+            const d = snapshot.data();
+            currentRound = d.currentRound || 1;
             
-            if (data.winner && data.winner !== "none") {
-                document.getElementById('winnerDisplay').innerText = "WINNER: " + data.winner.substring(0,15) + "...";
+            document.getElementById('valFunds').innerText = d.totalFunds + " tBNB";
+            document.getElementById('valPrize').innerText = d.prizeAmount + " tBNB";
+            document.getElementById('valMin').innerText = d.minCars;
+            document.getElementById('valLobby').innerText = d.carCount;
+            
+            if (d.winner && d.winner !== "none") {
+                document.getElementById('winnerBanner').innerText = "🏆 WINNER: " + d.winner.substring(0,20) + "...";
             } else {
-                document.getElementById('winnerDisplay').innerText = "AWAITING RACE RESULTS";
+                document.getElementById('winnerBanner').innerText = "";
             }
-            
-            updatePlayerListUI();
+            updateLobby();
         });
     }
 
-    async function updatePlayerListUI() {
-        try {
-            const q = query(collection(db, "registrations"), where("lastPaidRound", "==", currentRoundID));
-            const snap = await getDocs(q);
-            const listElement = document.getElementById('playerList');
-            listElement.innerHTML = "";
-            
-            if (snap.empty) {
-                listElement.innerHTML = "<li>Lobby is empty...</li>";
-                return;
-            }
-
-            snap.forEach(playerDoc => {
-                listElement.innerHTML += `
-                    <li class="player-entry">
-                        <span>${playerDoc.id.substring(0,18)}...</span>
-                        <span style="color:#2ecc71">READY</span>
-                    </li>`;
-            });
-        } catch (e) { console.error("List Update Error:", e); }
+    async function updateLobby() {
+        const q = query(collection(db, "registrations"), where("lastPaidRound", "==", currentRound));
+        const snap = await getDocs(q);
+        const list = document.getElementById('playerList');
+        list.innerHTML = "";
+        snap.forEach(p => {
+            list.innerHTML += `<li class="player-entry"><span>${p.id}</span><span style="color:#2ecc71">READY</span></li>`;
+        });
     }
 
-    // --- FUNCTION BUTTONS ---
-    document.getElementById('addFundsBtn').onclick = async () => {
-        const val = parseFloat(document.getElementById('depositAmt').value);
+    // --- FIXED BUTTON LOGIC ---
+    document.getElementById('btnFunds').onclick = async () => {
+        const val = parseFloat(document.getElementById('inpFunds').value);
         if (isNaN(val)) return;
         const snap = await getDoc(statsRef);
-        const newTotal = (snap.data().totalFunds || 0) + val;
-        await updateDoc(statsRef, { totalFunds: Number(newTotal.toFixed(4)) });
-        document.getElementById('depositAmt').value = "";
+        await updateDoc(statsRef, { totalFunds: Number(((snap.data().totalFunds || 0) + val).toFixed(4)) });
+        document.getElementById('inpFunds').value = "";
     };
 
-    document.getElementById('setPrizeBtn').onclick = async () => {
-        const val = parseFloat(document.getElementById('prizeInp').value);
+    document.getElementById('btnPrize').onclick = async () => {
+        const val = parseFloat(document.getElementById('inpPrize').value);
         if (isNaN(val)) return;
         const snap = await getDoc(statsRef);
-        if (snap.data().totalFunds < val) return alert("Not enough House Funds!");
-        
+        if (snap.data().totalFunds < val) return alert("Not enough house funds!");
         await updateDoc(statsRef, { 
             prizeAmount: val, 
             totalFunds: Number((snap.data().totalFunds - val).toFixed(4)) 
         });
-        document.getElementById('prizeInp').value = "";
+        document.getElementById('inpPrize').value = "";
     };
 
-    document.getElementById('setMinCarsBtn').onclick = async () => {
-        const val = parseInt(document.getElementById('minInp').value);
+    document.getElementById('btnMin').onclick = async () => {
+        const val = parseInt(document.getElementById('inpMin').value);
         if (isNaN(val)) return;
         await updateDoc(statsRef, { minCars: val });
-        document.getElementById('minInp').value = "";
+        document.getElementById('inpMin').value = "";
     };
 
-    document.getElementById('pickWinnerBtn').onclick = async () => {
-        const q = query(collection(db, "registrations"), where("lastPaidRound", "==", currentRoundID));
+    // --- RACE ENGINE ---
+    document.getElementById('btnRunRace').onclick = async () => {
+        const q = query(collection(db, "registrations"), where("lastPaidRound", "==", currentRound));
         const snap = await getDocs(q);
-        let playersPool = [];
-        snap.forEach(p => playersPool.push(p.id));
+        let players = [];
+        snap.forEach(p => players.push(p.id));
 
-        if (playersPool.length === 0) return alert("No players in this round!");
+        if (players.length === 0) return alert("No cars in lobby!");
 
-        const winner = playersPool[Math.floor(Math.random() * playersPool.length)];
+        const winner = players[Math.floor(Math.random() * players.length)];
         await updateDoc(statsRef, { winner: winner.toLowerCase() });
-        alert("Winner Selected: " + winner);
+        alert("RACE FINISHED! Winner selected.");
     };
 
-    document.getElementById('startBtn').onclick = async () => {
-        if (!confirm("Start New Round? This clears the current lobby.")) return;
+    document.getElementById('btnReset').onclick = async () => {
         const snap = await getDoc(statsRef);
-        const nextRound = (snap.data().currentRound || 1) + 1;
-        await updateDoc(statsRef, { 
-            winner: "none", 
-            carCount: 0, 
-            currentRound: nextRound 
-        });
-        alert("Round " + nextRound + " is now LIVE.");
+        const next = (snap.data().currentRound || 1) + 1;
+        await updateDoc(statsRef, { winner: "none", carCount: 0, currentRound: next });
+        alert("New Round Started.");
     };
-
 </script>
 </body>
 </html>
