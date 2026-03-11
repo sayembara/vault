@@ -2,128 +2,155 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>MASTER_CONTROL_CENTER</title>
+    <title>MASTER_PILOT_CONTROL</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/5.7.2/ethers.umd.min.js"></script>
-    <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-        import { getFirestore, doc, updateDoc, onSnapshot, getDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
-
-        // ADD YOUR FIREBASE CONFIG HERE
-        const firebaseConfig = { ... };
-        const app = initializeApp(firebaseConfig);
-        const db = getFirestore(app);
-
-        // CONFIG & CONTRACT
-        const MASTER_WALLET = "0xce9782f77ec560a1cb329f935b5d416aa41f1a5d".toLowerCase();
-        const contractAddress = "0xb436c8C192288F45ca154081aa6c04b867c1946C";
-        const abi = [
-            "function owner() view returns (address)",
-            "function setEntranceFee(uint256) external",
-            "function emergencyWithdraw() external"
-        ];
-
-        let signer, contract;
-
-        // AUTH & DASHBOARD
-window.connectMaster = async () => {
-    try {
-        if (!window.ethereum) return alert("MetaMask not found!");
-        
-        const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
-        const connectedAddress = accounts[0].toLowerCase();
-        
-        console.log("Checking:", connectedAddress, "against", MASTER_WALLET);
-
-        if (connectedAddress === MASTER_WALLET) {
-            const provider = new ethers.providers.Web3Provider(window.ethereum);
-            signer = provider.getSigner();
-            contract = new ethers.Contract(contractAddress, abi, signer);
-            
-            document.getElementById('controls').style.display = "block";
-            document.getElementById('authStatus').innerText = "✅ AUTHENTICATED AS MASTER";
-        } else {
-            alert("UNAUTHORIZED: This wallet is not the Master Pilot.");
-        }
-    } catch (e) {
-        console.error(e);
-        alert("Connection failed.");
-    }
-};
-
-        // 1. FUND MANAGEMENT
-        window.depositToFunds = async () => {
-            const amt = parseFloat(document.getElementById('depositAmt').value);
-            const snap = await getDoc(doc(db, "vault", "stats"));
-            await updateDoc(doc(db, "vault", "stats"), { totalFunds: (snap.data().totalFunds || 0) + amt });
-            alert("Funds added to Virtual Balance");
-        };
-
-        window.resetFunds = async () => {
-            if(confirm("Reset all virtual stats?")) {
-                await updateDoc(doc(db, "vault", "stats"), { totalFunds: 0, prizeAmount: 0, carCount: 0, winner: "none" });
-            }
-        };
-
-        // 2. PRIZE & RULES
-        window.setPrize = async () => {
-            const p = parseFloat(document.getElementById('prizeInp').value);
-            const snap = await getDoc(doc(db, "vault", "stats"));
-            if (snap.data().totalFunds < p) return alert("Add more funds first!");
-            await updateDoc(doc(db, "vault", "stats"), { 
-                prizeAmount: p, 
-                totalFunds: snap.data().totalFunds - p 
-            });
-        };
-
-        window.setMinCars = async () => {
-            const m = parseInt(document.getElementById('minInp').value);
-            await updateDoc(doc(db, "vault", "stats"), { minCars: m });
-        };
-
-        // 3. RACE CONTROL
-        window.forceStart = async () => {
-            await updateDoc(doc(db, "vault", "stats"), { winner: "none", carCount: 0 });
-            alert("Race Reset for Round 2!");
-        };
-
-        window.assignWinner = async () => {
-            const addr = prompt("Enter Winner Wallet Address:");
-            if (addr) await updateDoc(doc(db, "vault", "stats"), { winner: addr.toLowerCase() });
-        };
-
-        // REAL-TIME LISTENER
-        onSnapshot(doc(db, "vault", "stats"), (d) => {
-            const s = d.data();
-            document.getElementById('statBox').innerText = `FUNDS: ${s.totalFunds} | PRIZE: ${s.prizeAmount} | CARS: ${s.carCount}/${s.minCars}`;
-            document.getElementById('winnerBox').innerText = `WINNER: ${s.winner}`;
-            document.getElementById('startBtn').style.display = (s.carCount >= s.minCars) ? "block" : "none";
-        });
-    </script>
     <style>
-        body { background: #000; color: #e74c3c; font-family: monospace; padding: 20px; }
-        .card { border: 2px solid #e74c3c; padding: 20px; max-width: 450px; margin: auto; }
-        input { width: 90%; background: #111; border: 1px solid #e74c3c; color: #fff; padding: 10px; margin: 5px 0; }
-        button { width: 100%; padding: 10px; background: #e74c3c; color: #fff; border: none; margin: 5px 0; cursor: pointer; font-weight: bold; }
+        body { background: #000; color: #e74c3c; font-family: 'Courier New', monospace; display: flex; justify-content: center; padding: 40px; }
+        .terminal { background: #080808; border: 1px solid #e74c3c; padding: 25px; width: 450px; border-radius: 8px; box-shadow: 0 0 15px rgba(231, 76, 60, 0.2); }
+        .stat-box { background: #111; border: 1px solid #333; padding: 10px; margin: 10px 0; font-size: 0.85em; }
+        input { width: 94%; padding: 10px; margin: 5px 0; background: #111; border: 1px solid #e74c3c; color: #fff; border-radius: 4px; }
+        button { width: 100%; padding: 12px; margin: 5px 0; background: #e74c3c; color: #fff; border: none; font-weight: bold; cursor: pointer; text-transform: uppercase; border-radius: 4px; }
+        button:hover { background: #fff; color: #e74c3c; }
+        #controls { display: none; margin-top: 20px; border-top: 1px dashed #e74c3c; padding-top: 20px; }
+        #authStatus { color: #888; font-size: 0.8em; margin-bottom: 10px; text-align: center; }
     </style>
 </head>
 <body>
-    <div class="card">
-        <h2>MASTER_PILOT</h2>
-        <button onclick="connectMaster()">AUTHENTICATE</button>
-        <div id="statBox">...</div>
-        <div id="winnerBox" style="color:#fff">...</div>
-        
-        <div id="controls" style="display:none">
-            <input type="number" id="depositAmt" placeholder="Add to Virtual Funds">
-            <button onclick="depositToFunds()">DEPOSIT TO HOUSE</button>
-            <input type="number" id="prizeInp" placeholder="Prize for Winner">
-            <button onclick="setPrize()">SET PRIZE AMOUNT</button>
-            <input type="number" id="minInp" placeholder="Min Cars Required">
-            <button onclick="setMinCars()">SET MIN CARS</button>
-            <button id="startBtn" onclick="forceStart()" style="background:#2ecc71; color:#000">FORCE START ROUND</button>
-            <button onclick="assignWinner()" style="background:#f3ba2f; color:#000">ASSIGN WINNER ADDRESS</button>
-            <button onclick="resetFunds()" style="background:#333">RESET EVERYTHING</button>
+
+<div class="terminal">
+    <h2 style="text-align:center; letter-spacing: 5px;">MASTER_AUTH</h2>
+    <div id="authStatus">// STANDBY: AWAITING_CONNECTION //</div>
+    <button id="connectMasterBtn">1. AUTHENTICATE MASTER WALLET</button>
+
+    <div id="controls">
+        <div class="stat-box">
+            FUNDS: <span id="houseFunds">0</span> tBNB | 
+            CARS: <span id="carCount">0</span>/<span id="minCars">0</span>
         </div>
+        <div class="stat-box" style="color: #fff;">
+            CURRENT_PRIZE: <span id="currentPrize">0</span> tBNB<br>
+            WINNER: <span id="winnerDisplay">none</span>
+        </div>
+
+        <input type="number" id="depositAmt" placeholder="Add Virtual Funds (tBNB)">
+        <button id="addFundsBtn">DEPOSIT TO HOUSE</button>
+
+        <input type="number" id="prizeInp" placeholder="Set Prize Amount">
+        <button id="setPrizeBtn">SET PRIZE AMOUNT</button>
+
+        <input type="number" id="minInp" placeholder="Set Min Cars">
+        <button id="setMinCarsBtn">SET MIN CARS</button>
+
+        <button id="assignWinnerBtn" style="background:#f3ba2f; color:#000">ASSIGN WINNER ADDRESS</button>
+        <button id="startBtn" style="background:#2ecc71; color:#000">FORCE START ROUND (RESET)</button>
+        
+        <button id="resetAllBtn" style="background:#333; margin-top:20px; font-size: 0.7em;">HARD RESET ALL STATS</button>
     </div>
+</div>
+
+<script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+    import { getFirestore, doc, updateDoc, onSnapshot, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
+    // --- YOUR FIREBASE CONFIG ---
+    const firebaseConfig = {
+        apiKey: "YOUR_API_KEY",
+        authDomain: "YOUR_PROJECT.firebaseapp.com",
+        projectId: "YOUR_PROJECT_ID",
+        storageBucket: "YOUR_PROJECT.appspot.com",
+        messagingSenderId: "YOUR_SENDER_ID",
+        appId: "YOUR_APP_ID"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+
+    const MASTER_WALLET = "0xce9782f77ec560a1cb329f935b5d416aa41f1a5d".toLowerCase();
+    const statsRef = doc(db, "vault", "stats");
+
+    let userAddress;
+
+    // 1. AUTHENTICATION
+    document.getElementById('connectMasterBtn').onclick = async () => {
+        if (!window.ethereum) return alert("Install MetaMask");
+        const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
+        userAddress = accounts[0].toLowerCase();
+
+        if (userAddress === MASTER_WALLET) {
+            document.getElementById('controls').style.display = "block";
+            document.getElementById('connectMasterBtn').style.display = "none";
+            document.getElementById('authStatus').innerText = "// ACCESS_GRANTED: WELCOME BOSS //";
+            document.getElementById('authStatus').style.color = "#2ecc71";
+            startListener();
+        } else {
+            alert("UNAUTHORIZED: " + userAddress + " is not the Master Wallet.");
+        }
+    };
+
+    // 2. DASHBOARD UPDATES
+    function startListener() {
+        onSnapshot(statsRef, (d) => {
+            const s = d.data();
+            document.getElementById('houseFunds').innerText = s.totalFunds;
+            document.getElementById('currentPrize').innerText = s.prizeAmount;
+            document.getElementById('carCount').innerText = s.carCount;
+            document.getElementById('minCars').innerText = s.minCars;
+            document.getElementById('winnerDisplay').innerText = s.winner;
+        });
+    }
+
+    // 3. ACTION BUTTONS
+    document.getElementById('addFundsBtn').onclick = async () => {
+        const amt = parseFloat(document.getElementById('depositAmt').value);
+        const snap = await getDoc(statsRef);
+        await updateDoc(statsRef, { totalFunds: (snap.data().totalFunds || 0) + amt });
+        document.getElementById('depositAmt').value = "";
+    };
+
+    document.getElementById('setPrizeBtn').onclick = async () => {
+        const p = parseFloat(document.getElementById('prizeInp').value);
+        const snap = await getDoc(statsRef);
+        if (snap.data().totalFunds < p) return alert("Not enough House Funds!");
+        await updateDoc(statsRef, { 
+            prizeAmount: p, 
+            totalFunds: Number((snap.data().totalFunds - p).toFixed(4)) 
+        });
+    };
+
+    document.getElementById('setMinCarsBtn').onclick = async () => {
+        const m = parseInt(document.getElementById('minInp').value);
+        await updateDoc(statsRef, { minCars: m });
+    };
+
+    document.getElementById('assignWinnerBtn').onclick = async () => {
+        const addr = prompt("Enter Winner Wallet Address:");
+        if (addr) await updateDoc(statsRef, { winner: addr.toLowerCase() });
+    };
+
+    document.getElementById('startBtn').onclick = async () => {
+        const snap = await getDoc(statsRef);
+        const nextRound = (snap.data().currentRound || 1) + 1;
+        
+        await updateDoc(statsRef, { 
+            winner: "none", 
+            carCount: 0, 
+            currentRound: nextRound 
+        });
+        alert("Round " + nextRound + " started! Previous registrations cleared.");
+    };
+
+    document.getElementById('resetAllBtn').onclick = async () => {
+        if(confirm("RESET EVERYTHING?")) {
+            await setDoc(statsRef, { 
+                totalFunds: 0, 
+                prizeAmount: 0, 
+                carCount: 0, 
+                minCars: 0, 
+                winner: "none", 
+                currentRound: 1 
+            });
+        }
+    };
+</script>
 </body>
 </html>
