@@ -65,29 +65,22 @@ const abi = [
 document.getElementById('setFeeBtn').onclick = async () => {
     try {
         const feeVal = document.getElementById('newFee').value;
-        if (!feeVal) return alert("Please enter a value (e.g., 0.02)");
-        
         const feeWei = ethers.utils.parseEther(feeVal);
-        document.getElementById('status-bar').innerText = "// CHECKING_PERMISSIONS... //";
+        
+        document.getElementById('status-bar').innerText = "// INITIATING_TRANSACTION... //";
 
-        // Let's verify you are the owner before sending the tx
-        const contractOwner = await contract.owner();
-        const currentAddress = await signer.getAddress();
+        // Force a Gas Limit to prevent the 'Revert' estimation error
+        const tx = await contract.setEntranceFee(feeWei, {
+            gasLimit: 100000 // Manually setting gas often bypasses the 'Revert' bug
+        });
 
-        if (contractOwner.toLowerCase() !== currentAddress.toLowerCase()) {
-            document.getElementById('status-bar').innerText = "// ERROR: YOU_ARE_NOT_THE_OWNER //";
-            console.error("Owner is:", contractOwner, "You are:", currentAddress);
-            return;
-        }
-
-        document.getElementById('status-bar').innerText = "// SENDING_TX_TO_BLOCKCHAIN... //";
-        const tx = await contract.setEntranceFee(feeWei);
+        document.getElementById('status-bar').innerText = "// MINING... //";
         await tx.wait();
         
-        document.getElementById('status-bar').innerText = "// FEE_UPDATED_SUCCESSFULLY //";
+        document.getElementById('status-bar').innerText = "// FEE_UPDATED_SUCCESS //";
     } catch (e) {
-        console.error("Full Error:", e);
-        // This will catch if the function name is wrong or network is down
+        console.error(e);
+        // If it still fails, check the console (F12) for the 'reason' string
         document.getElementById('status-bar').innerText = "// ERROR: TX_REVERTED //";
     }
 };
