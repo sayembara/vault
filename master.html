@@ -25,14 +25,30 @@
         let signer, contract;
 
         // AUTH & DASHBOARD
-        window.connectMaster = async () => {
-            const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
-            if (accounts[0].toLowerCase() !== MASTER_WALLET) return alert("UNAUTHORIZED");
+window.connectMaster = async () => {
+    try {
+        if (!window.ethereum) return alert("MetaMask not found!");
+        
+        const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
+        const connectedAddress = accounts[0].toLowerCase();
+        
+        console.log("Checking:", connectedAddress, "against", MASTER_WALLET);
+
+        if (connectedAddress === MASTER_WALLET) {
             const provider = new ethers.providers.Web3Provider(window.ethereum);
             signer = provider.getSigner();
             contract = new ethers.Contract(contractAddress, abi, signer);
+            
             document.getElementById('controls').style.display = "block";
-        };
+            document.getElementById('authStatus').innerText = "✅ AUTHENTICATED AS MASTER";
+        } else {
+            alert("UNAUTHORIZED: This wallet is not the Master Pilot.");
+        }
+    } catch (e) {
+        console.error(e);
+        alert("Connection failed.");
+    }
+};
 
         // 1. FUND MANAGEMENT
         window.depositToFunds = async () => {
