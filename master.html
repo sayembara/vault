@@ -62,14 +62,32 @@
 
     let currentRoundID = 1;
 
-    document.getElementById('connectMasterBtn').onclick = async () => {
+document.getElementById('connectMasterBtn').onclick = async () => {
+    console.log("Master Auth Button Clicked..."); // Check if this shows in F12
+    
+    try {
+        if (!window.ethereum) {
+            alert("MetaMask not found!");
+            return;
+        }
+
         const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
-        if (accounts[0].toLowerCase() === MASTER_WALLET) {
+        const user = accounts[0].toLowerCase();
+        console.log("Connected as:", user);
+
+        if (user === MASTER_WALLET) {
+            console.log("Wallet Match! Opening Controls...");
             document.getElementById('controls').style.display = "block";
             document.getElementById('connectMasterBtn').style.display = "none";
-            startListeners();
-        } else { alert("WRONG WALLET"); }
-    };
+            startListeners(); // Make sure this function exists!
+        } else {
+            alert("UNAUTHORIZED: " + user + " is not the Master.");
+        }
+    } catch (err) {
+        console.error("Auth Error:", err);
+        alert("Connection Error: " + err.message);
+    }
+};
 
     function startListeners() {
         // 1. Listen for Stats
