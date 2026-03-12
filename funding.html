@@ -8,17 +8,19 @@
         body { margin: 0; padding: 20px; font-family: 'Inter', sans-serif; background: #0f0c29; color: white; display: flex; flex-direction: column; align-items: center; }
         .container { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; max-width: 900px; width: 100%; }
         .card { background: var(--glass); border: 1px solid rgba(255,255,255,0.1); border-radius: 20px; padding: 20px; text-align: center; }
-        input { background: rgba(0,0,0,0.4); border: 1px solid rgba(255,255,255,0.2); padding: 12px; border-radius: 10px; color: white; width: 80%; margin-bottom: 10px; }
-        button { width: 100%; padding: 14px; border-radius: 10px; border: none; font-weight: bold; cursor: pointer; color: white; }
+        input { background: rgba(0,0,0,0.4); border: 1px solid rgba(255,255,255,0.2); padding: 12px; border-radius: 10px; color: white; width: 80%; margin-bottom: 10px; font-size: 1rem; }
+        button { width: 100%; padding: 14px; border-radius: 10px; border: none; font-weight: bold; cursor: pointer; color: white; transition: 0.2s; }
+        button:active { transform: scale(0.98); }
         .btn-normal { background: #6dd5ed; color: #00334e; }
         .btn-boost { background: var(--boost); }
         .overflow-box { font-size: 1.8rem; color: #ffcc00; margin: 20px 0; font-family: monospace; border: 1px dashed #ffcc0044; padding: 10px 30px; border-radius: 15px; }
         .sensor-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; width: 100%; max-width: 900px; margin-top: 20px; }
-        .sensor-box { background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.1); padding: 12px; border-radius: 12px; text-align: center; }
-        .active-round { border: 2px solid var(--accent); background: rgba(0, 255, 204, 0.1); transform: scale(1.05); }
-        .past-round { opacity: 0.25; filter: grayscale(1); }
+        .sensor-box { background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.1); padding: 12px; border-radius: 12px; text-align: center; transition: 0.3s; }
+        .active-round { border: 2px solid var(--accent); background: rgba(0, 255, 204, 0.1); transform: scale(1.05); box-shadow: 0 0 15px rgba(0, 255, 204, 0.2); }
+        .past-round { opacity: 0.25; filter: grayscale(1); pointer-events: none; }
         .total-amt { font-size: 1.2rem; color: var(--accent); font-weight: bold; margin-top: 6px; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 4px; }
-        .status-tag { font-size: 0.6rem; font-weight: 900; margin-top: 5px; padding: 2px; border-radius: 4px; }
+        .sub-values { font-size: 0.75rem; color: #888; margin-top: 4px; }
+        .status-tag { font-size: 0.6rem; font-weight: 900; margin-top: 5px; padding: 2px; border-radius: 4px; display: inline-block; }
         .st-low { color: #ff4b2b; background: rgba(255, 75, 43, 0.1); }
         .st-mid { color: #ffcc00; background: rgba(255, 204, 0, 0.1); }
         .st-full { color: #00ffcc; background: rgba(0, 255, 204, 0.1); }
@@ -29,8 +31,8 @@
     <div class="overflow-box">OVERFLOW: <span id="val-overflow">0.000</span></div>
 
     <div class="container">
-        <div class="card"><h3>🔋 NORMAL</h3><input type="number" id="normalAmt"><button class="btn-normal" id="btnNormal">Inject Normal</button></div>
-        <div class="card"><h3>🚀 BOOST</h3><input type="number" id="boostAmt"><button class="btn-boost" id="btnBoost">Inject Boost</button></div>
+        <div class="card"><h3>🔋 NORMAL</h3><input type="number" id="normalAmt" step="0.1"><button class="btn-normal" id="btnNormal">Inject Normal</button></div>
+        <div class="card"><h3>🚀 BOOST</h3><input type="number" id="boostAmt" step="0.01"><button class="btn-boost" id="btnBoost">Inject Boost</button></div>
     </div>
 
     <div class="sensor-grid" id="sensorGrid"></div>
@@ -55,15 +57,19 @@
 
             for(let i=1; i<=12; i++) {
                 let r = vault.rounds?.[`r${i}`] || { normal: 0, boost: 0 };
+                if (typeof r === 'number') r = { normal: r, boost: 0 };
+                
                 const curN = parseFloat(r.normal || 0);
-                const total = (curN + parseFloat(r.boost || 0)).toFixed(3);
+                const curB = parseFloat(r.boost || 0);
+                const total = (curN + curB).toFixed(3);
                 
                 let extraClass = i < curRound ? 'past-round' : (i === curRound ? 'active-round' : '');
                 let stClass = curN >= limits.max ? 'st-full' : (curN >= limits.min ? 'st-mid' : 'st-low');
                 let stText = curN >= limits.max ? 'MAXED' : (curN >= limits.min ? 'MIN+' : 'LOW');
 
                 grid.innerHTML += `<div class="sensor-box ${extraClass}">
-                    <div style="font-size:0.7rem;color:#888;">RD ${i}</div>
+                    <div style="font-size:0.7rem;color:#888;">RD ${i} ${i === curRound ? '⚡' : ''}</div>
+                    <div class="sub-values">N: ${curN.toFixed(2)} | B: ${curB.toFixed(2)}</div>
                     <div class="total-amt">${total}</div>
                     <div class="status-tag ${stClass}">${stText}</div>
                 </div>`;
@@ -73,6 +79,7 @@
         async function processFund(type) {
             let amt = parseFloat(document.getElementById(type + 'Amt').value);
             if(!amt || amt <= 0) return alert("Enter amount");
+            
             const snap = await get(ref(db));
             const all = snap.val() || {};
             const limits = all.master_settings?.limits || { min: 0.1, max: 2.0 };
@@ -81,11 +88,13 @@
             let overflow = parseFloat(all.vault?.overflow || 0);
 
             if(type === 'normal') {
+                // Tier 1: Fill Min
                 for(let i=1; i<=12; i++) {
-                    if(!rounds[`r${i}`]) rounds[`r${i}`] = {normal:0, boost:0};
+                    if(!rounds[`r${i}`] || typeof rounds[`r${i}`] === 'number') rounds[`r${i}`] = {normal:0, boost:0};
                     let space = limits.min - rounds[`r${i}`].normal;
                     if(space > 0 && amt > 0) { let fill = Math.min(amt, space); rounds[`r${i}`].normal += fill; amt -= fill; }
                 }
+                // Tier 2: Fill Max
                 if(amt > 0) {
                     for(let i=1; i<=12; i++) {
                         let space = limits.max - rounds[`r${i}`].normal;
@@ -94,9 +103,11 @@
                 }
                 overflow += amt;
             } else {
-                let share = amt / (13 - curRound);
+                // Boost: Split among active and future rounds
+                let roundsLeft = (12 - curRound) + 1;
+                let share = amt / roundsLeft;
                 for(let i=curRound; i<=12; i++) {
-                    if(!rounds[`r${i}`]) rounds[`r${i}`] = {normal:0, boost:0};
+                    if(!rounds[`r${i}`] || typeof rounds[`r${i}`] === 'number') rounds[`r${i}`] = {normal:0, boost:0};
                     rounds[`r${i}`].boost += share;
                 }
             }
