@@ -2,218 +2,65 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SANRAT | Sponsor Management</title>
+    <title>SANRAT | Sponsor Control</title>
     <style>
-        :root {
-            --glass: rgba(255, 255, 255, 0.08);
-            --border: rgba(255, 255, 255, 0.15);
-            --accent: #00ffcc;
-            --danger: #ff4b2b;
-        }
-
-        body {
-            margin: 0;
-            padding: 40px 20px;
-            font-family: 'Inter', sans-serif;
-            background: #0f0c29;
-            color: white;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-        }
-
-        .header { text-align: center; margin-bottom: 30px; }
-        
-        .management-container {
-            display: flex;
-            flex-direction: column;
-            gap: 20px;
-            max-width: 800px;
-            width: 100%;
-        }
-
-        .card {
-            background: var(--glass);
-            backdrop-filter: blur(20px);
-            border: 1px solid var(--border);
-            border-radius: 20px;
-            padding: 25px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
-        }
-
-        .reallocate-grid {
-            display: grid;
-            grid-template-columns: 1fr auto 1fr;
-            align-items: center;
-            gap: 15px;
-            margin: 20px 0;
-        }
-
-        select, input {
-            background: rgba(0,0,0,0.4);
-            border: 1px solid var(--border);
-            padding: 12px;
-            border-radius: 10px;
-            color: white;
-            font-size: 1rem;
-        }
-
-        button {
-            padding: 15px;
-            border: none;
-            border-radius: 10px;
-            font-weight: bold;
-            cursor: pointer;
-            transition: 0.3s;
-        }
-
-        .btn-move { background: var(--accent); color: #00334e; width: 100%; }
-        .btn-reset { background: transparent; border: 1px solid var(--danger); color: var(--danger); margin-top: 20px; }
-        .btn-reset:hover { background: var(--danger); color: white; }
-
-        .sensor-grid {
-            display: grid;
-            grid-template-columns: repeat(4, 1fr);
-            gap: 10px;
-            margin-top: 30px;
-            width: 100%;
-        }
-
-        .sensor-box {
-            background: rgba(255,255,255,0.03);
-            border: 1px solid var(--border);
-            padding: 10px;
-            border-radius: 10px;
-            text-align: center;
-        }
-
-        .sensor-val { font-family: monospace; color: var(--accent); font-size: 1.1rem; }
-        .overflow-box { text-align: center; font-size: 1.5rem; color: #ffcc00; margin-bottom: 20px; font-family: monospace; }
+        :root { --glass: rgba(255, 255, 255, 0.08); --accent: #00ffcc; }
+        body { margin: 0; padding: 40px; font-family: 'Inter', sans-serif; background: #0f0c29; color: white; display: flex; flex-direction: column; align-items: center; }
+        .card { background: var(--glass); border: 1px solid rgba(255,255,255,0.1); border-radius: 20px; padding: 25px; width: 100%; max-width: 500px; text-align: center; }
+        .overflow-val { font-size: 2rem; color: #ffcc00; margin-bottom: 20px; }
+        button { width: 100%; padding: 15px; border-radius: 10px; border: none; font-weight: bold; cursor: pointer; margin-top: 10px; }
+        .btn-fill { background: var(--accent); color: #00334e; }
+        .btn-reset { background: transparent; border: 1px solid #ff4b2b; color: #ff4b2b; }
     </style>
 </head>
 <body>
-
-    <div class="header">
-        <h1>SPONSOR COMMAND</h1>
-        <p style="color: #888;">VAULT MANAGEMENT & REALLOCATION</p>
-    </div>
-
-    <div class="management-container">
-        <div class="overflow-box">
-            OVERFLOW: <span id="val-overflow">0.000</span> tBNB
-        </div>
-
-        <div class="card">
-            <h2 style="margin-top:0;">🔄 Reallocate Funds</h2>
-            <p style="font-size: 0.8rem; color: #aaa;">Move existing capital between buckets or to/from overflow.</p>
-            
-            <div class="reallocate-grid">
-                <select id="fromBucket">
-                    <option value="overflow">Overflow</option>
-                </select>
-                <span>➡️</span>
-                <select id="toBucket">
-                    <option value="overflow">Overflow</option>
-                </select>
-            </div>
-            
-            <input type="number" id="moveAmount" placeholder="Amount (tBNB)" step="0.01" style="width: calc(100% - 26px);">
-            <button class="btn-move" onclick="reallocateFunds()">Confirm Reallocation</button>
-        </div>
-
-        <div class="card" style="border-color: rgba(255,75,43,0.3);">
-            <h2 style="margin-top:0; color: var(--danger);">⚙️ System Control</h2>
-            <p style="font-size: 0.8rem; color: #aaa;">Hard Reset clears player positions and round data. <br><strong>Note: This does NOT drain the buckets.</strong></p>
-            <button class="btn-reset" onclick="hardReset()">⚠️ EXECUTE HARD RESET</button>
-        </div>
-
-        <div class="sensor-grid" id="sensorGrid"></div>
+    <h1>SPONSOR MANAGEMENT</h1>
+    
+    <div class="card">
+        <div class="overflow-val" id="disp-overflow">0.000</div>
+        <p style="font-size: 0.8rem; color: #888;">Use Overflow to refill buckets to Max Limits.</p>
+        <button class="btn-fill" onclick="refillFromOverflow()">Execute Auto-Refill</button>
+        <button class="btn-reset" onclick="hardReset()">Hard Reset System</button>
     </div>
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js";
-        import { getDatabase, ref, onValue, update, get, set } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-database.js";
+        import { getDatabase, ref, onValue, update, get } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-database.js";
 
-        const firebaseConfig = {
-            apiKey: "AlzaSyBYxLOGFzaHN6CS4ro_bjnKEblbQE6Vtx4",
-            authDomain: "nuclearf1-94a6b.firebaseapp.com",
-            databaseURL: "https://nuclearf1-94a6b-default-rtdb.asia-southeast1.firebasedatabase.app",
-            projectId: "nuclearf1-94a6b"
-        };
-
+        const firebaseConfig = { apiKey: "AlzaSyBYxLOGFzaHN6CS4ro_bjnKEblbQE6Vtx4", databaseURL: "https://nuclearf1-94a6b-default-rtdb.asia-southeast1.firebasedatabase.app" };
         const app = initializeApp(firebaseConfig);
         const db = getDatabase(app);
 
-        // Initialize UI
-        const fromSel = document.getElementById('fromBucket');
-        const toSel = document.getElementById('toBucket');
-        const grid = document.getElementById('sensorGrid');
+        onValue(ref(db, 'vault/overflow'), (s) => document.getElementById('disp-overflow').innerText = parseFloat(s.val() || 0).toFixed(3) + " tBNB");
 
-        for (let i = 1; i <= 12; i++) {
-            const opt = `<option value="r${i}">Round ${i}</option>`;
-            fromSel.innerHTML += opt;
-            toSel.innerHTML += opt;
-            grid.innerHTML += `
-                <div class="sensor-box">
-                    <div style="font-size: 0.6rem; color: #888;">R${i}</div>
-                    <div class="sensor-val" id="r${i}-val">0.00</div>
-                </div>`;
-        }
-
-        // Live Data Sync
-        onValue(ref(db, 'vault'), (snap) => {
+        window.refillFromOverflow = async function() {
+            const snap = await get(ref(db));
             const data = snap.val() || {};
-            const rounds = data.rounds || {};
-            document.getElementById('val-overflow').innerText = parseFloat(data.overflow || 0).toFixed(3);
-            for (let i = 1; i <= 12; i++) {
-                const el = document.getElementById(`r${i}-val`);
-                if(el) el.innerText = parseFloat(rounds[`r${i}`] || 0).toFixed(3);
+            const limits = data.master_settings?.limits || { max: 2.0 };
+            let overflow = parseFloat(data.vault?.overflow || 0);
+            let rounds = data.vault?.rounds || {};
+
+            if(overflow <= 0) return alert("Overflow Empty!");
+
+            for(let i=1; i<=12; i++) {
+                let cur = parseFloat(rounds[`r${i}`] || 0);
+                let needed = limits.max - cur;
+                if(needed > 0 && overflow > 0) {
+                    let take = Math.min(overflow, needed);
+                    rounds[`r${i}`] = parseFloat((cur + take).toFixed(3));
+                    overflow -= take;
+                }
             }
-        });
 
-        // REALLOCATE LOGIC
-        window.reallocateFunds = async function() {
-            const from = document.getElementById('fromBucket').value;
-            const to = document.getElementById('toBucket').value;
-            const amt = parseFloat(document.getElementById('moveAmount').value);
-
-            if (!amt || amt <= 0 || from === to) return alert("Invalid Move Request");
-
-            const snap = await get(ref(db, 'vault'));
-            const data = snap.val() || {};
-            
-            // Get current values
-            let valFrom = (from === 'overflow') ? parseFloat(data.overflow || 0) : parseFloat(data.rounds?.[from] || 0);
-            let valTo = (to === 'overflow') ? parseFloat(data.overflow || 0) : parseFloat(data.rounds?.[to] || 0);
-
-            if (amt > valFrom) return alert("Insufficient funds in source bucket!");
-
-            const updates = {};
-            const pathFrom = (from === 'overflow') ? 'vault/overflow' : `vault/rounds/${from}`;
-            const pathTo = (to === 'overflow') ? 'vault/overflow' : `vault/rounds/${to}`;
-
-            updates[pathFrom] = parseFloat((valFrom - amt).toFixed(3));
-            updates[pathTo] = parseFloat((valTo + amt).toFixed(3));
-
-            update(ref(db), updates).then(() => {
-                alert(`SUCCESS: Moved ${amt} tBNB`);
-                document.getElementById('moveAmount').value = '';
-            });
+            const up = {};
+            up['vault/rounds'] = rounds;
+            up['vault/overflow'] = parseFloat(overflow.toFixed(3));
+            update(ref(db), up).then(() => alert("Buckets Refilled!"));
         };
 
-        // HARD RESET LOGIC
         window.hardReset = function() {
-            if (!confirm("CRITICAL: This will reset all race progress. Continue?")) return;
-            
-            const updates = {};
-            updates['race_data/players'] = null; // Clears player positions
-            updates['race_data/status'] = 'stopped';
-            updates['race_data/current_round'] = 1;
-
-            update(ref(db), updates).then(() => {
-                alert("SYSTEM RESET COMPLETE. Race data cleared.");
-            });
+            if(!confirm("Reset race data?")) return;
+            update(ref(db, 'race_data'), { current_round: 1, players: null, status: 'stopped' });
         };
     </script>
 </body>
