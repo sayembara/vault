@@ -18,16 +18,11 @@
         th { background: rgba(0,255,204,0.1); color: var(--accent); }
         .btn-save { background: var(--accent); color: #00334e; border: none; padding: 12px; border-radius: 8px; font-weight: bold; cursor: pointer; width: 100%; margin-top: 15px; }
         .btn-sim { background: var(--gold); color: #000; border: none; padding: 10px 20px; border-radius: 8px; font-weight: bold; cursor: pointer; }
-        .formula-box { background: rgba(0,0,0,0.3); padding: 15px; border-radius: 10px; font-family: monospace; font-size: 0.85rem; border-left: 4px solid var(--gold); line-height: 1.5; }
-        #sim-result { background: rgba(0,255,204,0.05); padding: 15px; border-radius: 10px; border: 1px dashed var(--accent); margin-top: 10px; font-family: monospace; }
-        .hp-highlight { color: var(--accent); font-weight: bold; }
     </style>
 </head>
 <body>
-
     <div id="auth-screen">
-        <h1 style="letter-spacing: 4px;">ENGINE ACCESS</h1>
-        <p style="color: #666; margin-bottom: 20px;">Authorized Admin Wallet Required</p>
+        <h1>ENGINE ACCESS</h1>
         <button class="btn-connect" id="connectBtn">Connect MetaMask</button>
     </div>
 
@@ -40,74 +35,41 @@
         <div class="card">
             <h3>1. Global Random Variance (L1, L2)</h3>
             <div class="flex-row">
-                <label>L1 (Min %):</label> <input type="number" id="l1_input" step="1">
-                <label>L2 (Max %):</label> <input type="number" id="l2_input" step="1">
-                <p style="font-size: 0.75rem; color: #888; margin-left: 20px;">All distances = Base * (1 - random(L1, L2)/100)</p>
+                L1: <input type="number" id="l1_input"> L2: <input type="number" id="l2_input">
             </div>
         </div>
 
         <div class="card">
             <h3>2. Trait Logic & Distance Tables</h3>
-            <div id="tables-container">Loading Engine Data...</div>
+            <div id="tables-container">Loading...</div>
         </div>
 
         <div class="card" style="border-left: 4px solid var(--accent);">
-            <h3>4. HP Fatigue & Healing Constants</h3>
+            <h3>3. HP Fatigue & Healing Constants</h3>
             <div class="flex-row">
-                <div style="flex: 1; border-right: 1px solid #333; padding-right: 10px;">
-                    <h4 class="hp-highlight">SUPPORT DRAIN</h4>
-                    <p class="desc" style="font-size:0.7rem; color:#888;">Daily HP loss range for active cars.</p>
-                    Min: <input type="number" id="hp_drain_min" step="0.1"> % 
-                    Max: <input type="number" id="hp_drain_max" step="0.1"> %
-                </div>
-                <div style="flex: 1; padding-left: 10px;">
-                    <h4 class="hp-highlight">RESTING HEAL</h4>
-                    <p class="desc" style="font-size:0.7rem; color:#888;">Daily HP gain range for resting cars.</p>
-                    Min: <input type="number" id="hp_heal_min" step="0.1"> % 
-                    Max: <input type="number" id="hp_heal_max" step="0.1"> %
-                </div>
+                <div>Drain Min: <input type="number" id="hp_drain_min" step="0.1"> Max: <input type="number" id="hp_drain_max" step="0.1"></div>
+                <div>Heal Min: <input type="number" id="hp_heal_min" step="0.1"> Max: <input type="number" id="hp_heal_max" step="0.1"></div>
             </div>
-            <p style="font-size: 0.75rem; color: #888; margin-top: 10px;">
-                <i>Note: Core impact is hardcoded as (Core/20). A car with Core 10 adds/subtracts 0.5% to these results.</i>
-            </p>
         </div>
 
         <button class="btn-save" onclick="saveAllToFirebase()">💾 UPDATE ALL ENGINE CONSTANTS</button>
 
         <div class="card">
-            <h3>3. Logic Simulator (Live Formula Test)</h3>
-            <div class="formula-box">
-                A1, A2, A3 = TraitDist * (1 - Rand/100) <br>
-                A4 = If Dice > CoreCutoff, CoreImpact * (1 - Rand/100). Else 0. <br>
-                <strong>Total = (A1 + A2 + A3) * (1 - A4/100)</strong>
-            </div>
-            <div class="flex-row" style="margin-top:15px;">
-                Prop: <input type="number" id="s_p" value="7">
-                Trac: <input type="number" id="s_t" value="7">
-                Stab: <input type="number" id="s_s" value="7">
-                Core: <input type="number" id="s_c" value="7">
-                Dice: <input type="number" id="s_roll" value="80">
-            </div>
-            <div class="flex-row">
-                Track: <select id="s_tk"><option value="straight">Straight</option><option value="turn">Turn (L/R)</option></select>
-                Ground: <select id="s_gr"><option value="dry">Dry</option><option value="wet">Wet</option></select>
-                Slope: <select id="s_sl"><option value="flat">Flatland</option><option value="hill">Uphill/Downhill</option></select>
-                <button class="btn-sim" onclick="runSimulation()">RUN TEST</button>
-            </div>
-            <div id="sim-result">Simulation results will appear here...</div>
+            <h3>4. Logic Simulator</h3>
+            <div id="sim-result">Ready for test...</div>
+            <button class="btn-sim" onclick="runSimulation()">RUN TEST</button>
         </div>
     </div>
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js";
-        import { getDatabase, ref, set, onValue, update } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-database.js";
+        import { getDatabase, ref, set, onValue } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-database.js";
 
         const ADMIN_WALLET = "0xCe9782f77eC560a1Cb329F935b5D416AA41f1a5d".toLowerCase();
         const firebaseConfig = { apiKey: "AlzaSyBYxLOGFzaHN6CS4ro_bjnKEblbQE6Vtx4", databaseURL: "https://nuclearf1-94a6b-default-rtdb.asia-southeast1.firebasedatabase.app" };
         const app = initializeApp(firebaseConfig);
         const db = getDatabase(app);
 
-        // --- AUTH ---
         document.getElementById('connectBtn').onclick = async () => {
             if (window.ethereum) {
                 const accs = await window.ethereum.request({ method: 'eth_requestAccounts' });
@@ -115,40 +77,33 @@
                     document.getElementById('auth-screen').style.display = 'none';
                     document.getElementById('admin-ui').style.display = 'flex';
                     loadData();
-                } else { alert("Unauthorized."); }
-            } else { alert("Install MetaMask."); }
+                }
+            }
         };
 
-        // --- LOAD ---
         function loadData() {
             onValue(ref(db, 'race_constants'), (snap) => {
-                const d = snap.val();
-                if(d) {
-                    document.getElementById('l1_input').value = d.limits?.l1 || 5;
-                    document.getElementById('l2_input').value = d.limits?.l2 || 15;
-                    
-                    // Load HP Settings
-                    document.getElementById('hp_drain_min').value = d.hp_settings?.drain?.min || 5;
-                    document.getElementById('hp_drain_max').value = d.hp_settings?.drain?.max || 12;
-                    document.getElementById('hp_heal_min').value = d.hp_settings?.heal?.min || 8;
-                    document.getElementById('hp_heal_max').value = d.hp_settings?.heal?.max || 13;
-
-                    renderTables(d.traits);
-                }
+                const d = snap.val(); if(!d) return;
+                document.getElementById('l1_input').value = d.limits?.l1 ?? 5;
+                document.getElementById('l2_input').value = d.limits?.l2 ?? 15;
+                document.getElementById('hp_drain_min').value = d.hp_settings?.drain?.min ?? 5;
+                document.getElementById('hp_drain_max').value = d.hp_settings?.drain?.max ?? 12;
+                document.getElementById('hp_heal_min').value = d.hp_settings?.heal?.min ?? 8;
+                document.getElementById('hp_heal_max').value = d.hp_settings?.heal?.max ?? 13;
+                if(d.traits) renderTables(d.traits);
             });
         }
 
         function renderTables(traits) {
             let html = "";
-            for (let trait in traits) {
-                html += `<h4>${trait.toUpperCase()}</h4><table><tr><th>Value (1-10)</th>`;
-                for(let cond in traits[trait]) { html += `<th>${cond}</th>`; }
+            for (let t in traits) {
+                html += `<h4>${t.toUpperCase()}</h4><table><tr><th>Lv</th>`;
+                const conds = Object.keys(traits[t]);
+                conds.forEach(c => html += `<th>${c}</th>`);
                 html += `</tr>`;
-                for(let i=0; i<10; i++) {
-                    html += `<tr><td><strong>${i+1}</strong></td>`;
-                    for(let cond in traits[trait]) {
-                        html += `<td><input type="number" class="engine-val" data-t="${trait}" data-c="${cond}" data-i="${i}" value="${traits[trait][cond][i]}"></td>`;
-                    }
+                for (let i = 0; i < 10; i++) {
+                    html += `<tr><td>${i+1}</td>`;
+                    conds.forEach(c => html += `<td><input type="number" class="engine-val" data-t="${t}" data-c="${c}" data-i="${i}" value="${traits[t][c][i]||0}"></td>`);
                     html += `</tr>`;
                 }
                 html += `</table>`;
@@ -156,68 +111,25 @@
             document.getElementById('tables-container').innerHTML = html;
         }
 
-        // --- SAVE ---
         window.saveAllToFirebase = () => {
-            const inputs = document.querySelectorAll('.engine-val');
             const data = { 
-                limits: { 
-                    l1: parseInt(document.getElementById('l1_input').value), 
-                    l2: parseInt(document.getElementById('l2_input').value) 
-                },
+                limits: { l1: parseInt(document.getElementById('l1_input').value), l2: parseInt(document.getElementById('l2_input').value) },
                 hp_settings: {
-                    drain: { 
-                        min: parseFloat(document.getElementById('hp_drain_min').value), 
-                        max: parseFloat(document.getElementById('hp_drain_max').value) 
-                    },
-                    heal: { 
-                        min: parseFloat(document.getElementById('hp_heal_min').value), 
-                        max: parseFloat(document.getElementById('hp_heal_max').value) 
-                    }
+                    drain: { min: parseFloat(document.getElementById('hp_drain_min').value), max: parseFloat(document.getElementById('hp_drain_max').value) },
+                    heal: { min: parseFloat(document.getElementById('hp_heal_min').value), max: parseFloat(document.getElementById('hp_heal_max').value) }
                 },
                 traits: {} 
             };
-            
-            inputs.forEach(el => {
+            document.querySelectorAll('.engine-val').forEach(el => {
                 const { t, c, i } = el.dataset;
                 if(!data.traits[t]) data.traits[t] = {};
                 if(!data.traits[t][c]) data.traits[t][c] = [];
                 data.traits[t][c][parseInt(i)] = parseInt(el.value);
             });
-
-            set(ref(db, 'race_constants'), data).then(() => alert("All Constants Synchronized!"));
+            set(ref(db, 'race_constants'), data).then(() => alert("Saved!"));
         };
 
-        // --- SIMULATOR ---
-        window.runSimulation = () => {
-            const L1 = parseInt(document.getElementById('l1_input').value);
-            const L2 = parseInt(document.getElementById('l2_input').value);
-            const getRand = () => (1 - (Math.floor(Math.random() * (L2 - L1 + 1)) + L1) / 100);
-
-            onValue(ref(db, 'race_constants/traits'), (snap) => {
-                const d = snap.val();
-                const pi = parseInt(document.getElementById('s_p').value) - 1;
-                const ti = parseInt(document.getElementById('s_t').value) - 1;
-                const si = parseInt(document.getElementById('s_s').value) - 1;
-                const ci = parseInt(document.getElementById('s_c').value) - 1;
-                const dice = parseInt(document.getElementById('s_roll').value);
-
-                const a1 = d.propulsion[document.getElementById('s_tk').value][pi] * getRand();
-                const a2 = d.traction[document.getElementById('s_gr').value][ti] * getRand();
-                const a3 = d.stability[document.getElementById('s_sl').value][si] * getRand();
-
-                let a4 = 0;
-                const cutoff = d.core.cutoff[ci];
-                const penaltyHit = dice > cutoff;
-                if(penaltyHit) a4 = d.core.impact[ci] * getRand();
-
-                const total = (a1 + a2 + a3) * (1 - a4/100);
-
-                document.getElementById('sim-result').innerHTML = `
-                    <span style="color:white">Roll: ${dice} vs Cutoff: ${cutoff}</span> -> ${penaltyHit ? '<b style="color:var(--danger)">FAIL</b>' : '<b style="color:var(--accent)">PASS</b>'}<br>
-                    Total Distance: <b style="color:var(--gold)">${total.toFixed(2)}m</b>
-                `;
-            }, { onlyOnce: true });
-        };
+        window.runSimulation = () => { alert("Check Console/Master for results"); };
     </script>
 </body>
 </html>
