@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SANRAT | Funding & Control</title>
+    <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
+    <style>
+        :root {
+            --glass: rgba(255, 255, 255, 0.1);
+            --border: rgba(255, 255, 255, 0.2);
+            --text: #ffffff;
+        }
+
+        body {
+            margin: 0;
+            padding: 20px;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #0f0c29, #302b63, #24243e);
+            color: var(--text);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        h1 { margin-bottom: 30px; text-shadow: 0 0 15px rgba(0,255,255,0.5); }
+
+        .container {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+            gap: 25px;
+            max-width: 1000px;
+            width: 100%;
+        }
+
+        /* Glassmorphism Card Style */
+        .card {
+            background: var(--glass);
+            backdrop-filter: blur(15px);
+            -webkit-backdrop-filter: blur(15px);
+            border: 1px solid var(--border);
+            border-radius: 20px;
+            padding: 25px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.37);
+            display: flex;
+            flex-direction: column;
+            transition: transform 0.3s ease;
+        }
+
+        .card:hover { transform: translateY(-5px); }
+
+        .card h2 { margin-top: 0; font-size: 1.5rem; }
+        .remark { font-size: 0.9rem; opacity: 0.8; margin-bottom: 20px; line-height: 1.4; }
+        
+        input {
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid var(--border);
+            padding: 12px;
+            border-radius: 10px;
+            color: white;
+            font-size: 1rem;
+            margin-bottom: 15px;
+            outline: none;
+        }
+
+        button {
+            padding: 15px;
+            border: none;
+            border-radius: 10px;
+            font-weight: bold;
+            cursor: pointer;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            transition: 0.3s;
+        }
+
+        /* Color Coding for Buttons */
+        .btn-boost { background: linear-gradient(90deg, #ff416c, #ff4b2b); color: white; }
+        .btn-refill { background: linear-gradient(90deg, #2193b0, #6dd5ed); color: white; }
+        .btn-round { background: linear-gradient(90deg, #f7971e, #ffd200); color: #000; margin-top: 20px; }
+
+        button:hover { filter: brightness(1.2); box-shadow: 0 0 15px rgba(255,255,255,0.2); }
+        button:active { transform: scale(0.98); }
+
+        .status-badge {
+            margin-top: 15px;
+            font-size: 0.8rem;
+            text-align: center;
+            padding: 5px;
+            border-radius: 5px;
+            background: rgba(0, 255, 0, 0.1);
+            color: #00ff00;
+            display: none;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>Sponsor Control Center</h1>
+
+    <div class="container">
+        <div class="card">
+            <h2>🚀 Seasonal Boost</h2>
+            <p class="remark">
+                <strong>Current Season Reward.</strong> <br>
+                Use this to inject funds into the active prize pool. This directly increases the payouts for the current racers.
+            </p>
+            <input type="number" id="boostAmount" placeholder="Amount (ETH/BNB)" step="0.01">
+            <button class="btn-boost" onclick="triggerAction('boost')">Execute Boost</button>
+            <div id="boostStatus" class="status-badge">Transaction Sent!</div>
+        </div>
+
+        <div class="card">
+            <h2>🔋 Normal Refill</h2>
+            <p class="remark">
+                <strong>Ecosystem Maintenance.</strong> <br>
+                Refill the primary treasury. This ensures long-term sustainability and funds future seasons.
+            </p>
+            <input type="number" id="refillAmount" placeholder="Amount (ETH/BNB)" step="0.1">
+            <button class="btn-refill" onclick="triggerAction('normal')">Refill Treasury</button>
+            <div id="refillStatus" class="status-badge">Refill Injected!</div>
+        </div>
+    </div>
+
+    <div class="card" style="margin-top: 30px; width: 100%; max-width: 1000px;">
+        <h2>🏁 Race Logistics</h2>
+        <p class="remark">
+            Advancing the round will trigger the automated payout system on the Master Page and update player rankings.
+        </p>
+        <button class="btn-round" onclick="triggerAction('next_round')">Advance to Next Round</button>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js";
+        import { getDatabase, ref, set, serverTimestamp } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-database.js";
+
+        // --- PASTE YOUR CONFIG HERE ---
+        const firebaseConfig = {
+            apiKey: "AIza...",
+            authDomain: "nuclearf1-94a6b.firebaseapp.com",
+            databaseURL: "https://nuclearf1-94a6b-default-rtdb.asia-southeast1.firebasedatabase.app",
+            projectId: "nuclearf1-94a6b",
+            storageBucket: "nuclearf1-94a6b.appspot.com",
+            messagingSenderId: "...",
+            appId: "..."
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getDatabase(app);
+
+        window.triggerAction = function(actionType) {
+            let amount = 0;
+            let statusEl = null;
+
+            if (actionType === 'boost') {
+                amount = document.getElementById('boostAmount').value;
+                statusEl = document.getElementById('boostStatus');
+            } else if (actionType === 'normal') {
+                amount = document.getElementById('refillAmount').value;
+                statusEl = document.getElementById('refillStatus');
+            }
+
+            if ((actionType === 'boost' || actionType === 'normal') && (!amount || amount <= 0)) {
+                alert("Please enter a valid amount.");
+                return;
+            }
+
+            // Create command in Firebase for the Master Page to hear
+            const commandRef = ref(db, 'commands/last_action');
+            set(commandRef, {
+                type: actionType,
+                value: amount || 1, // '1' signals round increment
+                timestamp: serverTimestamp(),
+                status: "pending"
+            }).then(() => {
+                if(statusEl) {
+                    statusEl.style.display = 'block';
+                    setTimeout(() => statusEl.style.display = 'none', 3000);
+                }
+                if(actionType === 'next_round') alert("Round Advance Signal Sent!");
+            }).catch(err => {
+                console.error(err);
+                alert("Error sending command.");
+            });
+        };
+    </script>
+</body>
+</html>
