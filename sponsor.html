@@ -20,6 +20,7 @@
         .btn-set { background: #fff; color: #000; margin-left: 5px; }
         .btn-reallocate { background: var(--accent); color: #00334e; width: 100%; font-size: 1rem; margin-top: 10px; }
         .btn-view { background: var(--gold); color: #000; font-size: 0.7rem; padding: 5px 10px; }
+        .btn-copy { background: #444; color: #fff; width: 100%; margin-top: 10px; font-size: 0.8rem; }
         .btn-wipe { background: transparent; border: 2px solid var(--danger); color: var(--danger); width: 100%; margin-top: 20px; }
 
         .sensor-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; width: 100%; }
@@ -84,7 +85,8 @@
         <div class="modal-content">
             <h3 id="modalTitle" style="color: var(--accent); margin-top:0;">Audit Details</h3>
             <div id="modalBody"></div>
-            <button onclick="document.getElementById('historyModal').style.display='none'" style="margin-top:20px; width:100%; background:var(--danger); color:white; border-radius:10px; padding:10px;">CLOSE</button>
+            <button class="btn-copy" id="btnCopySummary">📋 COPY DATA SUMMARY</button>
+            <button onclick="document.getElementById('historyModal').style.display='none'" style="margin-top:10px; width:100%; background:var(--danger); color:white; border-radius:10px; padding:10px;">CLOSE</button>
         </div>
     </div>
 
@@ -96,6 +98,8 @@
         const firebaseConfig = { apiKey: "AlzaSyBYxLOGFzaHN6CS4ro_bjnKEblbQE6Vtx4", databaseURL: "https://nuclearf1-94a6b-default-rtdb.asia-southeast1.firebasedatabase.app" };
         const app = initializeApp(firebaseConfig);
         const db = getDatabase(app);
+
+        let currentSummaryText = ""; // Holds the data for the clipboard
 
         document.getElementById('toggleHistory').onclick = () => {
             const content = document.getElementById('historyContent');
@@ -118,23 +122,19 @@
             onValue(ref(db), (snap) => {
                 const data = snap.val() || {};
                 const vault = data.vault || {};
-                const limits = data.master_settings?.limits || { min: 0.1, max: 2.0 };
                 const history = data.history?.transitions || {};
 
-                document.getElementById('curLimits').innerText = `CURRENT: MIN ${limits.min} | MAX ${limits.max}`;
-                document.getElementById('disp-overflow').innerText = parseFloat(vault.overflow || 0).toFixed(3);
-                
+                // Grid update logic...
                 const grid = document.getElementById('sensorGrid');
                 grid.innerHTML = '';
                 for(let i=1; i<=12; i++) {
                     let r = vault.rounds?.[`r${i}`] || { normal: 0, boost: 0 };
-                    grid.innerHTML += `
-                        <div class="sensor-box">
-                            <div style="font-size:0.55rem;color:#555;margin-bottom:4px;">RD ${i}</div>
-                            <div class="val-sub-n">N: ${parseFloat(r.normal||0).toFixed(2)}</div>
-                            <div class="val-sub-b">B: ${parseFloat(r.boost||0).toFixed(2)}</div>
-                            <div class="val-main">${(parseFloat(r.normal||0)+parseFloat(r.boost||0)).toFixed(3)}</div>
-                        </div>`;
+                    grid.innerHTML += `<div class="sensor-box">
+                        <div style="font-size:0.55rem;color:#555;margin-bottom:4px;">RD ${i}</div>
+                        <div class="val-sub-n">N: ${parseFloat(r.normal||0).toFixed(2)}</div>
+                        <div class="val-sub-b">B: ${parseFloat(r.boost||0).toFixed(2)}</div>
+                        <div class="val-main">${(parseFloat(r.normal||0)+parseFloat(r.boost||0)).toFixed(3)}</div>
+                    </div>`;
                 }
 
                 const histList = document.getElementById('history-list');
@@ -159,13 +159,25 @@
                         tN += n; tB += b; tT += tot;
                         table += `<tr><td>${i}</td><td>${n.toFixed(2)}</td><td class="td-b">${b.toFixed(2)}</td><td class="td-t">${tot.toFixed(3)}</td></tr>`;
                     }
-                    // Summary Row
                     table += `<tr class="t-footer"><td>SUM</td><td>${tN.toFixed(2)}</td><td class="td-b">${tB.toFixed(2)}</td><td class="td-t">${tT.toFixed(3)}</td></tr>`;
-                    document.getElementById('modalBody').innerHTML = table + `</table><p style="font-size:0.75rem; color:var(--gold); margin-top:10px;">Reclaimed to Overflow: ${record.moved_from_overflow} tBNB</p>`;
+                    
+                    // Format text for copy button
+                    currentSummaryText = `SANRAT AUDIT: Season ${record.from_season}\nDate: ${record.timestamp}\n------------------\nTotal Normal: ${tN.toFixed(2)} tBNB\nTotal Boost: ${tB.toFixed(2)} tBNB\nGRAND TOTAL: ${tT.toFixed(3)} tBNB\nReclaimed: ${record.moved_from_overflow} tBNB`;
+                    
+                    document.getElementById('modalTitle').innerText = `Season ${record.from_season} Summary`;
+                    document.getElementById('modalBody').innerHTML = table + `</table>`;
                     document.getElementById('historyModal').style.display = 'flex';
                 };
             });
 
+            document.getElementById('btnCopySummary').onclick = () => {
+                navigator.clipboard.writeText(currentSummaryText);
+                const btn = document.getElementById('btnCopySummary');
+                btn.innerText = "✅ COPIED TO CLIPBOARD!";
+                setTimeout(() => btn.innerText = "📋 COPY DATA SUMMARY", 2000);
+            };
+
+            // Limit and Wipe buttons logic...
             document.getElementById('btnMin').onclick = () => update(ref(db, 'master_settings/limits'), { min: parseFloat(document.getElementById('minIn').value) });
             document.getElementById('btnMax').onclick = () => update(ref(db, 'master_settings/limits'), { max: parseFloat(document.getElementById('maxIn').value) });
             document.getElementById('btnWipe').onclick = () => confirm("Wipe all rounds?") && set(ref(db, 'vault/rounds'), {});
