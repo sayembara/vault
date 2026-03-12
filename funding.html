@@ -3,185 +3,174 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SANRAT | Funding & Control</title>
-    <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
+    <title>SANRAT | Funding Portal</title>
     <style>
         :root {
-            --glass: rgba(255, 255, 255, 0.1);
-            --border: rgba(255, 255, 255, 0.2);
-            --text: #ffffff;
+            --glass: rgba(255, 255, 255, 0.08);
+            --border: rgba(255, 255, 255, 0.15);
+            --boost-color: #ff4b2b;
+            --refill-color: #6dd5ed;
         }
 
         body {
             margin: 0;
-            padding: 20px;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, #0f0c29, #302b63, #24243e);
-            color: var(--text);
-            min-height: 100vh;
+            padding: 40px 20px;
+            font-family: 'Inter', system-ui, -apple-system, sans-serif;
+            background: radial-gradient(circle at top right, #1a1a2e, #0f0c29);
+            color: white;
             display: flex;
             flex-direction: column;
             align-items: center;
         }
 
-        h1 { margin-bottom: 30px; text-shadow: 0 0 15px rgba(0,255,255,0.5); }
+        .header { text-align: center; margin-bottom: 40px; }
+        .header h1 { font-size: 2.5rem; margin-bottom: 10px; background: linear-gradient(to right, #fff, #888); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
 
         .container {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
-            gap: 25px;
-            max-width: 1000px;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 30px;
+            max-width: 900px;
             width: 100%;
         }
 
-        /* Glassmorphism Card Style */
         .card {
             background: var(--glass);
-            backdrop-filter: blur(15px);
-            -webkit-backdrop-filter: blur(15px);
+            backdrop-filter: blur(20px);
             border: 1px solid var(--border);
-            border-radius: 20px;
-            padding: 25px;
-            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.37);
+            border-radius: 24px;
+            padding: 30px;
             display: flex;
             flex-direction: column;
-            transition: transform 0.3s ease;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.4);
         }
 
-        .card:hover { transform: translateY(-5px); }
+        .card h2 { margin: 0 0 15px 0; font-size: 1.4rem; display: flex; align-items: center; gap: 10px; }
+        .remark { font-size: 0.95rem; color: #b0b0b0; line-height: 1.6; margin-bottom: 25px; min-height: 60px; }
 
-        .card h2 { margin-top: 0; font-size: 1.5rem; }
-        .remark { font-size: 0.9rem; opacity: 0.8; margin-bottom: 20px; line-height: 1.4; }
-        
         input {
-            background: rgba(0, 0, 0, 0.3);
+            background: rgba(0, 0, 0, 0.4);
             border: 1px solid var(--border);
-            padding: 12px;
-            border-radius: 10px;
-            color: white;
-            font-size: 1rem;
-            margin-bottom: 15px;
-            outline: none;
-        }
-
-        button {
             padding: 15px;
-            border: none;
-            border-radius: 10px;
-            font-weight: bold;
-            cursor: pointer;
-            text-transform: uppercase;
-            letter-spacing: 1px;
+            border-radius: 12px;
+            color: white;
+            font-size: 1.1rem;
+            margin-bottom: 20px;
             transition: 0.3s;
         }
+        input:focus { border-color: #fff; background: rgba(0,0,0,0.6); outline: none; }
 
-        /* Color Coding for Buttons */
-        .btn-boost { background: linear-gradient(90deg, #ff416c, #ff4b2b); color: white; }
-        .btn-refill { background: linear-gradient(90deg, #2193b0, #6dd5ed); color: white; }
-        .btn-round { background: linear-gradient(90deg, #f7971e, #ffd200); color: #000; margin-top: 20px; }
-
-        button:hover { filter: brightness(1.2); box-shadow: 0 0 15px rgba(255,255,255,0.2); }
-        button:active { transform: scale(0.98); }
-
-        .status-badge {
-            margin-top: 15px;
-            font-size: 0.8rem;
-            text-align: center;
-            padding: 5px;
-            border-radius: 5px;
-            background: rgba(0, 255, 0, 0.1);
-            color: #00ff00;
-            display: none;
+        button {
+            padding: 16px;
+            border: none;
+            border-radius: 12px;
+            font-weight: 700;
+            cursor: pointer;
+            letter-spacing: 0.5px;
+            transition: all 0.3s ease;
         }
+
+        .btn-boost { background: var(--boost-color); color: white; box-shadow: 0 4px 15px rgba(255, 75, 43, 0.3); }
+        .btn-refill { background: var(--refill-color); color: #00334e; box-shadow: 0 4px 15px rgba(109, 213, 237, 0.3); }
+        button:hover { transform: translateY(-2px); filter: brightness(1.1); }
+
+        /* Bottom Status Area */
+        .vault-status {
+            margin-top: 50px;
+            width: 100%;
+            max-width: 900px;
+            display: flex;
+            justify-content: space-around;
+            background: rgba(255,255,255,0.03);
+            padding: 20px;
+            border-radius: 15px;
+            border: 1px dashed var(--border);
+        }
+
+        .status-item { text-align: center; }
+        .status-label { font-size: 0.8rem; color: #888; text-transform: uppercase; margin-bottom: 5px; }
+        .status-value { font-size: 1.5rem; font-family: monospace; font-weight: bold; color: #00ffcc; }
     </style>
 </head>
 <body>
 
-    <h1>Sponsor Control Center</h1>
+    <div class="header">
+        <h1>Funding Ops</h1>
+        <p style="color: #888;">Protocol: Injection & Capital Management</p>
+    </div>
 
     <div class="container">
         <div class="card">
             <h2>🚀 Seasonal Boost</h2>
             <p class="remark">
-                <strong>Current Season Reward.</strong> <br>
-                Use this to inject funds into the active prize pool. This directly increases the payouts for the current racers.
+                <strong>Current Season Reward.</strong> Increases payouts for active racers immediately. Use this to drive high engagement during peak hours.
             </p>
             <input type="number" id="boostAmount" placeholder="Amount (ETH/BNB)" step="0.01">
-            <button class="btn-boost" onclick="triggerAction('boost')">Execute Boost</button>
-            <div id="boostStatus" class="status-badge">Transaction Sent!</div>
+            <button class="btn-boost" onclick="execute('boost')">Execute Injection</button>
         </div>
 
         <div class="card">
             <h2>🔋 Normal Refill</h2>
             <p class="remark">
-                <strong>Ecosystem Maintenance.</strong> <br>
-                Refill the primary treasury. This ensures long-term sustainability and funds future seasons.
+                <strong>Treasury Maintenance.</strong> Refill the main refill bucket. This ensures the baseline rewards are sustained across multiple rounds.
             </p>
             <input type="number" id="refillAmount" placeholder="Amount (ETH/BNB)" step="0.1">
-            <button class="btn-refill" onclick="triggerAction('normal')">Refill Treasury</button>
-            <div id="refillStatus" class="status-badge">Refill Injected!</div>
+            <button class="btn-refill" onclick="execute('normal')">Execute Refill</button>
         </div>
     </div>
 
-    <div class="card" style="margin-top: 30px; width: 100%; max-width: 1000px;">
-        <h2>🏁 Race Logistics</h2>
-        <p class="remark">
-            Advancing the round will trigger the automated payout system on the Master Page and update player rankings.
-        </p>
-        <button class="btn-round" onclick="triggerAction('next_round')">Advance to Next Round</button>
+    <div class="vault-status">
+        <div class="status-item">
+            <div class="status-label">Refill Bucket</div>
+            <div class="status-value" id="val-refill">0.00</div>
+        </div>
+        <div class="status-item">
+            <div class="status-label">Boost Bucket</div>
+            <div class="status-value" id="val-boost">0.00</div>
+        </div>
+        <div class="status-item">
+            <div class="status-label">Overflow Amount</div>
+            <div class="status-value" id="val-overflow" style="color: #ffcc00;">0.00</div>
+        </div>
     </div>
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js";
-        import { getDatabase, ref, set, serverTimestamp } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-database.js";
+        import { getDatabase, ref, set, onValue, serverTimestamp } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-database.js";
 
-        // --- PASTE YOUR CONFIG HERE ---
         const firebaseConfig = {
-            apiKey: "AIza...",
+            apiKey: "YOUR_KEY",
             authDomain: "nuclearf1-94a6b.firebaseapp.com",
             databaseURL: "https://nuclearf1-94a6b-default-rtdb.asia-southeast1.firebasedatabase.app",
-            projectId: "nuclearf1-94a6b",
-            storageBucket: "nuclearf1-94a6b.appspot.com",
-            messagingSenderId: "...",
-            appId: "..."
+            projectId: "nuclearf1-94a6b"
         };
 
         const app = initializeApp(firebaseConfig);
         const db = getDatabase(app);
 
-        window.triggerAction = function(actionType) {
-            let amount = 0;
-            let statusEl = null;
+        // --- Live Update Buckets ---
+        onValue(ref(db, 'vault/stats'), (snapshot) => {
+            const data = snapshot.val() || {};
+            document.getElementById('val-refill').innerText = data.refill_total || "0.00";
+            document.getElementById('val-boost').innerText = data.boost_total || "0.00";
+            document.getElementById('val-overflow').innerText = data.overflow || "0.00";
+        });
 
-            if (actionType === 'boost') {
-                amount = document.getElementById('boostAmount').value;
-                statusEl = document.getElementById('boostStatus');
-            } else if (actionType === 'normal') {
-                amount = document.getElementById('refillAmount').value;
-                statusEl = document.getElementById('refillStatus');
-            }
+        // --- Execute Logic ---
+        window.execute = function(type) {
+            const id = type === 'boost' ? 'boostAmount' : 'refillAmount';
+            const amount = document.getElementById(id).value;
 
-            if ((actionType === 'boost' || actionType === 'normal') && (!amount || amount <= 0)) {
-                alert("Please enter a valid amount.");
-                return;
-            }
+            if (!amount || amount <= 0) return alert("Enter valid amount");
 
-            // Create command in Firebase for the Master Page to hear
-            const commandRef = ref(db, 'commands/last_action');
-            set(commandRef, {
-                type: actionType,
-                value: amount || 1, // '1' signals round increment
+            set(ref(db, 'commands/last_action'), {
+                type: type,
+                value: amount,
                 timestamp: serverTimestamp(),
                 status: "pending"
             }).then(() => {
-                if(statusEl) {
-                    statusEl.style.display = 'block';
-                    setTimeout(() => statusEl.style.display = 'none', 3000);
-                }
-                if(actionType === 'next_round') alert("Round Advance Signal Sent!");
-            }).catch(err => {
-                console.error(err);
-                alert("Error sending command.");
+                alert(`Instruction Sent: ${type.toUpperCase()} injection processed.`);
+                document.getElementById(id).value = '';
             });
         };
     </script>
