@@ -11,22 +11,24 @@
         .btn-connect { background: #f6851b; color: white; padding: 15px 30px; border-radius: 50px; border: none; font-weight: bold; cursor: pointer; }
         #player-ui { display: none; width: 100%; max-width: 1100px; }
         .header-bar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; background: var(--glass); padding: 15px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.1); }
-        .finance-card { background: rgba(255,255,255,0.03); border: 1px solid var(--gold); padding: 20px; border-radius: 15px; margin-bottom: 20px; display: grid; grid-template-columns: 1fr 1.5fr; align-items: center; }
-        .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 15px; margin-bottom: 30px; }
+        .finance-card { background: rgba(255,255,255,0.03); border: 1px solid var(--gold); padding: 20px; border-radius: 15px; margin-bottom: 20px; display: grid; grid-template-columns: 1fr 1.5fr; align-items: center; gap: 20px; }
+        .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 15px; margin-bottom: 30px; }
         .car-card { background: var(--glass); border: 1px solid rgba(255,255,255,0.1); border-radius: 15px; padding: 15px; position: relative; }
         .car-card.hero { border: 2px solid var(--gold); }
         .car-card.support { border: 2px solid var(--accent); }
-        .role-text { font-weight: 900; font-size: 0.75rem; margin-bottom: 5px; min-height: 1rem; }
+        .role-text { font-weight: 900; font-size: 0.75rem; margin-bottom: 5px; min-height: 1rem; text-transform: uppercase; }
         .hero .role-text { color: var(--gold); }
         .support .role-text { color: var(--accent); }
-        .btn-action { padding: 10px 14px; border-radius: 6px; border: none; font-weight: bold; cursor: pointer; font-size: 0.7rem; }
+        .btn-action { padding: 12px 14px; border-radius: 6px; border: none; font-weight: bold; cursor: pointer; font-size: 0.7rem; transition: 0.2s; }
         .btn-pay { background: var(--accent); color: #00334e; }
         .btn-claim { background: var(--gold); color: #000; }
+        .btn-release { background: #ffffff; color: #000; }
+        .btn-role { flex: 1; font-size: 0.6rem; background: #222; color: white; border: 1px solid #444; padding: 5px; cursor: pointer; }
         .track-box { background: #161b22; border-radius: 15px; padding: 20px; border: 1px solid #30363d; width: 100%; box-sizing: border-box; }
-        .track-lane { position: relative; width: 100%; height: 28px; border-bottom: 1px solid #21262d; }
-        .track-car { position: absolute; height: 18px; width: 32px; background: #444; border-radius: 3px; top: 5px; transition: 1s linear; font-size: 0.55rem; color: black; font-weight: 900; text-align: center; line-height: 18px; cursor: help; }
-        .track-car.hero { background: var(--gold); box-shadow: 0 0 8px var(--gold); }
-        .track-car.support { background: var(--accent); box-shadow: 0 0 8px var(--accent); }
+        .track-lane { position: relative; width: 100%; height: 32px; border-bottom: 1px solid #21262d; }
+        .track-car { position: absolute; height: 20px; width: 35px; border-radius: 4px; top: 6px; transition: 1s linear; font-size: 0.6rem; color: black; font-weight: 900; text-align: center; line-height: 20px; cursor: help; }
+        .track-car.hero { background: var(--gold); box-shadow: 0 0 10px var(--gold); }
+        .track-car.support { background: var(--accent); box-shadow: 0 0 10px var(--accent); }
         .finish-line { position: absolute; left: 66.6%; top: 0; bottom: 0; border-left: 2px dashed #444; }
         select { background:#000; color:white; border:1px solid var(--accent); padding:8px; border-radius:5px; }
     </style>
@@ -45,14 +47,14 @@
 
         <div class="finance-card">
             <div>
-                <div style="font-size: 0.6rem; color: #888;">TEAM BALANCE</div>
-                <div id="teamBalDisplay" style="font-size: 1.5rem; font-weight: bold; color: var(--gold);">0.000 tBNB</div>
+                <div style="font-size: 0.6rem; color: #888; letter-spacing: 1px;">TEAM INTERNAL BALANCE</div>
+                <div id="teamBalDisplay" style="font-size: 1.8rem; font-weight: bold; color: var(--gold);">0.000 tBNB</div>
             </div>
             <div style="display: flex; gap: 8px; flex-wrap: wrap;">
-                <button class="btn-action btn-pay" id="btnPayBal" onclick="pay('bal')">PAY VIA BALANCE (0.1)</button>
-                <button class="btn-action btn-pay" id="btnPayMeta" onclick="pay('meta')">PAY VIA METAMASK (0.1)</button>
-                <button class="btn-action btn-claim" onclick="claimPrize()">CLAIM PRIZE</button>
-                <button class="btn-action" style="background:#555; color:white;" onclick="release()">RELEASE TO WALLET</button>
+                <button class="btn-action btn-pay" id="btnPayBal" onclick="pay('bal')">PAY ENTRANCE (0.1)</button>
+                <button class="btn-action btn-pay" id="btnPayMeta" onclick="pay('meta')">METAMASK PAY</button>
+                <button class="btn-action btn-claim" id="btnClaim" onclick="claimPrize()">CLAIM PRIZE (0.000)</button>
+                <button class="btn-action btn-release" id="btnRelease" onclick="release()">RELEASE TO WALLET (0.000)</button>
             </div>
         </div>
 
@@ -60,10 +62,10 @@
 
         <div class="track-box">
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
-                <h3 style="margin:0;">LIVE TRACK</h3>
+                <h3 style="margin:0;">RACE TRACK (LIVE)</h3>
                 <span id="track-status" style="font-size:0.7rem; color:var(--gold);">OFFLINE</span>
             </div>
-            <div id="track-container" style="position:relative; width:100%; height:300px; background:#000; border-radius:10px; overflow-y:auto;">
+            <div id="track-container" style="position:relative; width:100%; height:320px; background:#000; border-radius:10px; overflow-y:auto;">
                 <div class="finish-line"></div>
                 <div id="cars-layer"></div>
             </div>
@@ -97,12 +99,18 @@
         async function syncFinance() {
             const team = document.getElementById('teamSelect').value;
             onValue(ref(db, `balances/${team}`), snap => {
-                document.getElementById('teamBalDisplay').innerText = `${(snap.val() || 0).toFixed(3)} tBNB`;
+                const bal = snap.val() || 0;
+                document.getElementById('teamBalDisplay').innerText = `${bal.toFixed(3)} tBNB`;
+                document.getElementById('btnRelease').innerText = `RELEASE TO WALLET (${bal.toFixed(3)})`;
+            });
+            onValue(ref(db, `prizes/${team}`), snap => {
+                const p = snap.val() || 0;
+                document.getElementById('btnClaim').innerText = `CLAIM PRIZE (${p.toFixed(3)})`;
             });
             onValue(ref(db, `race_state/paid_teams/${team}`), snap => {
                 const paid = snap.val() === true;
                 const b = document.getElementById('btnPayBal');
-                b.innerText = paid ? "ENTRANCE FEE PAID" : "PAY VIA BALANCE (0.1)";
+                b.innerText = paid ? "ENTRANCE PAID" : "PAY ENTRANCE (0.1)";
                 b.disabled = paid;
                 document.getElementById('btnPayMeta').style.display = paid ? "none" : "block";
             });
@@ -110,28 +118,37 @@
 
         window.pay = async (method) => {
             const team = document.getElementById('teamSelect').value;
-            if(!confirm(`Pay 0.1 tBNB entrance fee via ${method}?`)) return;
             if(method === 'bal') {
                 const s = await get(ref(db, `balances/${team}`));
-                if((s.val()||0) < 0.1) return alert("Insufficient balance");
+                if((s.val()||0) < 0.1) return alert("Insufficient Balance");
                 await update(ref(db), { [`balances/${team}`]: s.val() - 0.1, [`race_state/paid_teams/${team}`]: true });
             } else { await set(ref(db, `race_state/paid_teams/${team}`), true); }
         };
 
         window.claimPrize = async () => {
             const team = document.getElementById('teamSelect').value;
-            if(confirm("Claim prize from pool to your team balance?")) {
-                const s = await get(ref(db, `balances/${team}`));
-                await set(ref(db, `balances/${team}`), (s.val()||0) + 0.25); // Mock prize
-                alert("Prize Claimed!");
-            }
+            const pSnap = await get(ref(db, `prizes/${team}`));
+            const prizeAmt = pSnap.val() || 0;
+            if(prizeAmt <= 0) return alert("No prize to claim");
+            
+            const bSnap = await get(ref(db, `balances/${team}`));
+            const curBal = bSnap.val() || 0;
+            
+            await update(ref(db), {
+                [`balances/${team}`]: curBal + prizeAmt,
+                [`prizes/${team}`]: 0
+            });
+            alert("Prize added to team balance!");
         };
 
         window.release = async () => {
             const team = document.getElementById('teamSelect').value;
-            if(confirm("Release team balance to MetaMask wallet?")) {
+            const bSnap = await get(ref(db, `balances/${team}`));
+            const amt = bSnap.val() || 0;
+            if(amt <= 0) return alert("Nothing to release");
+            if(confirm(`Send ${amt.toFixed(3)} to your MetaMask?`)) {
                 await set(ref(db, `balances/${team}`), 0);
-                alert("Funds sent to wallet!");
+                alert("Transaction Processed!");
             }
         };
 
@@ -142,7 +159,7 @@
                 grid.innerHTML = '';
                 Object.values(snap.val()).filter(c => c.team === team).forEach(car => {
                     grid.innerHTML += `<div class="car-card ${car.role||''}">
-                        <div class="role-text">${car.role ? '[ ' + car.role.toUpperCase() + ' ]' : ''}</div>
+                        <div class="role-text">${car.role || '&nbsp;'}</div>
                         <b>UNIT #${car.id}</b>
                         <div style="display:flex; gap:5px; margin-top:10px;">
                             <button class="btn-role" onclick="setRole(${car.id}, 'hero')">HERO</button>
@@ -163,7 +180,7 @@
         };
 
         function listenToTrack() {
-            onValue(ref(db, 'master_state'), s => { document.getElementById('track-status').innerText = s.val().label; });
+            onValue(ref(db, 'master_state'), s => { document.getElementById('track-status').innerText = s.val()?.label || "OFFLINE"; });
             onValue(ref(db, 'race_state/paid_teams'), paidSnap => {
                 const paidTeams = paidSnap.val() || {};
                 onValue(ref(db, 'cars'), carSnap => {
@@ -172,8 +189,8 @@
                     Object.values(carSnap.val()).forEach(c => {
                         if(paidTeams[c.team] && c.role) {
                             const prog = (c.total_dist || 0) / 1500 * 100;
-                            const tooltip = `ID: ${c.id}\nP:${c.traits.propulsion} T:${c.traits.traction} S:${c.traits.stability} C:${c.traits.core}\nDist: ${c.total_dist?.toFixed(1)}m`;
-                            layer.innerHTML += `<div class="track-lane"><div class="track-car ${c.role}" style="left:${prog}%" title="${tooltip}">${c.id}</div></div>`;
+                            const tip = `ID:${c.id}\nP:${c.traits.propulsion} T:${c.traits.traction} S:${c.traits.stability} C:${c.traits.core}\nDist:${c.total_dist?.toFixed(1)}m`;
+                            layer.innerHTML += `<div class="track-lane"><div class="track-car ${c.role}" style="left:${prog}%" title="${tip}">${c.id}</div></div>`;
                         }
                     });
                 });
