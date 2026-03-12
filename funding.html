@@ -117,21 +117,21 @@
 
     <div class="container">
         <div class="card">
-            <h2>🚀 Seasonal Boost</h2>
-            <p class="remark"><strong>Target: Current Season.</strong> Use this to spike rewards for active racers. Payouts from this bucket are triggered immediately upon round completion.</p>
+            <h2>🚀 Round Boost</h2>
+            <p class="remark"><strong>Target: Current Round.</strong> Use this to spike rewards for active racers immediately. Payouts from this bucket are triggered upon round completion.</p>
             <input type="number" id="boostAmount" placeholder="Amount (tBNB)" step="0.01">
             <button class="btn-boost" onclick="execute('boost')">Execute Injection</button>
         </div>
 
-        <div class="card :refill">
+        <div class="card">
             <h2>🔋 Normal Refill</h2>
-            <p class="remark"><strong>Target: Refill Treasury.</strong> Standard injection to maintain the baseline reward pool across the entire ecosystem.</p>
+            <p class="remark"><strong>Target: Refill Treasury.</strong> Standard injection to maintain the baseline reward pool across all rounds.</p>
             <input type="number" id="refillAmount" placeholder="Amount (tBNB)" step="0.1">
             <button class="btn-refill" onclick="execute('normal')">Execute Refill</button>
         </div>
     </div>
 
-    <div class="sensor-title">📡 Season Vault Sensors</div>
+    <div class="sensor-title">📡 Round Vault Sensors</div>
     <div class="sensor-grid" id="sensorGrid">
         </div>
 
@@ -143,8 +143,9 @@
         import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js";
         import { getDatabase, ref, set, onValue, serverTimestamp } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-database.js";
 
+        // --- PASTE YOUR ACTUAL CONFIG HERE ---
         const firebaseConfig = {
-            apiKey: "YOUR_KEY",
+            apiKey: "YOUR_API_KEY",
             authDomain: "nuclearf1-94a6b.firebaseapp.com",
             databaseURL: "https://nuclearf1-94a6b-default-rtdb.asia-southeast1.firebasedatabase.app",
             projectId: "nuclearf1-94a6b"
@@ -153,35 +154,16 @@
         const app = initializeApp(firebaseConfig);
         const db = getDatabase(app);
 
-        // Generate 12 Sensor Boxes
-        const grid = document.getElementById('sensorGrid');
-        for (let i = 1; i <= 12; i++) {
-            grid.innerHTML += `
-                <div class="sensor-box">
-                    <div class="sensor-label">SEASON ${i}</div>
-                    <div class="sensor-val" id="s${i}-val">0.00</div>
-                </div>
-            `;
-        }
-
-        // --- Live Sync Sensors ---
-        onValue(ref(db, 'vault/seasons'), (snapshot) => {
-            const data = snapshot.val() || {};
-            for (let i = 1; i <= 12; i++) {
-                document.getElementById(`s${i}-val`).innerText = data[`s${i}`] || "0.00";
-            }
-        });
-
-        onValue(ref(db, 'vault/overflow'), (snapshot) => {
-            document.getElementById('val-overflow').innerText = snapshot.val() || "0.000";
-        });
-
-        // --- Execute Injection ---
+        // Explicitly attach to window so HTML onclick can find it
         window.execute = function(type) {
-            const id = type === 'boost' ? 'boostAmount' : 'refillAmount';
-            const amount = document.getElementById(id).value;
+            console.log("Executing:", type);
+            const inputId = type === 'boost' ? 'boostAmount' : 'refillAmount';
+            const amount = document.getElementById(inputId).value;
 
-            if (!amount || amount <= 0) return alert("Please enter a valid tBNB amount.");
+            if (!amount || amount <= 0) {
+                alert("Please enter a valid tBNB amount.");
+                return;
+            }
 
             set(ref(db, 'commands/last_action'), {
                 type: type,
@@ -190,10 +172,38 @@
                 timestamp: serverTimestamp(),
                 status: "pending"
             }).then(() => {
-                alert(`SUCCESS: ${type.toUpperCase()} command broadcasted.`);
-                document.getElementById(id).value = '';
+                alert(`SUCCESS: ${type.toUpperCase()} command sent.`);
+                document.getElementById(inputId).value = '';
+            }).catch(err => {
+                console.error(err);
+                alert("Error: Check console.");
             });
         };
+
+        // Generate 12 Round Boxes
+        const grid = document.getElementById('sensorGrid');
+        for (let i = 1; i <= 12; i++) {
+            grid.innerHTML += `
+                <div class="sensor-box">
+                    <div class="sensor-label">ROUND ${i}</div>
+                    <div class="sensor-val" id="r${i}-val">0.00</div>
+                </div>
+            `;
+        }
+
+        // Live Sync Round Data
+        onValue(ref(db, 'vault/rounds'), (snapshot) => {
+            const data = snapshot.val() || {};
+            for (let i = 1; i <= 12; i++) {
+                const el = document.getElementById(`r${i}-val`);
+                if(el) el.innerText = data[`r${i}`] || "0.00";
+            }
+        });
+
+        onValue(ref(db, 'vault/overflow'), (snapshot) => {
+            const el = document.getElementById('val-overflow');
+            if(el) el.innerText = snapshot.val() || "0.000";
+        });
     </script>
 </body>
 </html>
