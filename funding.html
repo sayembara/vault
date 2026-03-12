@@ -5,37 +5,38 @@
     <title>SANRAT | Funding Ops</title>
     <style>
         :root { --glass: rgba(255, 255, 255, 0.08); --accent: #00ffcc; --boost: #ff4b2b; }
-        body { margin: 0; padding: 40px; font-family: 'Inter', sans-serif; background: #0f0c29; color: white; display: flex; flex-direction: column; align-items: center; }
-        .container { display: grid; grid-template-columns: 1fr 1fr; gap: 30px; max-width: 900px; width: 100%; }
-        .card { background: var(--glass); border: 1px solid rgba(255,255,255,0.1); border-radius: 20px; padding: 25px; }
-        input { background: rgba(0,0,0,0.4); border: 1px solid rgba(255,255,255,0.2); padding: 12px; border-radius: 10px; color: white; width: calc(100% - 26px); margin-bottom: 15px; }
-        button { width: 100%; padding: 15px; border: none; border-radius: 12px; font-weight: 700; cursor: pointer; color: white; }
+        body { margin: 0; padding: 20px; font-family: 'Inter', sans-serif; background: #0f0c29; color: white; display: flex; flex-direction: column; align-items: center; }
+        .container { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; max-width: 900px; width: 100%; }
+        .card { background: var(--glass); border: 1px solid rgba(255,255,255,0.1); border-radius: 20px; padding: 20px; }
+        input { background: rgba(0,0,0,0.4); border: 1px solid rgba(255,255,255,0.2); padding: 12px; border-radius: 10px; color: white; width: calc(100% - 26px); margin-bottom: 10px; }
+        button { width: 100%; padding: 12px; border: none; border-radius: 10px; font-weight: 700; cursor: pointer; color: white; transition: 0.3s; }
         .btn-normal { background: #6dd5ed; color: #00334e; }
         .btn-boost { background: var(--boost); }
-        .overflow-box { font-size: 1.8rem; color: #ffcc00; margin: 20px 0; font-family: monospace; }
-        .sensor-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; width: 100%; max-width: 900px; margin-top: 20px; }
+        .overflow-box { font-size: 1.5rem; color: #ffcc00; margin: 15px 0; font-family: monospace; }
+        .sensor-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; width: 100%; max-width: 900px; }
         .sensor-box { background: rgba(255,255,255,0.03); border: 1px solid rgba(0, 255, 204, 0.1); padding: 10px; border-radius: 10px; text-align: center; }
+        .sub-amt { font-size: 0.7rem; color: #aaa; }
+        .total-amt { font-size: 1.1rem; color: var(--accent); font-weight: bold; margin-top: 4px; }
     </style>
 </head>
 <body>
-    <h1>FUNDING OPERATIONS</h1>
+    <h1>FUNDING OPS</h1>
     <div class="overflow-box">OVERFLOW: <span id="val-overflow">0.000</span> tBNB</div>
 
     <div class="container">
         <div class="card">
-            <h2>🔋 Normal Injection</h2>
-            <p style="font-size:0.8rem;color:#888;">Follows Min/Max limits per bucket.</p>
+            <label>NORMAL INJECTION</label>
             <input type="number" id="normalAmt" placeholder="Amount tBNB">
-            <button class="btn-normal" onclick="executeFund('normal')">Inject Normal</button>
+            <button class="btn-normal" onclick="window.executeFund('normal')">Inject Normal</button>
         </div>
         <div class="card">
-            <h2>🚀 Boost Injection</h2>
-            <p style="font-size:0.8rem;color:#888;">Split across Active + Future rounds.</p>
+            <label>BOOST INJECTION</label>
             <input type="number" id="boostAmt" placeholder="Amount tBNB">
-            <button class="btn-boost" onclick="executeFund('boost')">Inject Boost</button>
+            <button class="btn-boost" onclick="window.executeFund('boost')">Inject Boost</button>
         </div>
     </div>
 
+    <h3 style="margin-top:30px; color: #888;">ROUND BUCKET DETAILS</h3>
     <div class="sensor-grid" id="sensorGrid"></div>
 
     <script type="module">
@@ -51,7 +52,15 @@
             document.getElementById('val-overflow').innerText = parseFloat(d.overflow || 0).toFixed(3);
             const grid = document.getElementById('sensorGrid'); grid.innerHTML = '';
             for(let i=1; i<=12; i++) {
-                grid.innerHTML += `<div class="sensor-box"><div style="font-size:0.7rem;color:#888;">R${i}</div><div style="color:#00ffcc;">${parseFloat(d.rounds?.[`r${i}`] || 0).toFixed(3)}</div></div>`;
+                const r = d.rounds?.[`r${i}`] || { normal: 0, boost: 0 };
+                const total = (parseFloat(r.normal || 0) + parseFloat(r.boost || 0)).toFixed(3);
+                grid.innerHTML += `
+                    <div class="sensor-box">
+                        <div style="font-size:0.6rem;color:#888;margin-bottom:5px;">ROUND ${i}</div>
+                        <div class="sub-amt">N: ${parseFloat(r.normal || 0).toFixed(3)}</div>
+                        <div class="sub-amt">B: ${parseFloat(r.boost || 0).toFixed(3)}</div>
+                        <div class="total-amt">${total}</div>
+                    </div>`;
             }
         });
 
@@ -63,35 +72,34 @@
             const data = snap.val() || {};
             const limits = data.master_settings?.limits || { min: 0.1, max: 2.0 };
             const activeRound = data.race_data?.current_round || 1;
-            let currentOverflow = parseFloat(data.vault?.overflow || 0);
+            let overflow = parseFloat(data.vault?.overflow || 0);
             let rounds = data.vault?.rounds || {};
-            const updates = {};
 
             if(type === 'normal') {
-                // Waterfill logic: fill to max, overflow the rest
                 let remaining = amt;
                 for(let i=1; i<=12; i++) {
-                    let cur = parseFloat(rounds[`r${i}`] || 0);
-                    let space = limits.max - cur;
+                    if(!rounds[`r${i}`]) rounds[`r${i}`] = { normal: 0, boost: 0 };
+                    let curNormal = parseFloat(rounds[`r${i}`].normal || 0);
+                    let space = limits.max - curNormal;
                     if(space > 0) {
                         let fill = Math.min(remaining, space);
-                        rounds[`r${i}`] = parseFloat((cur + fill).toFixed(3));
+                        rounds[`r${i}`].normal = parseFloat((curNormal + fill).toFixed(3));
                         remaining -= fill;
                     }
                 }
-                updates['vault/overflow'] = parseFloat((currentOverflow + remaining).toFixed(3));
+                overflow = parseFloat((overflow + remaining).toFixed(3));
             } else {
-                // Boost logic: Split equally among active + future rounds
                 const roundsLeft = (12 - activeRound) + 1;
                 const share = amt / roundsLeft;
                 for(let i = activeRound; i <= 12; i++) {
-                    let cur = parseFloat(rounds[`r${i}`] || 0);
-                    rounds[`r${i}`] = parseFloat((cur + share).toFixed(3));
+                    if(!rounds[`r${i}`]) rounds[`r${i}`] = { normal: 0, boost: 0 };
+                    let curBoost = parseFloat(rounds[`r${i}`].boost || 0);
+                    rounds[`r${i}`].boost = parseFloat((curBoost + share).toFixed(3));
                 }
             }
 
-            updates['vault/rounds'] = rounds;
-            update(ref(db), updates).then(() => alert("Injection Success"));
+            const up = {}; up['vault/rounds'] = rounds; up['vault/overflow'] = overflow;
+            update(ref(db), up).then(() => { alert("Injection Success"); document.getElementById(type+'Amt').value=''; });
         };
     </script>
 </body>
