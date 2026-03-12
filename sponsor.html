@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>SANRAT | Sponsor Audit & Control</title>
+    <title>SANRAT | Sponsor Control & Audit</title>
     <style>
         :root { --glass: rgba(255, 255, 255, 0.08); --accent: #00ffcc; --danger: #ff4b2b; --gold: #ffcc00; }
         body { margin: 0; padding: 20px; font-family: 'Inter', sans-serif; background: #0f0c29; color: white; display: flex; flex-direction: column; align-items: center; min-height: 100vh; }
@@ -10,53 +10,74 @@
         #auth-screen { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 80vh; text-align: center; }
         .btn-connect { background: #f6851b; color: white; padding: 15px 30px; font-size: 1.2rem; border-radius: 50px; border: none; cursor: pointer; font-weight: bold; }
         
-        #admin-ui { display: none; width: 100%; max-width: 900px; flex-direction: column; gap: 20px; }
-        .card { background: var(--glass); border: 1px solid rgba(255,255,255,0.1); border-radius: 20px; padding: 20px; text-align: center; }
+        #admin-ui { display: none; width: 100%; max-width: 900px; flex-direction: column; align-items: center; gap: 20px; }
+        .container { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; width: 100%; }
+        .card { background: var(--glass); border: 1px solid rgba(255,255,255,0.1); border-radius: 20px; padding: 20px; text-align: center; width: 100%; box-sizing: border-box; }
         
-        .history-card { text-align: left; background: rgba(0,0,0,0.2); }
-        .log-entry { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid rgba(255,255,255,0.05); }
+        input { background: rgba(0,0,0,0.4); border: 1px solid rgba(255,255,255,0.2); padding: 10px; border-radius: 8px; color: white; width: 80px; text-align: center; }
+        button { padding: 12px; border-radius: 10px; border: none; font-weight: bold; cursor: pointer; transition: 0.3s; }
         
-        button { padding: 10px 20px; border-radius: 8px; border: none; font-weight: bold; cursor: pointer; transition: 0.3s; }
-        .btn-view { background: var(--accent); color: #00334e; font-size: 0.75rem; }
+        .btn-set { background: #fff; color: #000; margin-left: 5px; }
+        .btn-reallocate { background: var(--accent); color: #00334e; width: 100%; font-size: 1rem; margin-top: 10px; }
+        .btn-view { background: var(--gold); color: #000; font-size: 0.7rem; padding: 5px 10px; }
+        .btn-wipe { background: transparent; border: 2px solid var(--danger); color: var(--danger); width: 100%; margin-top: 20px; }
+
+        .sensor-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; width: 100%; }
+        .sensor-box { background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.1); padding: 12px; border-radius: 12px; text-align: center; }
         
         /* Modal Style */
         #historyModal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); z-index: 100; justify-content: center; align-items: center; }
-        .modal-content { background: #1a1a2e; border: 1px solid var(--accent); padding: 30px; border-radius: 20px; width: 90%; max-width: 600px; max-height: 80vh; overflow-y: auto; }
-        table { width: 100%; border-collapse: collapse; margin-top: 15px; font-size: 0.85rem; }
-        th, td { border: 1px solid rgba(255,255,255,0.1); padding: 8px; text-align: center; }
-        th { background: rgba(0, 255, 204, 0.1); color: var(--accent); }
+        .modal-content { background: #1a1a2e; border: 1px solid var(--accent); padding: 30px; border-radius: 20px; width: 90%; max-width: 500px; }
+        table { width: 100%; border-collapse: collapse; margin-top: 15px; font-size: 0.8rem; }
+        th, td { border: 1px solid rgba(255,255,255,0.1); padding: 6px; text-align: center; }
+        
+        .history-list { text-align: left; max-height: 150px; overflow-y: auto; }
+        .log-entry { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid rgba(255,255,255,0.05); align-items: center; }
     </style>
 </head>
 <body>
 
     <div id="auth-screen">
-        <h1>SPONSOR AUDIT</h1>
+        <h1>SPONSOR GATEWAY</h1>
         <button class="btn-connect" id="connectBtn">Connect MetaMask</button>
     </div>
 
     <div id="admin-ui">
-        <div class="card">
-            <h3>VAULT OVERFLOW</h3>
-            <div style="font-size: 2.5rem; color: var(--gold); font-family: monospace;" id="disp-overflow">0.000</div>
+        <div class="container">
+            <div class="card">
+                <h3>SET LIMITS</h3>
+                <div>Min: <input type="number" id="minIn" step="0.1"> <button class="btn-set" id="btnMin">SET</button></div>
+                <div style="margin-top:10px;">Max: <input type="number" id="maxIn" step="0.1"> <button class="btn-set" id="btnMax">SET</button></div>
+                <p id="curLimits" style="font-size: 0.7rem; color:#888; margin-top:10px;"></p>
+            </div>
+            <div class="card">
+                <h3>VAULT OVERFLOW</h3>
+                <div style="font-size: 2.2rem; color: var(--gold); font-family: monospace;" id="disp-overflow">0.000</div>
+                <button class="btn-reallocate" id="btnReallocate">REALLOCATE FUNDS</button>
+            </div>
         </div>
 
-        <div class="card history-card">
-            <h4 style="margin-top:0; color:#888;">PREVIOUS SEASON RECORDS</h4>
-            <div id="log-content"><i>No historical data available.</i></div>
+        <div class="sensor-grid" id="sensorGrid"></div>
+
+        <div class="card" style="text-align: left;">
+            <h4 style="margin: 0 0 10px 0; color: #888;">SEASON HISTORY</h4>
+            <div id="history-list" class="history-list"><i>Loading...</i></div>
         </div>
+
+        <button class="btn-wipe" id="btnWipe">🚨 WIPE ALL ROUNDS (Sponsor Clean)</button>
     </div>
 
     <div id="historyModal">
         <div class="modal-content">
-            <h2 id="modalTitle" style="color: var(--accent); margin-top:0;">Season Details</h2>
+            <h3 id="modalTitle" style="color: var(--accent); margin-top:0;">Audit Details</h3>
             <div id="modalBody"></div>
-            <button onclick="document.getElementById('historyModal').style.display='none'" style="margin-top:20px; width:100%; background:var(--danger); color:white;">CLOSE</button>
+            <button onclick="document.getElementById('historyModal').style.display='none'" style="margin-top:20px; width:100%; background:var(--danger); color:white; border-radius:10px; padding:10px;">CLOSE</button>
         </div>
     </div>
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js";
-        import { getDatabase, ref, onValue } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-database.js";
+        import { getDatabase, ref, onValue, update, get, set } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-database.js";
 
         const WHITELISTED_ADMIN = "0xCe9782f77eC560a1Cb329F935b5D416AA41f1a5d".toLowerCase(); 
         const firebaseConfig = { apiKey: "AlzaSyBYxLOGFzaHN6CS4ro_bjnKEblbQE6Vtx4", databaseURL: "https://nuclearf1-94a6b-default-rtdb.asia-southeast1.firebasedatabase.app" };
@@ -69,54 +90,60 @@
                 if (accounts[0].toLowerCase() === WHITELISTED_ADMIN) {
                     document.getElementById('auth-screen').style.display = 'none';
                     document.getElementById('admin-ui').style.display = 'flex';
-                    loadSponsorData();
+                    initSponsorActions();
                 }
             }
         };
 
-        function loadSponsorData() {
+        function initSponsorActions() {
             onValue(ref(db), (snap) => {
                 const data = snap.val() || {};
+                const vault = data.vault || {};
+                const limits = data.master_settings?.limits || { min: 0.1, max: 2.0 };
+                const curRound = data.race_data?.current_round || 1;
                 const history = data.history?.transitions || {};
-                document.getElementById('disp-overflow').innerText = parseFloat(data.vault?.overflow || 0).toFixed(3);
 
-                const logBox = document.getElementById('log-content');
-                const entries = Object.entries(history).reverse();
+                document.getElementById('curLimits').innerText = `CURRENT: MIN ${limits.min} | MAX ${limits.max}`;
+                document.getElementById('disp-overflow').innerText = parseFloat(vault.overflow || 0).toFixed(3);
                 
-                if(entries.length > 0) {
-                    logBox.innerHTML = entries.map(([id, e]) => `
-                        <div class="log-entry">
-                            <div>
-                                <b>Season ${e.from_season}</b><br>
-                                <small style="color:#666;">${e.timestamp}</small>
-                            </div>
-                            <div style="color:var(--gold); font-size:0.9rem;">${e.moved_from_overflow} tBNB Reclaimed</div>
-                            <button class="btn-view" onclick="window.showDetails('${id}')">VIEW DETAILS</button>
-                        </div>
-                    `).join('');
-
-                    // Global function for the buttons to trigger
-                    window.showDetails = (id) => {
-                        const record = history[id];
-                        const states = record.final_vault_state;
-                        document.getElementById('modalTitle').innerText = `Season ${record.from_season} Final Audit`;
-                        
-                        let tableHTML = `<table><thead><tr><th>RD</th><th>Normal</th><th>Boost</th><th>Total</th></tr></thead><tbody>`;
-                        for(let i=1; i<=12; i++) {
-                            let rd = states[`r${i}`];
-                            tableHTML += `<tr>
-                                <td>${i}</td>
-                                <td>${parseFloat(rd.normal).toFixed(2)}</td>
-                                <td>${parseFloat(rd.boost).toFixed(2)}</td>
-                                <td style="color:var(--accent)">${rd.total}</td>
-                            </tr>`;
-                        }
-                        tableHTML += `</tbody></table>`;
-                        document.getElementById('modalBody').innerHTML = tableHTML;
-                        document.getElementById('historyModal').style.display = 'flex';
-                    };
+                // Sensor Grid
+                const grid = document.getElementById('sensorGrid');
+                grid.innerHTML = '';
+                for(let i=1; i<=12; i++) {
+                    let r = vault.rounds?.[`r${i}`] || { normal: 0, boost: 0 };
+                    grid.innerHTML += `<div class="sensor-box">
+                        <div style="font-size:0.65rem;color:#888;">RD ${i}</div>
+                        <div style="font-size:0.9rem; font-weight:bold; color:var(--accent);">${(parseFloat(r.normal||0)+parseFloat(r.boost||0)).toFixed(3)}</div>
+                    </div>`;
                 }
+
+                // History List
+                const histList = document.getElementById('history-list');
+                const entries = Object.entries(history).reverse();
+                histList.innerHTML = entries.length > 0 ? entries.map(([id, e]) => `
+                    <div class="log-entry">
+                        <span>Season ${e.from_season} <small style="color:#555; margin-left:10px;">${e.timestamp}</small></span>
+                        <button class="btn-view" onclick="window.showDetails('${id}')">DETAILS</button>
+                    </div>`).join('') : '<i>No records found.</i>';
+
+                window.showDetails = (id) => {
+                    const record = history[id];
+                    const states = record.final_vault_state;
+                    document.getElementById('modalTitle').innerText = `Season ${record.from_season} Data`;
+                    let table = `<table><tr><th>RD</th><th>Norm</th><th>Boost</th></tr>`;
+                    for(let i=1; i<=12; i++) {
+                        let rd = states[`r${i}`];
+                        table += `<tr><td>${i}</td><td>${parseFloat(rd.normal).toFixed(2)}</td><td>${parseFloat(rd.boost).toFixed(2)}</td></tr>`;
+                    }
+                    document.getElementById('modalBody').innerHTML = table + `</table>`;
+                    document.getElementById('historyModal').style.display = 'flex';
+                };
             });
+
+            // Original Control Button Logic
+            document.getElementById('btnMin').onclick = () => update(ref(db, 'master_settings/limits'), { min: parseFloat(document.getElementById('minIn').value) });
+            document.getElementById('btnMax').onclick = () => update(ref(db, 'master_settings/limits'), { max: parseFloat(document.getElementById('maxIn').value) });
+            document.getElementById('btnWipe').onclick = () => confirm("Wipe all round funds?") && set(ref(db, 'vault/rounds'), {});
         }
     </script>
 </body>
