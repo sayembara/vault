@@ -3,265 +3,218 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>NUCLEAR_F1_WEB3_CONTROL</title>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/5.7.2/ethers.umd.min.js"></script>
+    <title>SANRAT | Sponsor Management</title>
     <style>
-        :root { --accent: #f3ba2f; --bg: #000; --panel: #0a0a0a; --border: #222; --boost: #3498db; --danger: #e74c3c; --success: #2ecc71; }
-        body { background: var(--bg); color: #fff; font-family: 'Courier New', monospace; margin: 0; padding: 20px; display: flex; justify-content: center; }
+        :root {
+            --glass: rgba(255, 255, 255, 0.08);
+            --border: rgba(255, 255, 255, 0.15);
+            --accent: #00ffcc;
+            --danger: #ff4b2b;
+        }
+
+        body {
+            margin: 0;
+            padding: 40px 20px;
+            font-family: 'Inter', sans-serif;
+            background: #0f0c29;
+            color: white;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .header { text-align: center; margin-bottom: 30px; }
         
-        /* WEB3 AUTH GATE */
-        #auth-gate { position: fixed; inset: 0; background: #000; z-index: 9999; display: flex; align-items: center; justify-content: center; flex-direction: column; }
-        .auth-box { background: var(--panel); border: 1px solid var(--accent); padding: 40px; width: 350px; text-align: center; box-shadow: 0 0 30px rgba(243, 186, 47, 0.1); }
-        
-        #dashboard { display: none; width: 100%; max-width: 1100px; grid-template-columns: 1fr 340px; gap: 20px; }
-        .panel { background: var(--panel); border: 1px solid var(--border); padding: 20px; border-radius: 4px; margin-bottom: 20px; }
-        h3 { color: var(--accent); margin-top: 0; font-size: 0.9em; letter-spacing: 2px; border-bottom: 1px solid var(--border); padding-bottom: 10px; margin-bottom: 15px; }
-        
-        .buckets-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
-        .bucket { background: #080808; border: 1px solid #1a1a1a; padding: 10px; font-size: 0.8em; border-left: 3px solid #333; }
-        .bucket.past { opacity: 0.3; filter: grayscale(1); }
-        .bucket.active { border-color: var(--boost); background: #0f172a; border-left-color: var(--boost); }
-        
-        .val-line { display: flex; justify-content: space-between; margin: 2px 0; }
-        input, select { width: 100%; padding: 12px; background: #000; border: 1px solid #333; color: #fff; margin-bottom: 10px; font-family: inherit; }
-        button { width: 100%; padding: 14px; border: none; font-weight: bold; cursor: pointer; text-transform: uppercase; font-family: inherit; font-size: 0.75em; transition: 0.2s; }
-        .btn-acc { background: var(--accent); color: #000; }
-        .btn-acc:hover { background: #fff; }
-        .btn-boost { background: var(--boost); color: #fff; }
-        .btn-danger { background: var(--danger); color: #fff; }
-        .btn-ghost { background: transparent; border: 1px solid #444; color: #888; }
+        .management-container {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            max-width: 800px;
+            width: 100%;
+        }
+
+        .card {
+            background: var(--glass);
+            backdrop-filter: blur(20px);
+            border: 1px solid var(--border);
+            border-radius: 20px;
+            padding: 25px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+        }
+
+        .reallocate-grid {
+            display: grid;
+            grid-template-columns: 1fr auto 1fr;
+            align-items: center;
+            gap: 15px;
+            margin: 20px 0;
+        }
+
+        select, input {
+            background: rgba(0,0,0,0.4);
+            border: 1px solid var(--border);
+            padding: 12px;
+            border-radius: 10px;
+            color: white;
+            font-size: 1rem;
+        }
+
+        button {
+            padding: 15px;
+            border: none;
+            border-radius: 10px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: 0.3s;
+        }
+
+        .btn-move { background: var(--accent); color: #00334e; width: 100%; }
+        .btn-reset { background: transparent; border: 1px solid var(--danger); color: var(--danger); margin-top: 20px; }
+        .btn-reset:hover { background: var(--danger); color: white; }
+
+        .sensor-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 10px;
+            margin-top: 30px;
+            width: 100%;
+        }
+
+        .sensor-box {
+            background: rgba(255,255,255,0.03);
+            border: 1px solid var(--border);
+            padding: 10px;
+            border-radius: 10px;
+            text-align: center;
+        }
+
+        .sensor-val { font-family: monospace; color: var(--accent); font-size: 1.1rem; }
+        .overflow-box { text-align: center; font-size: 1.5rem; color: #ffcc00; margin-bottom: 20px; font-family: monospace; }
     </style>
 </head>
 <body>
 
-<div id="auth-gate">
-    <div class="auth-box">
-        <h2 style="color:var(--accent); font-size: 1.2em; margin-bottom: 10px;">VAULT_LOCKED</h2>
-        <p style="font-size: 0.7em; color: #666; margin-bottom: 30px;">REQUIRES MASTER WALLET SIGNATURE</p>
-        <button class="btn-acc" id="btnConnect">CONNECT & VERIFY</button>
-        <p id="auth-error" style="color:var(--danger); font-size: 0.7em; margin-top: 15px;"></p>
+    <div class="header">
+        <h1>SPONSOR COMMAND</h1>
+        <p style="color: #888;">VAULT MANAGEMENT & REALLOCATION</p>
     </div>
-</div>
 
-<div id="dashboard">
-    <div class="main-col">
-        <div class="panel">
-            <h3>SEASON_VAULT_SENSORS <span style="float:right; color:var(--success); font-size:0.7em;">● SECURE_SESSION</span></h3>
-            <div class="buckets-grid" id="bucketDisplay"></div>
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 15px;">
-                <div style="background:#111; padding:15px; border:1px solid #222; text-align:center;">
-                    <small style="color:#666;">OVERFLOW</small><br>
-                    <span id="valOverflow" style="color:var(--success); font-weight:bold;">0.000</span>
-                </div>
-                <div style="background:#111; padding:15px; border:1px solid #222; text-align:center;">
-                    <small style="color:#666;">TOTAL_DISTRIBUTED</small><br>
-                    <span id="valTotalDistributed" style="color:var(--boost); font-weight:bold;">0.000</span>
-                </div>
+    <div class="management-container">
+        <div class="overflow-box">
+            OVERFLOW: <span id="val-overflow">0.000</span> tBNB
+        </div>
+
+        <div class="card">
+            <h2 style="margin-top:0;">🔄 Reallocate Funds</h2>
+            <p style="font-size: 0.8rem; color: #aaa;">Move existing capital between buckets or to/from overflow.</p>
+            
+            <div class="reallocate-grid">
+                <select id="fromBucket">
+                    <option value="overflow">Overflow</option>
+                </select>
+                <span>➡️</span>
+                <select id="toBucket">
+                    <option value="overflow">Overflow</option>
+                </select>
             </div>
+            
+            <input type="number" id="moveAmount" placeholder="Amount (tBNB)" step="0.01" style="width: calc(100% - 26px);">
+            <button class="btn-move" onclick="reallocateFunds()">Confirm Reallocation</button>
         </div>
 
-        <div class="panel">
-            <h3>GLOBAL_CONSTRAINTS</h3>
-            <div style="display:grid; grid-template-columns:1fr 1fr; gap:15px;">
-                <div><input type="number" id="setMin" step="0.1"><button class="btn-acc" id="btnSetMin">SET_MIN [<span id="lblMin">?</span>]</button></div>
-                <div><input type="number" id="setMax" step="0.1"><button class="btn-acc" id="btnSetMax">SET_MAX [<span id="lblMax">?</span>]</button></div>
-            </div>
+        <div class="card" style="border-color: rgba(255,75,43,0.3);">
+            <h2 style="margin-top:0; color: var(--danger);">⚙️ System Control</h2>
+            <p style="font-size: 0.8rem; color: #aaa;">Hard Reset clears player positions and round data. <br><strong>Note: This does NOT drain the buckets.</strong></p>
+            <button class="btn-reset" onclick="hardReset()">⚠️ EXECUTE HARD RESET</button>
         </div>
+
+        <div class="sensor-grid" id="sensorGrid"></div>
     </div>
 
-    <div class="side-col">
-        <div class="panel">
-            <h3>FUNDING_OPS</h3>
-            <select id="modeSelect">
-                <option value="normal">NORMAL_POOL (REFILL)</option>
-                <option value="boost">BOOST_POOL (FIXED)</option>
-            </select>
-            <input type="number" id="sponsorAmt" placeholder="0.00 tBNB">
-            <button class="btn-acc" id="btnSponsor">EXECUTE_INJECTION</button>
-        </div>
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js";
+        import { getDatabase, ref, onValue, update, get, set } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-database.js";
 
-        <div class="panel" style="border-color:var(--boost);">
-            <h3>RACE_CONTROL</h3>
-            <div class="val-line"><span>ACTIVE_ROUND:</span><span id="simActiveRound" style="color:var(--boost); font-weight:bold;">-</span></div>
-            <button class="btn-boost" id="btnInstantResolve" style="margin-top:10px;">PAYOUT & NEXT_ROUND</button>
-        </div>
+        const firebaseConfig = {
+            apiKey: "AlzaSyBYxLOGFzaHN6CS4ro_bjnKEblbQE6Vtx4",
+            authDomain: "nuclearf1-94a6b.firebaseapp.com",
+            databaseURL: "https://nuclearf1-94a6b-default-rtdb.asia-southeast1.firebasedatabase.app",
+            projectId: "nuclearf1-94a6b"
+        };
 
-        <div class="panel">
-            <button class="btn-danger" id="btnReset">REALLOCATE_FUNDS</button>
-            <button class="btn-ghost" id="btnZero" style="margin-top:5px;">HARD_RESET</button>
-        </div>
-    </div>
-</div>
+        const app = initializeApp(firebaseConfig);
+        const db = getDatabase(app);
 
-<script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-    import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
-    import { getDatabase, ref, onValue, get, update, set } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
+        // Initialize UI
+        const fromSel = document.getElementById('fromBucket');
+        const toSel = document.getElementById('toBucket');
+        const grid = document.getElementById('sensorGrid');
 
-    const firebaseConfig = {
-        apiKey: "AIzaSyBeNbs5CXLyKTITvmSUdB_cKT3A4OLFgQ0",
-        authDomain: "nuclearf1-94a6b.firebaseapp.com",
-        databaseURL: "https://nuclearf1-94a6b-default-rtdb.asia-southeast1.firebasedatabase.app",
-        projectId: "nuclearf1-94a6b",
-        storageBucket: "nuclearf1-94a6b.appspot.com",
-        messagingSenderId: "YOUR_SENDER_ID",
-        appId: "YOUR_APP_ID"
-    };
-
-    // --- CONFIGURATION ---
-    const MASTER_ADMIN_WALLET = "0xCe9782f77eC560a1Cb329F935b5D416AA41f1a5d".toLowerCase(); 
-    
-    const app = initializeApp(firebaseConfig);
-    const auth = getAuth(app);
-    const db = getDatabase(app);
-    let currentActiveRound = 1;
-
-    // Initialize UI Grid
-    const grid = document.getElementById('bucketDisplay');
-    for(let i=1; i<=12; i++) {
-        grid.innerHTML += `<div class="bucket" id="bCard${i}">
-            <div style="color:#555; font-size:0.6em; margin-bottom:4px;">ROUND_${i}</div>
-            <div class="val-line">N: <span id="rN${i}" style="color:var(--accent)">0.0</span></div>
-            <div class="val-line">B: <span id="rB${i}" style="color:var(--boost)">0.0</span></div>
-            <div class="val-line" style="border-top:1px solid #222; margin-top:4px;">Σ <span id="rT${i}">0.0</span></div>
-        </div>`;
-    }
-
-    // --- WEB3 AUTHENTICATION ---
-    // --- UPDATED AUTHENTICATION LOGIC ---
-document.getElementById('btnConnect').onclick = async () => {
-    const errorLog = document.getElementById('auth-error');
-    errorLog.innerText = "INITIALIZING...";
-
-    if(!window.ethereum) return alert("MetaMask not found.");
-    
-    try {
-        const provider = new ethers.providers.Web3Provider(window.ethereum);
-        await provider.send("eth_requestAccounts", []);
-        const signer = provider.getSigner();
-        const address = (await signer.getAddress()).toLowerCase();
-
-        // 1. ADDRESS VALIDATION
-        if(address !== MASTER_ADMIN_WALLET.toLowerCase()) {
-            errorLog.innerText = `DENIED: Connected ${address.substring(0,6)}... but expected ${MASTER_ADMIN_WALLET.substring(0,6)}...`;
-            return;
+        for (let i = 1; i <= 12; i++) {
+            const opt = `<option value="r${i}">Round ${i}</option>`;
+            fromSel.innerHTML += opt;
+            toSel.innerHTML += opt;
+            grid.innerHTML += `
+                <div class="sensor-box">
+                    <div style="font-size: 0.6rem; color: #888;">R${i}</div>
+                    <div class="sensor-val" id="r${i}-val">0.00</div>
+                </div>`;
         }
 
-        // 2. SIGNATURE CHALLENGE
-        errorLog.innerText = "PENDING SIGNATURE...";
-        const message = "NUCLEAR_F1_ADMIN_AUTH_VERIFY_" + new Date().toDateString();
-        await signer.signMessage(message);
-
-        // 3. FIREBASE HANDSHAKE
-        errorLog.innerText = "AUTHORIZING DATABASE...";
-        await signInAnonymously(auth);
-        
-        // SUCCESS
-        document.getElementById('auth-gate').style.display = 'none';
-        document.getElementById('dashboard').style.display = 'grid';
-        startSync();
-
-    } catch (err) {
-        console.error(err);
-        errorLog.innerText = "AUTH_FAILED: " + (err.code === 4001 ? "SIGNATURE_REJECTED" : "FIREBASE_CONFIG_ERROR");
-    }
-};
-
-    function startSync() {
-        onValue(ref(db, 'vault/stats'), snap => {
-            currentActiveRound = snap.val().currentRound || 1;
-            document.getElementById('simActiveRound').innerText = currentActiveRound;
+        // Live Data Sync
+        onValue(ref(db, 'vault'), (snap) => {
+            const data = snap.val() || {};
+            const rounds = data.rounds || {};
+            document.getElementById('val-overflow').innerText = parseFloat(data.overflow || 0).toFixed(3);
+            for (let i = 1; i <= 12; i++) {
+                const el = document.getElementById(`r${i}-val`);
+                if(el) el.innerText = parseFloat(rounds[`r${i}`] || 0).toFixed(3);
+            }
         });
-        onValue(ref(db, 'vault/season_v2'), snap => refreshUI(snap.val()));
-    }
 
-    function refreshUI(data) {
-        if(!data) return;
-        document.getElementById('lblMin').innerText = data.config.min;
-        document.getElementById('lblMax').innerText = data.config.max;
-        document.getElementById('valOverflow').innerText = (data.overflowPool || 0).toFixed(3);
-        document.getElementById('valTotalDistributed').innerText = (data.totalDistributed || 0).toFixed(3);
-        
-        for(let i=1; i<=12; i++) {
-            const r = data[`round${i}`] || {n:0, b:0};
-            document.getElementById(`rN${i}`).innerText = r.n.toFixed(3);
-            document.getElementById(`rB${i}`).innerText = r.b.toFixed(3);
-            document.getElementById(`rT${i}`).innerText = (r.n + r.b).toFixed(3);
-            document.getElementById(`bCard${i}`).className = i < currentActiveRound ? "bucket past" : (i === currentActiveRound ? "bucket active" : "bucket");
-        }
-    }
+        // REALLOCATE LOGIC
+        window.reallocateFunds = async function() {
+            const from = document.getElementById('fromBucket').value;
+            const to = document.getElementById('toBucket').value;
+            const amt = parseFloat(document.getElementById('moveAmount').value);
 
-    // --- CORE LOGIC ---
-    async function reallocate(target) {
-        const cfg = target.config;
-        let remN = target.normalPool;
-        let remB = target.boostPool;
-        let eligible = [];
-        for(let i=currentActiveRound; i<=12; i++) { eligible.push(i); target[`round${i}`] = {n:0, b:0}; }
-        
-        if(eligible.length > 0) {
-            for(let i of eligible) { if(remN > 0) { let a = Math.min(remN, cfg.min); target[`round${i}`].n = a; remN -= a; } }
-            if(remN > 0) {
-                let add = Math.min(remN, (cfg.max - cfg.min) * eligible.length);
-                let per = add / eligible.length;
-                for(let i of eligible) target[`round${i}`].n = Number((target[`round${i}`].n + per).toFixed(4));
-                remN -= add;
-            }
-            if(remB > 0) {
-                let s = remB / eligible.length;
-                for(let i of eligible) target[`round${i}`].b = Number(s.toFixed(4));
-                remB = 0;
-            }
-        }
-        target.overflowPool = Number(((target.overflowPool || 0) + remN).toFixed(4));
-        target.normalPool = 0;
-        target.boostPool = 0;
-        await set(ref(db, 'vault/season_v2'), target);
-    }
+            if (!amt || amt <= 0 || from === to) return alert("Invalid Move Request");
 
-    document.getElementById('btnSponsor').onclick = async () => {
-        const amt = parseFloat(document.getElementById('sponsorAmt').value);
-        if(!amt) return;
-        const snap = await get(ref(db, 'vault/season_v2'));
-        const data = snap.val();
-        const mode = document.getElementById('modeSelect').value;
-        let tN = (data.normalPool || 0) + (mode === 'normal' ? amt : 0) + (data.overflowPool || 0);
-        let tB = (data.boostPool || 0) + (mode === 'boost' ? amt : 0);
-        data.overflowPool = 0;
-        for(let i=currentActiveRound; i<=12; i++) { tN += data[`round${i}`].n; tB += data[`round${i}`].b; }
-        data.normalPool = tN; data.boostPool = tB;
-        await reallocate(data);
-        document.getElementById('sponsorAmt').value = "";
-    };
+            const snap = await get(ref(db, 'vault'));
+            const data = snap.val() || {};
+            
+            // Get current values
+            let valFrom = (from === 'overflow') ? parseFloat(data.overflow || 0) : parseFloat(data.rounds?.[from] || 0);
+            let valTo = (to === 'overflow') ? parseFloat(data.overflow || 0) : parseFloat(data.rounds?.[to] || 0);
 
-    document.getElementById('btnInstantResolve').onclick = async () => {
-        const sSnap = await get(ref(db, 'vault/stats'));
-        const vSnap = await get(ref(db, 'vault/season_v2'));
-        const curR = sSnap.val().currentRound;
-        const prize = vSnap.val()[`round${curR}`].n + vSnap.val()[`round${curR}`].b;
-        const nextR = curR >= 12 ? 1 : curR + 1;
+            if (amt > valFrom) return alert("Insufficient funds in source bucket!");
 
-        await update(ref(db, 'vault/season_v2'), { [`round${curR}`]: {n:0, b:0}, totalDistributed: Number((vSnap.val().totalDistributed + prize).toFixed(4)) });
-        await update(ref(db, 'vault/stats'), { currentRound: nextR, prizeAmount: prize });
+            const updates = {};
+            const pathFrom = (from === 'overflow') ? 'vault/overflow' : `vault/rounds/${from}`;
+            const pathTo = (to === 'overflow') ? 'vault/overflow' : `vault/rounds/${to}`;
 
-        if(nextR === 1) {
-            const fresh = (await get(ref(db, 'vault/season_v2'))).val();
-            fresh.normalPool = fresh.overflowPool; fresh.overflowPool = 0;
-            currentActiveRound = 1;
-            await reallocate(fresh);
-        }
-    };
+            updates[pathFrom] = parseFloat((valFrom - amt).toFixed(3));
+            updates[pathTo] = parseFloat((valTo + amt).toFixed(3));
 
-    document.getElementById('btnZero').onclick = async () => {
-        if(!confirm("WIPE SEASON DATA?")) return;
-        const fresh = { config:{min:0.5, max:2.0}, normalPool:0, boostPool:0, overflowPool:0, totalDistributed:0 };
-        for(let i=1; i<=12; i++) fresh[`round${i}`] = {n:0, b:0};
-        await set(ref(db, 'vault/season_v2'), fresh);
-        await update(ref(db, 'vault/stats'), { currentRound: 1 });
-    };
+            update(ref(db), updates).then(() => {
+                alert(`SUCCESS: Moved ${amt} tBNB`);
+                document.getElementById('moveAmount').value = '';
+            });
+        };
 
-    document.getElementById('btnSetMin').onclick = () => update(ref(db, 'vault/season_v2/config'), { min: parseFloat(document.getElementById('setMin').value) });
-    document.getElementById('btnSetMax').onclick = () => update(ref(db, 'vault/season_v2/config'), { max: parseFloat(document.getElementById('setMax').value) });
-</script>
+        // HARD RESET LOGIC
+        window.hardReset = function() {
+            if (!confirm("CRITICAL: This will reset all race progress. Continue?")) return;
+            
+            const updates = {};
+            updates['race_data/players'] = null; // Clears player positions
+            updates['race_data/status'] = 'stopped';
+            updates['race_data/current_round'] = 1;
+
+            update(ref(db), updates).then(() => {
+                alert("SYSTEM RESET COMPLETE. Race data cleared.");
+            });
+        };
+    </script>
 </body>
 </html>
