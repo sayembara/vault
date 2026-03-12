@@ -2,31 +2,35 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>SANRAT | Master Control</title>
+    <title>SANRAT | Master System Reset</title>
     <style>
-        :root { --glass: rgba(255, 255, 255, 0.08); --accent: #00ffcc; --danger: #ff4b2b; }
+        :root { --glass: rgba(255, 255, 255, 0.08); --accent: #00ffcc; --danger: #ff4b2b; --gold: #ffcc00; }
         body { margin: 0; padding: 20px; font-family: 'Inter', sans-serif; background: #050510; color: white; display: flex; flex-direction: column; align-items: center; min-height: 100vh; }
         
         #auth-screen { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 80vh; text-align: center; }
         .btn-connect { background: #f6851b; color: white; padding: 15px 30px; font-size: 1.2rem; border-radius: 50px; border: none; cursor: pointer; font-weight: bold; }
         
         #master-ui { display: none; width: 100%; max-width: 900px; flex-direction: column; align-items: center; }
-        .master-header { text-align: center; margin-bottom: 30px; border: 1px solid var(--accent); padding: 25px; border-radius: 24px; background: rgba(0, 255, 204, 0.05); width: 100%; box-shadow: 0 10px 40px rgba(0,0,0,0.5); }
+        .master-header { text-align: center; margin-bottom: 30px; border: 1px solid var(--accent); padding: 25px; border-radius: 24px; background: rgba(0, 255, 204, 0.05); width: 100%; }
         
-        .season-tag { font-size: 1rem; color: #888; text-transform: uppercase; letter-spacing: 2px; margin-bottom: 5px; }
-        .round-display { font-size: 3.5rem; font-weight: 900; color: var(--accent); margin: 10px 0; line-height: 1; }
+        .overflow-display { font-size: 0.9rem; color: var(--gold); letter-spacing: 1px; margin-bottom: 10px; font-family: monospace; }
+        .season-tag { font-size: 1rem; color: #888; text-transform: uppercase; letter-spacing: 2px; }
+        .round-display { font-size: 3.5rem; font-weight: 900; color: var(--accent); margin: 5px 0; }
         
-        .controls { display: flex; gap: 15px; justify-content: center; margin-top: 20px; }
+        .controls { display: flex; gap: 15px; justify-content: center; margin-top: 20px; flex-wrap: wrap; }
         button { padding: 14px 28px; border-radius: 50px; border: none; font-weight: 800; cursor: pointer; transition: 0.3s; font-size: 0.9rem; }
         .btn-force { background: var(--accent); color: #00334e; }
-        .btn-reset { background: transparent; border: 2px solid var(--danger); color: var(--danger); }
-        .btn-reset:hover { background: var(--danger); color: white; }
+        .btn-reset { background: transparent; border: 2px solid #555; color: #aaa; }
+        .btn-hard-wipe { background: transparent; border: 2px solid var(--danger); color: var(--danger); }
+        .btn-hard-wipe:hover { background: var(--danger); color: white; }
         
         .sensor-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; width: 100%; margin-top: 20px; }
         .sensor-box { background: var(--glass); border: 1px solid rgba(255,255,255,0.1); padding: 15px; border-radius: 15px; text-align: center; }
-        .active-round { border: 2px solid var(--accent); background: rgba(0, 255, 204, 0.1); transform: scale(1.05); }
+        .active-round { border: 2px solid var(--accent); background: rgba(0, 255, 204, 0.1); }
         .past-round { opacity: 0.25; filter: grayscale(1); }
-        .total-amt { font-size: 1.2rem; color: var(--accent); font-weight: bold; margin-top: 5px; }
+        
+        #transition-log { width: 100%; background: rgba(0,0,0,0.3); border-radius: 15px; padding: 15px; margin-top: 30px; font-size: 0.85rem; border: 1px solid rgba(255,255,255,0.05); }
+        .log-entry { color: var(--gold); border-bottom: 1px solid rgba(255,255,255,0.05); padding: 8px 0; display: flex; justify-content: space-between; }
     </style>
 </head>
 <body>
@@ -39,19 +43,27 @@
 
     <div id="master-ui">
         <div class="master-header">
+            <div class="overflow-display">VAULT OVERFLOW: <span id="master-overflow">0.000</span> tBNB</div>
             <div class="season-tag">Season <span id="season-num">1</span></div>
             <div class="round-display">ROUND <span id="round-num">1</span></div>
             <div class="controls">
                 <button class="btn-force" id="nextRoundBtn">NEXT ROUND</button>
-                <button class="btn-reset" id="resetRoundBtn">RESET TO R1</button>
+                <button class="btn-reset" id="resetRoundBtn">RESET ROUND</button>
+                <button class="btn-hard-wipe" id="hardWipeBtn">🚨 WIPE ALL (S1 R1)</button>
             </div>
         </div>
+
         <div class="sensor-grid" id="sensorGrid"></div>
+
+        <div id="transition-log">
+            <h4 style="margin:0 0 10px 0; color:#888;">SEASON TRANSITION LOGS</h4>
+            <div id="log-content"><i>No records...</i></div>
+        </div>
     </div>
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js";
-        import { getDatabase, ref, onValue, update, get } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-database.js";
+        import { getDatabase, ref, onValue, update, get, set, remove } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-database.js";
 
         const WHITELISTED_ADMIN = "0xCe9782f77eC560a1Cb329F935b5D416AA41f1a5d".toLowerCase(); 
         const firebaseConfig = { apiKey: "AlzaSyBYxLOGFzaHN6CS4ro_bjnKEblbQE6Vtx4", databaseURL: "https://nuclearf1-94a6b-default-rtdb.asia-southeast1.firebasedatabase.app" };
@@ -72,44 +84,79 @@
         function initMaster() {
             onValue(ref(db), (snap) => {
                 const data = snap.val() || {};
-                const curRound = data.race_data?.current_round || 1;
-                const curSeason = data.race_data?.current_season || 1;
+                const race = data.race_data || { current_round: 1, current_season: 1 };
                 const vault = data.vault || {};
+                const history = data.history?.transitions || {};
                 
-                document.getElementById('round-num').innerText = curRound;
-                document.getElementById('season-num').innerText = curSeason;
+                document.getElementById('round-num').innerText = race.current_round;
+                document.getElementById('season-num').innerText = race.current_season;
+                document.getElementById('master-overflow').innerText = parseFloat(vault.overflow || 0).toFixed(3);
                 
                 const grid = document.getElementById('sensorGrid');
                 grid.innerHTML = '';
                 for(let i=1; i<=12; i++) {
                     let r = vault.rounds?.[`r${i}`] || { normal: 0, boost: 0 };
-                    let extraClass = i < curRound ? 'past-round' : (i === curRound ? 'active-round' : '');
+                    let extraClass = i < race.current_round ? 'past-round' : (i === race.current_round ? 'active-round' : '');
                     grid.innerHTML += `<div class="sensor-box ${extraClass}">
                         <div style="font-size:0.7rem;color:#888;">RD ${i}</div>
                         <div style="font-size:0.75rem; color:#666;">N: ${parseFloat(r.normal||0).toFixed(2)} | B: ${parseFloat(r.boost||0).toFixed(2)}</div>
-                        <div class="total-amt">${(parseFloat(r.normal||0)+parseFloat(r.boost||0)).toFixed(3)}</div>
+                        <div style="font-size:1.1rem; font-weight:bold; color:var(--accent);">${(parseFloat(r.normal||0)+parseFloat(r.boost||0)).toFixed(3)}</div>
                     </div>`;
                 }
+
+                const logBox = document.getElementById('log-content');
+                const entries = Object.values(history).reverse();
+                logBox.innerHTML = entries.length > 0 ? entries.map(e => `
+                    <div class="log-entry">
+                        <span><b>S${e.from_season} ➔ S${e.to_season}</b>: Moved ${e.moved_from_overflow} tBNB</span>
+                        <span style="color:#666;">${e.timestamp}</span>
+                    </div>`).join('') : '<i>No records...</i>';
             });
 
-            // Increment Round
+            // Hard Wipe Logic
+            document.getElementById('hardWipeBtn').onclick = async () => {
+                if(!confirm("⚠️ DANGER: This will wipe all History, reset to Season 1 Round 1, and re-allocate existing funds to Normal buckets. Proceed?")) return;
+                
+                const snap = await get(ref(db));
+                const data = snap.val() || {};
+                const limits = data.master_settings?.limits || { min: 0.1, max: 2.0 };
+                
+                // Calculate current total liquidity (Normal + Boost + Overflow)
+                let totalPool = parseFloat(data.vault?.overflow || 0);
+                if(data.vault?.rounds) {
+                    Object.values(data.vault.rounds).forEach(r => {
+                        totalPool += (parseFloat(r.normal || 0) + parseFloat(r.boost || 0));
+                    });
+                }
+
+                // Redistribute everything into Normal buckets first
+                let remaining = totalPool;
+                let newRounds = {};
+                for(let i=1; i<=12; i++) {
+                    let fill = Math.min(remaining, limits.max);
+                    newRounds[`r${i}`] = { normal: parseFloat(fill.toFixed(3)), boost: 0 };
+                    remaining -= fill;
+                }
+
+                // Apply Hard Reset
+                await remove(ref(db, 'history')); // Wipe Black Box
+                await update(ref(db, 'race_data'), { current_round: 1, current_season: 1 });
+                await update(ref(db, 'vault'), { rounds: newRounds, overflow: parseFloat(remaining.toFixed(3)) });
+                
+                alert("System Hard Reset to S1 R1. History cleared. Liquidity re-allocated.");
+            };
+
             document.getElementById('nextRoundBtn').onclick = async () => {
                 const snap = await get(ref(db, 'race_data'));
                 const race = snap.val() || { current_round: 1, current_season: 1 };
-                if (race.current_round >= 12) {
-                    if(confirm("Round 12 complete. Start New Season?")) {
-                        update(ref(db, 'race_data'), { current_round: 1, current_season: (race.current_season || 1) + 1 });
-                    }
-                } else {
-                    update(ref(db, 'race_data'), { current_round: race.current_round + 1 });
-                }
+                update(ref(db, 'race_data'), { 
+                    current_round: race.current_round >= 12 ? 1 : race.current_round + 1,
+                    current_season: race.current_round >= 12 ? race.current_season + 1 : race.current_season
+                });
             };
 
-            // Reset Round ONLY (Keeps Season same)
             document.getElementById('resetRoundBtn').onclick = () => {
-                if(confirm("Reset race to Round 1? (Season will not change)")) {
-                    update(ref(db, 'race_data'), { current_round: 1 });
-                }
+                update(ref(db, 'race_data'), { current_round: 1 });
             };
         }
     </script>
