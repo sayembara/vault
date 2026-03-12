@@ -11,15 +11,22 @@
         .btn-connect { background: #f6851b; color: white; padding: 15px 30px; font-size: 1.2rem; border-radius: 50px; border: none; cursor: pointer; font-weight: bold; }
         
         #master-ui { display: none; width: 100%; max-width: 900px; flex-direction: column; align-items: center; }
-        .master-header { text-align: center; margin-bottom: 30px; border: 1px solid var(--accent); padding: 20px; border-radius: 20px; background: rgba(0, 255, 204, 0.05); width: 100%; }
-        .round-display { font-size: 3rem; font-weight: 900; color: var(--accent); }
-        .btn-force { background: var(--accent); color: #00334e; padding: 15px 40px; border-radius: 50px; border: none; font-weight: 800; cursor: pointer; margin-top: 15px; }
+        .master-header { text-align: center; margin-bottom: 30px; border: 1px solid var(--accent); padding: 25px; border-radius: 24px; background: rgba(0, 255, 204, 0.05); width: 100%; box-shadow: 0 10px 40px rgba(0,0,0,0.5); }
         
-        .sensor-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; width: 100%; }
-        .sensor-box { background: var(--glass); border: 1px solid rgba(255,255,255,0.1); padding: 15px; border-radius: 15px; text-align: center; transition: 0.3s; }
-        .active-round { border: 2px solid var(--accent); box-shadow: 0 0 20px rgba(0, 255, 204, 0.2); transform: scale(1.05); background: rgba(0, 255, 204, 0.1); }
+        .season-tag { font-size: 1rem; color: #888; text-transform: uppercase; letter-spacing: 2px; margin-bottom: 5px; }
+        .round-display { font-size: 3.5rem; font-weight: 900; color: var(--accent); margin: 10px 0; line-height: 1; }
+        
+        .controls { display: flex; gap: 15px; justify-content: center; margin-top: 20px; }
+        button { padding: 14px 28px; border-radius: 50px; border: none; font-weight: 800; cursor: pointer; transition: 0.3s; font-size: 0.9rem; }
+        .btn-force { background: var(--accent); color: #00334e; }
+        .btn-reset { background: transparent; border: 2px solid var(--danger); color: var(--danger); }
+        .btn-reset:hover { background: var(--danger); color: white; }
+        
+        .sensor-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; width: 100%; margin-top: 20px; }
+        .sensor-box { background: var(--glass); border: 1px solid rgba(255,255,255,0.1); padding: 15px; border-radius: 15px; text-align: center; }
+        .active-round { border: 2px solid var(--accent); background: rgba(0, 255, 204, 0.1); transform: scale(1.05); }
         .past-round { opacity: 0.25; filter: grayscale(1); }
-        .total-amt { font-size: 1.3rem; color: var(--accent); font-weight: bold; margin-top: 8px; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 5px; }
+        .total-amt { font-size: 1.2rem; color: var(--accent); font-weight: bold; margin-top: 5px; }
     </style>
 </head>
 <body>
@@ -32,9 +39,12 @@
 
     <div id="master-ui">
         <div class="master-header">
-            <h1>MASTER RACE CONTROL</h1>
+            <div class="season-tag">Season <span id="season-num">1</span></div>
             <div class="round-display">ROUND <span id="round-num">1</span></div>
-            <button class="btn-force" id="nextRoundBtn">NEXT ROUND (FORCE RUN)</button>
+            <div class="controls">
+                <button class="btn-force" id="nextRoundBtn">NEXT ROUND</button>
+                <button class="btn-reset" id="resetRoundBtn">RESET TO R1</button>
+            </div>
         </div>
         <div class="sensor-grid" id="sensorGrid"></div>
     </div>
@@ -48,15 +58,14 @@
         const app = initializeApp(firebaseConfig);
         const db = getDatabase(app);
 
-        const connectBtn = document.getElementById('connectBtn');
-        connectBtn.onclick = async () => {
+        document.getElementById('connectBtn').onclick = async () => {
             if (window.ethereum) {
                 const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
                 if (accounts[0].toLowerCase() === WHITELISTED_ADMIN) {
                     document.getElementById('auth-screen').style.display = 'none';
                     document.getElementById('master-ui').style.display = 'flex';
                     initMaster();
-                } else { document.getElementById('auth-error').innerText = "Unauthorized Wallet."; }
+                } else { document.getElementById('auth-error').innerText = "Access Denied."; }
             }
         };
 
@@ -64,24 +73,43 @@
             onValue(ref(db), (snap) => {
                 const data = snap.val() || {};
                 const curRound = data.race_data?.current_round || 1;
+                const curSeason = data.race_data?.current_season || 1;
                 const vault = data.vault || {};
+                
                 document.getElementById('round-num').innerText = curRound;
+                document.getElementById('season-num').innerText = curSeason;
+                
                 const grid = document.getElementById('sensorGrid');
                 grid.innerHTML = '';
                 for(let i=1; i<=12; i++) {
                     let r = vault.rounds?.[`r${i}`] || { normal: 0, boost: 0 };
                     let extraClass = i < curRound ? 'past-round' : (i === curRound ? 'active-round' : '');
                     grid.innerHTML += `<div class="sensor-box ${extraClass}">
-                        <div style="font-size:0.7rem;color:#aaa;">ROUND ${i}</div>
+                        <div style="font-size:0.7rem;color:#888;">RD ${i}</div>
+                        <div style="font-size:0.75rem; color:#666;">N: ${parseFloat(r.normal||0).toFixed(2)} | B: ${parseFloat(r.boost||0).toFixed(2)}</div>
                         <div class="total-amt">${(parseFloat(r.normal||0)+parseFloat(r.boost||0)).toFixed(3)}</div>
                     </div>`;
                 }
             });
 
+            // Increment Round
             document.getElementById('nextRoundBtn').onclick = async () => {
-                const snap = await get(ref(db, 'race_data/current_round'));
-                let current = snap.val() || 1;
-                update(ref(db, 'race_data'), { current_round: current >= 12 ? 1 : current + 1 });
+                const snap = await get(ref(db, 'race_data'));
+                const race = snap.val() || { current_round: 1, current_season: 1 };
+                if (race.current_round >= 12) {
+                    if(confirm("Round 12 complete. Start New Season?")) {
+                        update(ref(db, 'race_data'), { current_round: 1, current_season: (race.current_season || 1) + 1 });
+                    }
+                } else {
+                    update(ref(db, 'race_data'), { current_round: race.current_round + 1 });
+                }
+            };
+
+            // Reset Round ONLY (Keeps Season same)
+            document.getElementById('resetRoundBtn').onclick = () => {
+                if(confirm("Reset race to Round 1? (Season will not change)")) {
+                    update(ref(db, 'race_data'), { current_round: 1 });
+                }
             };
         }
     </script>
