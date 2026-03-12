@@ -8,15 +8,15 @@
         body { margin: 0; padding: 20px; font-family: 'Inter', sans-serif; background: #0f0c29; color: white; display: flex; flex-direction: column; align-items: center; }
         .container { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; max-width: 900px; width: 100%; }
         .card { background: var(--glass); border: 1px solid rgba(255,255,255,0.1); border-radius: 20px; padding: 20px; }
-        input { background: rgba(0,0,0,0.4); border: 1px solid rgba(255,255,255,0.2); padding: 12px; border-radius: 10px; color: white; width: calc(100% - 30px); margin-bottom: 10px; }
+        input { background: rgba(0,0,0,0.4); border: 1px solid rgba(255,255,255,0.2); padding: 12px; border-radius: 10px; color: white; width: calc(100% - 32px); margin-bottom: 10px; font-size: 1rem; }
         button { width: 100%; padding: 14px; border: none; border-radius: 10px; font-weight: 700; cursor: pointer; color: white; }
         .btn-normal { background: #6dd5ed; color: #00334e; }
         .btn-boost { background: var(--boost); }
         .overflow-box { font-size: 1.8rem; color: #ffcc00; margin: 20px 0; font-family: monospace; border: 1px dashed #ffcc0044; padding: 10px 30px; border-radius: 15px; }
-        .sensor-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; width: 100%; max-width: 900px; }
+        .sensor-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; width: 100%; max-width: 900px; margin-top: 20px; }
         .sensor-box { background: rgba(255,255,255,0.03); border: 1px solid rgba(0, 255, 204, 0.1); padding: 12px; border-radius: 12px; text-align: center; }
-        .sub-amt { font-size: 0.75rem; color: #888; }
-        .total-amt { font-size: 1.2rem; color: var(--accent); font-weight: bold; margin-top: 5px; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 5px; }
+        .sub-amt { font-size: 0.75rem; color: #888; margin: 2px 0; }
+        .total-amt { font-size: 1.2rem; color: var(--accent); font-weight: bold; margin-top: 6px; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 4px; }
     </style>
 </head>
 <body>
@@ -25,12 +25,12 @@
 
     <div class="container">
         <div class="card">
-            <h3 style="color:#6dd5ed;">🔋 NORMAL FUND</h3>
+            <h3 style="margin:0 0 10px 0; color:#6dd5ed;">🔋 NORMAL FUND</h3>
             <input type="number" id="normalAmt" placeholder="Amount tBNB">
             <button class="btn-normal" id="btnNormal">Inject Normal</button>
         </div>
         <div class="card">
-            <h3 style="color:var(--boost);">🚀 BOOST FUND</h3>
+            <h3 style="margin:0 0 10px 0; color:var(--boost);">🚀 BOOST FUND</h3>
             <input type="number" id="boostAmt" placeholder="Amount tBNB">
             <button class="btn-boost" id="btnBoost">Inject Boost</button>
         </div>
@@ -56,13 +56,16 @@
             const grid = document.getElementById('sensorGrid');
             grid.innerHTML = '';
             for(let i=1; i<=12; i++) {
-                const r = data.rounds?.[`r${i}`] || { normal: 0, boost: 0 };
+                let r = data.rounds?.[`r${i}`] || { normal: 0, boost: 0 };
+                // Safety check for old number format
+                if (typeof r === 'number') r = { normal: r, boost: 0 };
+                
                 const total = (parseFloat(r.normal || 0) + parseFloat(r.boost || 0)).toFixed(3);
                 grid.innerHTML += `
                     <div class="sensor-box">
                         <div style="font-size:0.7rem;color:#888;">ROUND ${i}</div>
-                        <div class="sub-amt">N: ${parseFloat(r.normal).toFixed(3)}</div>
-                        <div class="sub-amt">B: ${parseFloat(r.boost).toFixed(3)}</div>
+                        <div class="sub-amt">N: ${parseFloat(r.normal || 0).toFixed(3)}</div>
+                        <div class="sub-amt">B: ${parseFloat(r.boost || 0).toFixed(3)}</div>
                         <div class="total-amt">${total}</div>
                     </div>`;
             }
@@ -70,42 +73,55 @@
 
         async function processFund(type) {
             const amt = parseFloat(document.getElementById(type + 'Amt').value);
-            if(!amt || amt <= 0) return alert("Enter amount");
+            if(!amt || amt <= 0) return alert("Please enter amount");
 
-            const snap = await get(ref(db));
-            const all = snap.val() || {};
-            const limits = all.master_settings?.limits || { max: 2.0 };
-            const activeRound = all.race_data?.current_round || 1;
-            
-            let currentOverflow = parseFloat(all.vault?.overflow || 0);
-            let rounds = all.vault?.rounds || {};
+            try {
+                const snap = await get(ref(db));
+                const all = snap.val() || {};
+                const limits = all.master_settings?.limits || { max: 2.0 };
+                const activeRound = all.race_data?.current_round || 1;
+                
+                let currentOverflow = parseFloat(all.vault?.overflow || 0);
+                let rounds = all.vault?.rounds || {};
 
-            if(type === 'normal') {
-                let remaining = amt;
-                for(let i=1; i<=12; i++) {
-                    if(!rounds[`r${i}`]) rounds[`r${i}`] = { normal: 0, boost: 0 };
-                    let curN = parseFloat(rounds[`r${i}`].normal || 0);
-                    let space = limits.max - curN;
-                    if(space > 0) {
-                        let fill = Math.min(remaining, space);
-                        rounds[`r${i}`].normal = parseFloat((curN + fill).toFixed(3));
-                        remaining -= fill;
+                if(type === 'normal') {
+                    let remaining = amt;
+                    for(let i=1; i<=12; i++) {
+                        // Ensure object structure
+                        if(!rounds[`r${i}`] || typeof rounds[`r${i}`] === 'number') {
+                            rounds[`r${i}`] = { normal: typeof rounds[`r${i}`] === 'number' ? rounds[`r${i}`] : 0, boost: 0 };
+                        }
+                        
+                        let curN = parseFloat(rounds[`r${i}`].normal || 0);
+                        let space = limits.max - curN;
+                        if(space > 0) {
+                            let fill = Math.min(remaining, space);
+                            rounds[`r${i}`].normal = parseFloat((curN + fill).toFixed(3));
+                            remaining -= fill;
+                        }
+                    }
+                    currentOverflow = parseFloat((currentOverflow + remaining).toFixed(3));
+                } else {
+                    let roundsLeft = (12 - activeRound) + 1;
+                    let share = amt / roundsLeft;
+                    for(let i = activeRound; i <= 12; i++) {
+                        // Ensure object structure
+                        if(!rounds[`r${i}`] || typeof rounds[`r${i}`] === 'number') {
+                            rounds[`r${i}`] = { normal: typeof rounds[`r${i}`] === 'number' ? rounds[`r${i}`] : 0, boost: 0 };
+                        }
+                        
+                        let curB = parseFloat(rounds[`r${i}`].boost || 0);
+                        rounds[`r${i}`].boost = parseFloat((curB + share).toFixed(3));
                     }
                 }
-                currentOverflow = parseFloat((currentOverflow + remaining).toFixed(3));
-            } else {
-                let roundsLeft = (12 - activeRound) + 1;
-                let share = amt / roundsLeft;
-                for(let i = activeRound; i <= 12; i++) {
-                    if(!rounds[`r${i}`]) rounds[`r${i}`] = { normal: 0, boost: 0 };
-                    let curB = parseFloat(rounds[`r${i}`].boost || 0);
-                    rounds[`r${i}`].boost = parseFloat((curB + share).toFixed(3));
-                }
-            }
 
-            update(ref(db, 'vault'), { rounds, overflow: currentOverflow })
-                .then(() => { alert("Success!"); document.getElementById(type + 'Amt').value = ''; })
-                .catch(e => alert("Error: " + e.message));
+                await update(ref(db, 'vault'), { rounds, overflow: currentOverflow });
+                alert("Injection Successful!");
+                document.getElementById(type + 'Amt').value = '';
+            } catch (e) {
+                console.error(e);
+                alert("Error: " + e.message);
+            }
         }
 
         document.getElementById('btnNormal').onclick = () => processFund('normal');
