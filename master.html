@@ -57,37 +57,60 @@
 
         const icons = { straight:"➡️", right:"⤴️", left:"⤵️", flatland:"➖", uphill:"🔼", downhill:"🔽", dry:"☀️", wet:"🌧️" };
 
-        window.generateSeason = async () => {
-            if(!confirm("Generate new random season parameters?")) return;
-            
-            const directions = ["straight", "straight", "right", "left"];
-            const elevations = ["flatland", "flatland", "uphill", "downhill"];
-            
-            const newConsts = {
-                direction: Array.from({length: 7}, () => directions[Math.floor(Math.random()*4)]),
-                elevation: Array.from({length: 7}, () => elevations[Math.floor(Math.random()*4)]),
-                humidity: Array.from({length: 7}, () => Math.floor(Math.random()*101)),
-                weather: []
-            };
+window.generateSeason = async () => {
+    if(!confirm("Generate new random season parameters?")) return;
+    
+    // Fetch state to check for Round 2 logic
+    const sSnap = await get(ref(db, 'race_state'));
+    const state = sSnap.val() || { day_in_round: 1, round: 1 };
+    
+    const directions = ["straight", "straight", "right", "left"];
+    const elevations = ["flatland", "flatland", "uphill", "downhill"];
+    
+    const newConsts = {
+        direction: Array.from({length: 7}, () => directions[Math.floor(Math.random()*4)]),
+        elevation: Array.from({length: 7}, () => elevations[Math.floor(Math.random()*4)]),
+        humidity: Array.from({length: 7}, () => Math.floor(Math.random()*101)),
+        weather: []
+    };
 
-            // Weather Logic
-            for(let i=0; i<7; i++) {
-                const hum = newConsts.humidity[i];
-                if(i === 0) {
-                    // Day 1 Logic: Random flip for Round 1
-                    newConsts.weather[i] = Math.random() > 0.5 ? "dry" : "wet";
-                } else {
-                    // Standard Logic
-                    const roll = Math.floor(Math.random()*100) + 1;
-                    if(hum <= 40) newConsts.weather[i] = "dry";
-                    else newConsts.weather[i] = roll > hum ? "dry" : "wet";
-                }
+    // Weather Generation Engine
+    for(let i=0; i<7; i++) {
+        const hum = newConsts.humidity[i];
+        
+        // Day 1 Specialized Logic
+        if (i === 0) {
+            if (state.round === 1) {
+                // Round 1: Random flip
+                newConsts.weather[i] = Math.random() > 0.5 ? "dry" : "wet";
+            } else if (state.round === 2) {
+                // Round 2: Opposite of Winner's Traction
+                const carsSnap = await get(ref(db, 'cars'));
+                const cars = Object.values(carsSnap.val() || {});
+                // Find car with highest distance
+                const winner = cars.reduce((prev, current) => (prev.total_dist > current.total_dist) ? prev : current);
+                const traction = winner.traits.traction;
+                
+                // Logic: Wet if traction 1-5, Dry if 6-10
+                newConsts.weather[i] = (traction <= 5) ? "wet" : "dry";
+                console.log(`Round 2 Logic Triggered. Winner Traction: ${traction}. Weather: ${newConsts.weather[i]}`);
             }
+        } else {
+            // Future Days Standard Logic
+            const roll = Math.floor(Math.random() * 100) + 1;
+            if (hum <= 40) {
+                newConsts.weather[i] = "dry";
+            } else {
+                newConsts.weather[i] = (roll > hum) ? "dry" : "wet";
+            }
+        }
+    }
 
-            await set(ref(db, 'race_constants'), newConsts);
-            await update(ref(db, 'race_state'), { day_in_round: 1, round: 1 });
-            alert("Season Generated!");
-        };
+    await set(ref(db, 'race_constants'), newConsts);
+    // Reset day to 1 but keep the current round count
+    await update(ref(db, 'race_state'), { day_in_round: 1 });
+    alert(`Season Generated! Weather for Day 1 is ${newConsts.weather[0].toUpperCase()}`);
+};
 
         onValue(ref(db, 'race_constants'), snap => {
             const c = snap.val();
