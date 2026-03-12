@@ -23,7 +23,11 @@
         th, td { border: 1px solid #333; padding: 12px; text-align: center; }
         .active-day-col { background: rgba(255, 75, 43, 0.2) !important; border: 2px solid var(--danger) !important; }
 
+        /* Track UI with 1000m Line */
         .track-box { background: #000; height: 450px; position: relative; border-radius: 10px; border: 1px solid #444; overflow-y: auto; overflow-x: hidden; padding-top: 10px; }
+        .finish-line { position: absolute; left: 50%; top: 0; bottom: 0; width: 2px; border-left: 2px dashed rgba(255,255,255,0.3); z-index: 1; }
+        .finish-label { position: absolute; left: 50%; top: 5px; transform: translateX(-50%); font-size: 0.6rem; color: rgba(255,255,255,0.5); z-index: 1; }
+        
         .track-lane { position: relative; width: 100%; height: 38px; border-bottom: 1px solid #222; }
         .track-car { position: absolute; height: 24px; width: 42px; border-radius: 4px; top: 6px; font-size: 0.65rem; color: black; font-weight: 900; text-align: center; line-height: 24px; transition: left 1.2s cubic-bezier(0.4, 0, 0.2, 1); z-index: 2; }
         .hp-container { width: 100%; height: 3px; background: #333; position: absolute; bottom: -5px; left: 0; }
@@ -35,7 +39,6 @@
     <div id="auth-gate">
         <h1 style="color: var(--accent);">MASTER ENGINE</h1>
         <button class="btn-connect" onclick="connectWallet()">Connect MetaMask</button>
-        <p id="wallet-status" style="margin-top: 20px; font-size: 0.8rem; color: var(--danger);"></p>
     </div>
 
     <div id="admin-ui">
@@ -69,7 +72,11 @@
         </div>
 
         <div class="card full-width">
-            <div class="track-box"><div id="master-layer"></div></div>
+            <div class="track-box">
+                <div class="finish-line"></div>
+                <div class="finish-label">1000m</div>
+                <div id="master-layer"></div>
+            </div>
         </div>
     </div>
 
@@ -98,10 +105,15 @@
             const cSnap = await get(ref(db, 'race_constants'));
             const c = cSnap.val();
             if(!c || !c.direction) return;
-            let h = '<th>Type</th>';
-            for(let i=1; i<=7; i++) h += `<th class="${i===activeDay?'active-day-col':''}">D${i}</th>`;
+            let h = '<th>Condition</th>';
+            for(let i=1; i<=7; i++) h += `<th class="${i===activeDay?'active-day-col':''}">Day ${i}</th>`;
             document.getElementById('mat-head').innerHTML = h;
-            const rows = [{l:"Dir",d:c.direction,i:true},{l:"Elev",d:c.elevation,i:true},{l:"Hum",d:c.humidity,s:"%"},{l:"Wthr",d:c.weather,i:true}];
+            const rows = [
+                {l:"Direction",d:c.direction,i:true},
+                {l:"Elevation",d:c.elevation,i:true},
+                {l:"Humidity",d:c.humidity,s:"%"},
+                {l:"Weather",d:c.weather,i:true}
+            ];
             document.getElementById('mat-body').innerHTML = rows.map(r => `<tr><td><b>${r.l}</b></td>${r.d.map((v,idx)=>`<td class="${idx+1===activeDay?'active-day-col':''}">${r.i?icons[v]:v+(r.s||'')}</td>`).join('')}</tr>`).join('');
         }
 
