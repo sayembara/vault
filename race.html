@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>SANRAT | Race Control & Track</title>
+    <style>
+        :root { --glass: rgba(255, 255, 255, 0.08); --accent: #00ffcc; --gold: #ffcc00; --track-bg: #1a1a2e; }
+        body { margin: 0; padding: 20px; font-family: 'Inter', sans-serif; background: #0b0e14; color: white; display: flex; flex-direction: column; align-items: center; }
+        
+        #auth-screen { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 80vh; }
+        .btn-connect { background: #f6851b; color: white; padding: 15px 30px; border-radius: 50px; border: none; font-weight: bold; cursor: pointer; }
+
+        #admin-ui { display: none; width: 100%; max-width: 1100px; flex-direction: column; gap: 20px; }
+        .card { background: var(--glass); border: 1px solid rgba(255,255,255,0.1); border-radius: 15px; padding: 20px; margin-bottom: 20px; }
+        
+        /* Track Styles */
+        .race-track-container { position: relative; width: 100%; height: 450px; background: var(--track-bg); border-radius: 10px; overflow: hidden; border: 2px solid #333; }
+        .finish-line { position: absolute; left: 1000px; top: 0; bottom: 0; border-left: 2px dashed rgba(255,255,255,0.3); z-index: 1; }
+        .finish-label { position: absolute; left: 1005px; top: 5px; font-size: 0.6rem; color: #888; }
+        .end-line { position: absolute; left: 1498px; top: 0; bottom: 0; border-left: 3px solid var(--accent); }
+
+        .car-lane { position: relative; width: 1500px; height: 40px; border-bottom: 1px solid rgba(255,255,255,0.05); }
+        .car-sprite { position: absolute; width: 30px; height: 20px; background: var(--accent); border-radius: 4px; top: 10px; transition: left 1s ease-in-out; display: flex; align-items: center; justify-content: center; font-size: 0.5rem; color: black; font-weight: bold; }
+        
+        .matrix-table { width: 100%; font-size: 0.7rem; border-collapse: collapse; }
+        .matrix-table th, .matrix-table td { border: 1px solid #333; padding: 4px; text-align: center; }
+        .current-day { background: rgba(0,255,204,0.2); border: 1px solid var(--accent) !important; }
+
+        .btn-action { background: var(--accent); color: black; border: none; padding: 8px 15px; border-radius: 5px; font-weight: bold; cursor: pointer; margin-right: 10px; }
+        .btn-next-season { background: var(--gold); display: none; }
+    </style>
+</head>
+<body>
+
+    <div id="auth-screen">
+        <button class="btn-connect" id="connectBtn">Connect MetaMask to Control Race</button>
+    </div>
+
+    <div id="admin-ui">
+        <div style="display: flex; justify-content: space-between; align-items: flex-end;">
+            <div>
+                <h1 style="margin:0;">RACE CONTROL</h1>
+                <p id="season-info" style="color: var(--gold); font-weight: bold; margin: 5px 0;"></p>
+            </div>
+            <div>
+                <button class="btn-action" onclick="setRounds()">SET ROUNDS/SEASON</button>
+                <button class="btn-action" onclick="setDayDuration()">SET DAYS/ROUND</button>
+                <button id="btnNextSeason" class="btn-action btn-next-season" onclick="triggerNextSeason()">START NEXT SEASON</button>
+            </div>
+        </div>
+
+        <div class="card">
+            <h3>LIVE TRACK (TOP 10)</h3>
+            <div style="overflow-x: auto; width: 100%;">
+                <div class="race-track-container" id="track">
+                    <div class="finish-line"></div>
+                    <div class="finish-label">1000m SECTOR</div>
+                    <div class="end-line"></div>
+                    </div>
+            </div>
+        </div>
+
+        <div class="card">
+            <h3>7-DAY PERFORMANCE MATRIX</h3>
+            <table class="matrix-table" id="matrix">
+                <thead>
+                    <tr id="matrix-header"><th>Car ID</th></tr>
+                </thead>
+                <tbody id="matrix-body"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js";
+        import { getDatabase, ref, onValue, set, update } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-database.js";
+
+        const ADMIN = "0xCe9782f77eC560a1Cb329F935b5D416AA41f1a5d".toLowerCase();
+        const firebaseConfig = { apiKey: "AlzaSyBYxLOGFzaHN6CS4ro_bjnKEblbQE6Vtx4", databaseURL: "https://nuclearf1-94a6b-default-rtdb.asia-southeast1.firebasedatabase.app" };
+        const app = initializeApp(firebaseConfig);
+        const db = getDatabase(app);
+
+        let raceConstants = null;
+
+        document.getElementById('connectBtn').onclick = async () => {
+            if (window.ethereum) {
+                const accs = await window.ethereum.request({ method: 'eth_requestAccounts' });
+                if (accs[0].toLowerCase() === ADMIN) {
+                    document.getElementById('auth-screen').style.display = 'none';
+                    document.getElementById('admin-ui').style.display = 'flex';
+                    initRaceLogic();
+                }
+            }
+        };
+
+        function initRaceLogic() {
+            // 1. Fetch Constants first
+            onValue(ref(db, 'race_constants'), (snap) => {
+                raceConstants = snap.val();
+                if(raceConstants) syncRaceState();
+            });
+        }
+
+        function syncRaceState() {
+            onValue(ref(db, 'race_state'), (snap) => {
+                const state = snap.val() || { season: 1, round: 1, total_rounds: 12, day_in_round: 1 };
+                document.getElementById('season-info').innerText = `SEASON ${state.season} | ROUND ${state.round} of ${state.total_rounds} | DAY ${state.day_in_round}/7`;
+                
+                if (state.round > state.total_rounds) {
+                    document.getElementById('btnNextSeason').style.display = 'inline-block';
+                }
+
+                renderRaceContent(state);
+            });
+        }
+
+        function renderRaceContent(state) {
+            onValue(ref(db, 'cars'), (snap) => {
+                const cars = Object.values(snap.val() || {});
+                // Sort by total distance for Top 10
+                const top10 = cars.sort((a,b) => (b.total_dist || 0) - (a.total_dist || 0)).slice(0, 10);
+                
+                // Render Track
+                const track = document.getElementById('track');
+                track.innerHTML = '<div class="finish-line"></div><div class="finish-label">1000m SECTOR</div><div class="end-line"></div>';
+                top10.forEach(car => {
+                    const lane = document.createElement('div');
+                    lane.className = 'car-lane';
+                    lane.innerHTML = `<div class="car-sprite" style="left: ${car.total_dist || 0}px">${car.id}</div>`;
+                    track.appendChild(lane);
+                });
+
+                // Render Matrix
+                renderMatrix(top10, state.day_in_round);
+            }, { onlyOnce: true });
+        }
+
+        function renderMatrix(cars, currentDay) {
+            const head = document.getElementById('matrix-header');
+            const body = document.getElementById('matrix-body');
+            head.innerHTML = '<th>Car ID</th>' + [1,2,3,4,5,6,7].map(d => `<th class="${d==currentDay?'current-day':''}">Day ${d}</th>`).join('') + '<th>Total</th>';
+            
+            body.innerHTML = cars.map(car => {
+                let row = `<td><b>${car.id}</b></td>`;
+                let total = 0;
+                for(let i=1; i<=7; i++) {
+                    let d = car.daily_dist?.[`day${i}`] || 0;
+                    total += d;
+                    row += `<td class="${i==currentDay?'current-day':''}">${d.toFixed(1)}m</td>`;
+                }
+                row += `<td style="color:var(--accent)">${total.toFixed(1)}m</td>`;
+                return `<tr>${row}</tr>`;
+            }).join('');
+        }
+
+        // --- UPDATER ACTIONS ---
+        window.setRounds = () => {
+            const r = prompt("Enter total rounds per season:", "12");
+            if(r) update(ref(db, 'race_state'), { total_rounds: parseInt(r) });
+        };
+
+        window.setDayDuration = () => {
+            const d = prompt("Enter duration per round (days):", "7");
+            if(d) update(ref(db, 'race_state'), { days_per_round: parseInt(d) });
+        };
+
+        window.triggerNextSeason = () => {
+            if(confirm("Wipe distances and start next season?")) {
+                // Logic to reset cars and increment season
+            }
+        };
+    </script>
+</body>
+</html>
