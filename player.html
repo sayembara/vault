@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>SANRAT | Player Garage & Standings</title>
+    <title>SANRAT | Player Garage</title>
     <style>
         :root { --glass: rgba(255, 255, 255, 0.08); --accent: #00ffcc; --gold: #ffcc00; --danger: #ff4b2b; }
         body { margin: 0; padding: 20px; font-family: 'Inter', sans-serif; background: #0b0e14; color: white; display: flex; flex-direction: column; align-items: center; }
@@ -15,49 +15,36 @@
         
         .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 15px; margin-bottom: 30px; }
         .car-card { background: var(--glass); border: 1px solid rgba(255,255,255,0.1); border-radius: 15px; padding: 15px; position: relative; }
-        .car-card.hero { border: 2px solid var(--gold); box-shadow: 0 0 15px rgba(255,204,0,0.1); }
+        .car-card.hero { border: 2px solid var(--gold); }
         .car-card.support { border: 2px solid var(--accent); }
         
-        .trait-row { display: flex; justify-content: space-between; font-size: 0.8rem; margin: 4px 0; }
-        .hp-bar-bg { width: 100%; height: 6px; background: #333; border-radius: 10px; margin-top: 8px; overflow: hidden; }
-        .hp-bar-fill { height: 100%; background: linear-gradient(90deg, var(--danger), var(--accent)); transition: 0.5s; }
-
-        .finance-card { background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.1); padding: 20px; border-radius: 15px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; }
-        .btn-action { padding: 12px 18px; border-radius: 8px; border: none; font-weight: bold; cursor: pointer; font-size: 0.75rem; transition: 0.2s; }
-        .btn-action:hover { opacity: 0.8; transform: translateY(-1px); }
+        .finance-card { background: rgba(255,255,255,0.03); border: 1px solid var(--gold); padding: 20px; border-radius: 15px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; }
+        .btn-action { padding: 12px 18px; border-radius: 8px; border: none; font-weight: bold; cursor: pointer; font-size: 0.75rem; }
         .btn-pay { background: var(--accent); color: #00334e; }
         .btn-claim { background: var(--gold); color: #000; }
-        .btn-release { background: transparent; border: 1px solid var(--danger); color: var(--danger); }
-        
-        /* Track & Standings */
-        .track-box { background: #161b22; border-radius: 15px; padding: 20px; margin-top: 20px; border: 1px solid #30363d; }
-        .track-lane { position: relative; width: 100%; height: 30px; border-bottom: 1px solid #21262d; margin-bottom: 5px; }
-        .track-car { position: absolute; height: 18px; width: 30px; background: var(--accent); border-radius: 3px; top: 5px; transition: 1s ease-in-out; font-size: 0.6rem; color: black; font-weight: 900; text-align: center; line-height: 18px; }
-        .finish-line { position: absolute; right: 33.3%; top: 0; bottom: 0; border-left: 2px dashed #444; } /* 1000m line */
 
-        .standings-table { width: 100%; border-collapse: collapse; font-size: 0.8rem; margin-top: 15px; }
-        .standings-table th { text-align: left; color: #888; padding: 10px; border-bottom: 1px solid #333; }
-        .standings-table td { padding: 10px; border-bottom: 1px solid #222; }
+        /* Track Listens to Master */
+        .track-box { background: #161b22; border-radius: 15px; padding: 20px; border: 1px solid #30363d; width: 100%; box-sizing: border-box; }
+        .track-lane { position: relative; width: 100%; height: 25px; border-bottom: 1px solid #21262d; }
+        .track-car { position: absolute; height: 15px; width: 25px; background: var(--accent); border-radius: 2px; top: 5px; transition: 1s linear; font-size: 0.5rem; color: black; font-weight: 900; text-align: center; }
+        .finish-line { position: absolute; left: 66.6%; top: 0; bottom: 0; border-left: 2px dashed #444; } /* 1000m / 1500m */
     </style>
 </head>
 <body>
 
     <div id="auth-screen">
-        <h1 style="letter-spacing: 2px;">GARAGE ENTRANCE</h1>
         <button class="btn-connect" id="connectBtn">Connect MetaMask</button>
     </div>
 
     <div id="player-ui">
         <div class="header-bar">
-            <div>
-                <select id="teamSelect" style="background:#000; color:white; border:1px solid var(--accent); padding:8px; border-radius:5px;">
-                    <option value="Alpha">Alpha Team</option>
-                    <option value="Beta">Beta Team</option>
-                    <option value="Gamma">Gamma Team</option>
-                    <option value="Delta">Delta Team</option>
-                    <option value="Epsilon">Epsilon Team</option>
-                </select>
-            </div>
+            <select id="teamSelect" style="background:#000; color:white; border:1px solid var(--accent); padding:8px; border-radius:5px;">
+                <option value="Alpha">Alpha Team</option>
+                <option value="Beta">Beta Team</option>
+                <option value="Gamma">Gamma Team</option>
+                <option value="Delta">Delta Team</option>
+                <option value="Epsilon">Epsilon Team</option>
+            </select>
             <div style="text-align: right;">
                 <div id="walletAddr" style="font-size: 0.7rem; color: #888;"></div>
                 <div id="walletBal" style="font-size: 1.1rem; font-weight: bold; color: var(--accent);">0.0000 BNB</div>
@@ -66,42 +53,36 @@
 
         <div class="finance-card">
             <div>
-                <div style="font-size: 0.65rem; color: #888; text-transform: uppercase;">Claimable Balance</div>
+                <div style="font-size: 0.65rem; color: #888;">TOTAL CLAIMABLE PRIZE</div>
                 <div id="claimableDisplay" style="font-size: 1.6rem; font-weight: bold; color: var(--gold);">0.000 tBNB</div>
             </div>
             <div style="display: flex; gap: 10px;">
-                <button class="btn-action btn-pay" onclick="confirmPay()">PAY ENTRANCE (0.1 tBNB)</button>
-                <button class="btn-action btn-release" onclick="confirmRelease()">RELEASE (0.05 tBNB)</button>
-                <button class="btn-action btn-claim" onclick="confirmClaim()">CLAIM PRIZE (VARIES)</button>
+                <button class="btn-action btn-pay" onclick="handleEntrance()">PAY ENTRANCE (0.1 tBNB)</button>
+                <button class="btn-action btn-claim" id="btnClaim">RELEASE TO WALLET</button>
             </div>
         </div>
 
-        <h3 style="color: var(--accent); margin-left: 5px;">MY GARAGE</h3>
         <div class="grid" id="garageGrid"></div>
 
         <div class="track-box">
-            <h3 style="margin-top:0;">SEASON TRACK (LIVE)</h3>
-            <div id="track-container" style="position:relative; width:100%; overflow:hidden;">
-                <div class="finish-line"></div> </div>
-
-            <h3 style="margin-top:30px;">ROUND STANDINGS</h3>
-            <table class="standings-table">
-                <thead><tr><th>POS</th><th>CAR ID</th><th>TEAM</th><th>TOTAL DISTANCE</th><th>STATUS</th></tr></thead>
-                <tbody id="standings-body"></tbody>
-            </table>
+            <h4 id="track-status" style="margin-top:0; color:var(--gold);">WAITING FOR MASTER...</h4>
+            <div id="track-container" style="position:relative; width:100%; height:300px; background:#000; border-radius:10px; overflow:hidden;">
+                <div class="finish-line"></div>
+                <div id="cars-layer"></div>
+            </div>
         </div>
     </div>
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js";
-        import { getDatabase, ref, onValue, update } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-database.js";
+        import { getDatabase, ref, onValue, update, get } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-database.js";
 
         const firebaseConfig = { apiKey: "AlzaSyBYxLOGFzaHN6CS4ro_bjnKEblbQE6Vtx4", databaseURL: "https://nuclearf1-94a6b-default-rtdb.asia-southeast1.firebasedatabase.app" };
         const app = initializeApp(firebaseConfig);
         const db = getDatabase(app);
 
         let userWallet = "";
-        let mockClaimable = 0.25;
+        let currentClaimable = 0.75; // Mock value for testing logic
 
         document.getElementById('connectBtn').onclick = async () => {
             if (window.ethereum) {
@@ -109,107 +90,112 @@
                 userWallet = accs[0];
                 document.getElementById('auth-screen').style.display = 'none';
                 document.getElementById('player-ui').style.display = 'block';
-                updateWalletUI();
-                initData();
+                syncAll();
             }
         };
 
-        async function updateWalletUI() {
-            const provider = window.ethereum;
-            const balance = await provider.request({ method: 'eth_getBalance', params: [userWallet, 'latest'] });
-            const ethBal = (parseInt(balance, 16) / 1e18).toFixed(4);
+        function syncAll() {
+            updateFinanceUI();
+            loadGarage();
+            listenToMaster();
+        }
+
+        async function updateFinanceUI() {
+            const balance = await window.ethereum.request({ method: 'eth_getBalance', params: [userWallet, 'latest'] });
+            document.getElementById('walletBal').innerText = `${(parseInt(balance, 16) / 1e18).toFixed(4)} BNB`;
             document.getElementById('walletAddr').innerText = userWallet;
-            document.getElementById('walletBal').innerText = `${ethBal} BNB`;
-            document.getElementById('claimableDisplay').innerText = `${mockClaimable.toFixed(3)} tBNB`;
+            document.getElementById('claimableDisplay').innerText = `${currentClaimable.toFixed(3)} tBNB`;
+            document.getElementById('btnClaim').innerText = `RELEASE ${currentClaimable.toFixed(3)} TO WALLET`;
         }
 
-        function initData() {
-            document.getElementById('teamSelect').onchange = () => loadTeamData();
-            loadTeamData();
-            loadGlobalStandings();
-        }
-
-        function loadTeamData() {
+        function loadGarage() {
             const team = document.getElementById('teamSelect').value;
             onValue(ref(db, 'cars'), (snap) => {
                 const cars = Object.values(snap.val() || {}).filter(c => c.team === team);
-                renderGarage(cars);
-            });
-        }
-
-        function renderGarage(cars) {
-            const grid = document.getElementById('garageGrid');
-            grid.innerHTML = '';
-            cars.forEach(car => {
-                const sum = car.traits.propulsion + car.traits.traction + car.traits.stability + car.traits.core;
-                const hp = 100 - (car.damage || 0);
-                const roleClass = car.role ? car.role : '';
-                
-                grid.innerHTML += `
-                    <div class="car-card ${roleClass}">
-                        <div style="font-size:0.7rem; color:#666;">#${car.id}</div>
-                        <div style="font-weight:bold; margin-bottom:10px;">${car.team} UNIT</div>
-                        <div class="trait-row"><span>P | T | S | C</span> <span>${car.traits.propulsion} | ${car.traits.traction} | ${car.traits.stability} | ${car.traits.core}</span></div>
-                        <div class="trait-row" style="color:var(--gold); font-weight:bold;"><span>SUM:</span> <span>${sum}</span></div>
-                        <div class="hp-bar-bg"><div class="hp-bar-fill" style="width:${hp}%"></div></div>
-                        <div style="display:flex; gap:5px; margin-top:15px;">
-                            <button onclick="confirmSetRole(${car.id}, 'hero')" style="flex:1; font-size:0.6rem;">HERO</button>
-                            <button onclick="confirmSetRole(${car.id}, 'support')" style="flex:1; font-size:0.6rem;">SUPPORT</button>
-                        </div>
-                    </div>`;
-            });
-        }
-
-        function loadGlobalStandings() {
-            onValue(ref(db, 'cars'), (snap) => {
-                const allCars = Object.values(snap.val() || {}).sort((a,b) => (b.total_dist || 0) - (a.total_dist || 0));
-                
-                // Render Track (Top 10)
-                const track = document.getElementById('track-container');
-                track.innerHTML = '<div class="finish-line"></div>';
-                allCars.slice(0, 10).forEach(car => {
-                    const progress = (car.total_dist || 0) / 1500 * 100;
-                    track.innerHTML += `<div class="track-lane"><div class="track-car" style="left:${progress}%">${car.id}</div></div>`;
+                const grid = document.getElementById('garageGrid');
+                grid.innerHTML = '';
+                cars.forEach(car => {
+                    const hp = 100 - (car.damage || 0);
+                    grid.innerHTML += `
+                        <div class="car-card ${car.role || ''}">
+                            <div style="font-weight:bold;">CAR #${car.id}</div>
+                            <div style="font-size:0.7rem; color:var(--accent);">Trait Sum: ${car.traits.propulsion + car.traits.traction + car.traits.stability + car.traits.core}</div>
+                            <div class="hp-bar-bg"><div class="hp-bar-fill" style="width:${hp}%"></div></div>
+                            <div style="display:flex; gap:5px; margin-top:15px;">
+                                <button onclick="setRole(${car.id}, 'hero')" style="flex:1; font-size:0.6rem; cursor:pointer;">SET HERO</button>
+                                <button onclick="setRole(${car.id}, 'support')" style="flex:1; font-size:0.6rem; cursor:pointer;">SET SUPPORT</button>
+                            </div>
+                        </div>`;
                 });
-
-                // Render Table
-                const tbody = document.getElementById('standings-body');
-                tbody.innerHTML = allCars.map((c, i) => `
-                    <tr>
-                        <td>${i+1}</td>
-                        <td>${c.id}</td>
-                        <td>${c.team}</td>
-                        <td style="color:var(--accent)">${(c.total_dist || 0).toFixed(1)}m</td>
-                        <td style="font-size:0.7rem">${c.role || '-'}</td>
-                    </tr>`).join('');
             });
         }
 
-        // --- CONFIRMATION DIALOGS ---
-        window.confirmPay = () => {
-            if(confirm("Confirm payment of 0.1 tBNB for Entrance Fee?")) {
-                alert("Processing payment...");
-                // Add actual payment logic here
-            }
+        // ROLE SWITCHING LOGIC
+        window.setRole = async (id, role) => {
+            if(!confirm(`Set Car #${id} as Team ${role.toUpperCase()}?`)) return;
+            const team = document.getElementById('teamSelect').value;
+            const snap = await get(ref(db, 'cars'));
+            const cars = snap.val();
+            const updates = {};
+            
+            // Remove role from any other car in THIS team
+            Object.keys(cars).forEach(key => {
+                if(cars[key].team === team && cars[key].role === role) {
+                    updates[`cars/${key}/role`] = null;
+                }
+            });
+            // Set new role
+            updates[`cars/car_${id.toString().padStart(3,'0')}/role`] = role;
+            await update(ref(db), updates);
         };
 
-        window.confirmRelease = () => {
-            if(confirm("Confirm release of 0.05 tBNB to Organizer?")) {
-                alert("Funds released.");
-            }
-        };
-
-        window.confirmClaim = () => {
-            if(confirm("Do you want to claim your current accumulated prize?")) {
-                alert("Prize sent to wallet!");
-            }
-        };
-
-        window.confirmSetRole = (id, role) => {
-            if(confirm(`Set Car #${id} as the team ${role.toUpperCase()}? (This will replace existing ${role})`)) {
-                // Same logic as before to update Firebase
-            }
+        // TRACK LISTENING TO MASTER
+        function listenToMaster() {
+            onValue(ref(db, 'master_state'), (snap) => {
+                const state = snap.val() || { isLive: false, label: "OFFLINE" };
+                document.getElementById('track-status').innerText = `RACE STATUS: ${state.label}`;
+                if(state.isLive) {
+                    updateTrackPositions();
+                }
+            });
         }
+
+        function updateTrackPositions() {
+            onValue(ref(db, 'cars'), (snap) => {
+                const layer = document.getElementById('cars-layer');
+                layer.innerHTML = '';
+                const cars = Object.values(snap.val() || {}).sort((a,b) => (b.total_dist || 0) - (a.total_dist || 0)).slice(0, 10);
+                cars.forEach((car, i) => {
+                    const progress = (car.total_dist || 0) / 1500 * 100;
+                    layer.innerHTML += `<div class="track-lane"><div class="track-car" style="left:${progress}%">${car.id}</div></div>`;
+                });
+            }, { onlyOnce: true });
+        }
+
+        // FINANCE HANDLERS
+        window.handleEntrance = () => {
+            const fee = 0.1;
+            if(confirm(`Pay 0.1 tBNB Entrance Fee? (Will use Claimable Balance first)`)) {
+                if(currentClaimable >= fee) {
+                    currentClaimable -= fee;
+                    alert("Paid from Claimable Balance!");
+                } else {
+                    alert("Not enough Claimable Balance. Redirecting to MetaMask...");
+                }
+                updateFinanceUI();
+            }
+        };
+
+        document.getElementById('btnClaim').onclick = () => {
+            if(currentClaimable <= 0) return alert("Nothing to claim.");
+            if(confirm(`Release ${currentClaimable.toFixed(3)} tBNB to your wallet?`)) {
+                alert("Transaction Sent! Your balance will be updated once confirmed.");
+                currentClaimable = 0;
+                updateFinanceUI();
+            }
+        };
+
+        document.getElementById('teamSelect').onchange = () => loadGarage();
     </script>
 </body>
 </html>
