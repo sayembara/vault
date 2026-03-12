@@ -55,37 +55,38 @@
         const db = getDatabase(app);
 
         // SYNC DATA TO UI
-        onValue(ref(db), (snap) => {
-            const data = snap.val() || {};
-            const vault = data.vault || {};
-            const limits = data.master_settings?.limits || { min: 0.1, max: 2.0 };
-            
-            document.getElementById('val-overflow').innerText = parseFloat(vault.overflow || 0).toFixed(3);
-            const grid = document.getElementById('sensorGrid');
-            grid.innerHTML = '';
+onValue(ref(db), (snap) => {
+    const data = snap.val() || {};
+    const vault = data.vault || {};
+    const curRound = data.race_data?.current_round || 1; // Pulled from Master
+    const limits = data.master_settings?.limits || { min: 0.1, max: 2.0 };
+    
+    document.getElementById('val-overflow').innerText = parseFloat(vault.overflow || 0).toFixed(3);
+    const grid = document.getElementById('sensorGrid');
+    grid.innerHTML = '';
 
-            for(let i=1; i<=12; i++) {
-                let r = vault.rounds?.[`r${i}`] || { normal: 0, boost: 0 };
-                if (typeof r === 'number') r = { normal: r, boost: 0 };
-                
-                const curN = parseFloat(r.normal || 0);
-                const curB = parseFloat(r.boost || 0);
-                const total = (curN + curB).toFixed(3);
-                
-                let statusClass = 'st-low', statusText = 'BELOW MIN';
-                if (curN >= limits.max) { statusClass = 'st-full'; statusText = 'MAXED'; }
-                else if (curN >= limits.min) { statusClass = 'st-mid'; statusText = 'AT MIN+'; }
+    for(let i=1; i<=12; i++) {
+        let r = vault.rounds?.[`r${i}`] || { normal: 0, boost: 0 };
+        if (typeof r === 'number') r = { normal: r, boost: 0 };
+        
+        const curN = parseFloat(r.normal || 0);
+        const total = (curN + parseFloat(r.boost || 0)).toFixed(3);
+        
+        // VISUAL SYNC WITH MASTER
+        let extraClass = i < curRound ? 'past-round' : (i === curRound ? 'active-round' : '');
+        let statusClass = curN >= limits.max ? 'st-full' : (curN >= limits.min ? 'st-mid' : 'st-low');
+        let statusText = curN >= limits.max ? 'MAXED' : (curN >= limits.min ? 'AT MIN+' : 'BELOW MIN');
 
-                grid.innerHTML += `
-                    <div class="sensor-box">
-                        <div style="font-size:0.7rem;color:#888;">ROUND ${i}</div>
-                        <div class="sub-amt">N: ${curN.toFixed(3)}</div>
-                        <div class="sub-amt">B: ${curB.toFixed(3)}</div>
-                        <div class="total-amt">${total}</div>
-                        <div class="status-tag ${statusClass}">${statusText}</div>
-                    </div>`;
-            }
-        });
+        grid.innerHTML += `
+            <div class="sensor-box ${extraClass}">
+                <div style="font-size:0.7rem;color:#888;">ROUND ${i}</div>
+                <div class="sub-amt">N: ${curN.toFixed(3)}</div>
+                <div class="sub-amt">B: ${parseFloat(r.boost).toFixed(3)}</div>
+                <div class="total-amt">${total}</div>
+                <div class="status-tag ${statusClass}">${statusText}</div>
+            </div>`;
+    }
+});
 
         async function processFund(type) {
             const amtIn = document.getElementById(type + 'Amt');
