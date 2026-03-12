@@ -2,58 +2,56 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>SANRAT | Master Engine</title>
+    <title>SANRAT | Master Control</title>
     <style>
         :root { --glass: rgba(255, 255, 255, 0.08); --accent: #00ffcc; --gold: #ffcc00; --danger: #ff4b2b; }
         body { margin: 0; padding: 20px; font-family: 'Inter', sans-serif; background: #0b0e14; color: white; display: flex; flex-direction: column; align-items: center; }
         #admin-ui { width: 100%; max-width: 1000px; display: flex; flex-direction: column; gap: 20px; }
         .card { background: var(--glass); border: 1px solid rgba(255,255,255,0.1); border-radius: 15px; padding: 20px; }
         .btn-master { padding: 12px 20px; border-radius: 8px; border: none; font-weight: bold; cursor: pointer; font-size: 0.8rem; }
-        table { width: 100%; border-collapse: collapse; margin-top: 15px; font-size: 0.8rem; text-align: center; }
-        th, td { border: 1px solid #333; padding: 10px; }
+        table { width: 100%; border-collapse: collapse; margin-top: 15px; }
+        th, td { border: 1px solid #333; padding: 12px; text-align: center; font-size: 0.75rem; }
         th { background: rgba(255,255,255,0.05); color: var(--accent); }
+        .cur-day { background: var(--danger) !important; color: white !important; font-weight: bold; }
         .track-box { background: #000; height: 300px; position: relative; overflow-y: auto; border-radius: 10px; border: 1px solid #444; }
-        .track-lane { position: relative; width: 100%; height: 28px; border-bottom: 1px solid #222; }
-        .track-car { position: absolute; height: 18px; width: 32px; background: #444; border-radius: 3px; top: 5px; font-size: 0.55rem; color: black; font-weight: 900; text-align: center; line-height: 18px; transition: 1s linear; cursor: help; }
-        .track-car.hero { background: var(--gold); box-shadow: 0 0 8px var(--gold); }
-        .track-car.support { background: var(--accent); box-shadow: 0 0 8px var(--accent); }
+        .track-lane { position: relative; width: 100%; height: 32px; border-bottom: 1px solid #222; }
+        .track-car { position: absolute; height: 20px; width: 35px; border-radius: 4px; top: 6px; font-size: 0.6rem; color: black; font-weight: 900; text-align: center; line-height: 20px; transition: 1s linear; }
+        .track-car.hero { background: var(--gold); }
+        .track-car.support { background: var(--accent); }
+        select, input { background:#000; color:white; border:1px solid #444; padding:10px; border-radius:5px; }
     </style>
 </head>
 <body>
     <div id="admin-ui">
         <div class="card">
-            <h2 style="margin:0; color:var(--accent);">MASTER CONTROL ENGINE</h2>
+            <h2 style="margin:0; color:var(--accent);">RACE ENGINE MASTER</h2>
             <div style="display: flex; gap: 10px; margin-top: 20px;">
                 <button class="btn-master" style="background:var(--accent); color:#00334e;" onclick="toggleRace(true)">GO LIVE</button>
                 <button class="btn-master" style="background:var(--danger); color:white;" onclick="toggleRace(false)">STOP RACE</button>
                 <button class="btn-master" style="background:#555; color:white;" onclick="triggerTick()">TRIGGER DAILY TICK</button>
+                <button class="btn-master" style="background:orange; color:black;" onclick="resetSeason()">RESET SEASON</button>
             </div>
         </div>
 
         <div class="card">
             <h3>THE 7-DAY MATRIX</h3>
-            <table>
-                <thead><tr id="mat-head"><th>Day</th></tr></thead>
-                <tbody id="mat-body">
-                    <tr id="row-dir"><td><b>Direction</b></td></tr>
-                    <tr id="row-elev"><td><b>Elevation</b></td></tr>
-                    <tr id="row-hum"><td><b>Humidity %</b></td></tr>
-                    <tr id="row-weather"><td><b>Weather</b></td></tr>
-                </tbody>
+            <table id="matrixTable">
+                <thead><tr id="mat-head"><th>Detail</th></tr></thead>
+                <tbody id="mat-body"></tbody>
             </table>
         </div>
 
         <div class="card">
-            <h3>DISTRIBUTION</h3>
+            <h3>TEAM PRIZE ASSIGNMENT (FOR TESTING)</h3>
             <div style="display:flex; gap:10px;">
-                <select id="targetTeam" style="flex:1; background:#000; color:white; border:1px solid #444; padding:10px;"><option value="Alpha">Alpha</option><option value="Beta">Beta</option><option value="Gamma">Gamma</option><option value="Delta">Delta</option><option value="Epsilon">Epsilon</option></select>
-                <input type="number" id="distAmt" value="0.1" step="0.01" style="width:80px; background:#000; color:white; border:1px solid #444;">
-                <button class="btn-master" style="background:var(--gold); color:black;" onclick="distribute()">TRANSFER FUND</button>
+                <select id="targetTeam"><option value="Alpha">Alpha</option><option value="Beta">Beta</option><option value="Gamma">Gamma</option><option value="Delta">Delta</option><option value="Epsilon">Epsilon</option></select>
+                <input type="number" id="prizeAmt" value="0.25" step="0.01">
+                <button class="btn-master" style="background:var(--gold); color:black;" onclick="assignPrize()">ASSIGN PRIZE</button>
             </div>
         </div>
 
         <div class="card">
-            <h3>MASTER TRACK (LIVE MONITOR)</h3>
+            <h3>LIVE TRACK MONITOR</h3>
             <div class="track-box"><div id="master-layer"></div></div>
         </div>
     </div>
@@ -66,31 +64,42 @@
         const app = initializeApp(firebaseConfig);
         const db = getDatabase(app);
 
-        const icons = { straight: "➡️", right: "⤴️", left: "⤵️", flat: "➖", up: "🔼", down: "🔽", dry: "☀️", wet: "🌧️" };
+        const icons = { straight:"➡️", right:"⤴️", left:"⤵️", flat:"➖", up:"🔼", down:"🔽", dry:"☀️", wet:"🌧️" };
 
         onValue(ref(db, 'race_constants'), snap => {
             const c = snap.val();
-            const head = document.getElementById('mat-head');
-            const rDir = document.getElementById('row-dir');
-            const rElev = document.getElementById('row-elev');
-            const rHum = document.getElementById('row-hum');
-            const rWeth = document.getElementById('row-weather');
-
             onValue(ref(db, 'race_state'), sSnap => {
                 const curDay = sSnap.val()?.day_in_round || 1;
-                head.innerHTML = '<th>Day</th>' + c.weather.map((_, i) => `<th style="${i+1===curDay?'background:var(--danger);':''}">Day ${i+1}</th>`).join('');
-                rDir.innerHTML = '<td><b>Direction</b></td>' + c.direction.map(v => `<td>${icons[v]||v}</td>`).join('');
-                rElev.innerHTML = '<td><b>Elevation</b></td>' + c.elevation.map(v => `<td>${icons[v]||v}</td>`).join('');
-                rHum.innerHTML = '<td><b>Humidity %</b></td>' + c.humidity.map(v => `<td>${v}%</td>`).join('');
                 
-                rWeth.innerHTML = '<td><b>Weather</b></td>' + c.humidity.map((h, i) => {
-                    if(i+1 < curDay) return `<td>${icons[c.weather[i]]||c.weather[i]}</td>`;
-                    if(i+1 === curDay) {
-                        const w = h <= 40 ? 'dry' : (Math.random()*100 > h ? 'dry' : 'wet');
-                        return `<td style="color:var(--gold)">${icons[w]}</td>`;
+                // Header
+                let hHtml = '<th>Row Title</th>';
+                for(let i=1; i<=7; i++) hHtml += `<th class="${i===curDay?'cur-day':''}">Day ${i}</th>`;
+                document.getElementById('mat-head').innerHTML = hHtml;
+
+                // Body
+                const rows = [
+                    { label: "Direction", data: c.direction, icon: true },
+                    { label: "Elevation", data: c.elevation, icon: true },
+                    { label: "Humidity %", data: c.humidity, suffix: "%" },
+                    { label: "Weather", data: c.weather, icon: true, dynamic: true }
+                ];
+
+                let bHtml = '';
+                rows.forEach(r => {
+                    bHtml += `<tr><td><b>${r.label}</b></td>`;
+                    for(let i=0; i<7; i++) {
+                        let val = r.data[i];
+                        if(r.dynamic && (i+1) > curDay) val = "?";
+                        else if(r.dynamic && (i+1) === curDay) {
+                             // Logic: roll vs humidity
+                             val = c.humidity[i] <= 40 ? 'dry' : (Math.random()*100 > c.humidity[i] ? 'dry' : 'wet');
+                        }
+                        const display = r.icon ? (icons[val] || val) : (val + (r.suffix || ""));
+                        bHtml += `<td>${display}</td>`;
                     }
-                    return `<td>?</td>`;
-                }).join('');
+                    bHtml += `</tr>`;
+                });
+                document.getElementById('mat-body').innerHTML = bHtml;
             });
         });
 
@@ -102,28 +111,42 @@
                 Object.values(carSnap.val()).forEach(c => {
                     if(paid[c.team] && c.role) {
                         const p = (c.total_dist || 0) / 1500 * 100;
-                        layer.innerHTML += `<div class="track-lane"><div class="track-car ${c.role}" style="left:${p}%" title="P:${c.traits.propulsion} T:${c.traits.traction}">${c.id}</div></div>`;
+                        layer.innerHTML += `<div class="track-lane"><div class="track-car ${c.role}" style="left:${p}%">${c.id}</div></div>`;
                     }
                 });
             });
         });
 
         window.toggleRace = (live) => update(ref(db, 'master_state'), { isLive: live, label: live ? "RACING LIVE" : "OFFLINE" });
-        window.distribute = async () => {
+        
+        window.assignPrize = async () => {
             const t = document.getElementById('targetTeam').value;
-            const a = parseFloat(document.getElementById('distAmt').value);
-            const s = await get(ref(db, `balances/${t}`));
-            await set(ref(db, `balances/${t}`), (s.val()||0) + a);
-            alert("Fund Distributed!");
+            const a = parseFloat(document.getElementById('prizeAmt').value);
+            await set(ref(db, `prizes/${t}`), a);
+            alert(`Assigned ${a} to ${t} prize pool.`);
         };
 
         window.triggerTick = async () => {
-            if(!confirm("Execute daily calculation?")) return;
-            // Full Engine logic remains same as previous provided but updated to next day
+            if(!confirm("Start Daily Tick?")) return;
             const s = await get(ref(db, 'race_state'));
             const day = (s.val()?.day_in_round || 1);
             await update(ref(db, 'race_state'), { day_in_round: day >= 7 ? 1 : day + 1 });
-            alert("Tick Complete!");
+            alert("Tick Finished.");
+        };
+
+        window.resetSeason = async () => {
+            if(!confirm("WIPE SEASON? All distances and payments will be cleared.")) return;
+            const carsSnap = await get(ref(db, 'cars'));
+            const cars = carsSnap.val();
+            const updates = {};
+            Object.keys(cars).forEach(k => {
+                updates[`cars/${k}/total_dist`] = 0;
+                updates[`cars/${k}/daily_dist`] = null;
+            });
+            updates['race_state/paid_teams'] = null;
+            updates['race_state/day_in_round'] = 1;
+            await update(ref(db), updates);
+            alert("Season Reset.");
         };
     </script>
 </body>
