@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>SANRAT | Generate Test Cars</title>
+    <style>
+        :root { --glass: rgba(255, 255, 255, 0.08); --accent: #00ffcc; --gold: #ffcc00; }
+        body { margin: 0; padding: 20px; font-family: 'Inter', sans-serif; background: #0b0e14; color: white; display: flex; flex-direction: column; align-items: center; min-height: 100vh; }
+        
+        .card { background: var(--glass); border: 1px solid rgba(255,255,255,0.1); border-radius: 15px; padding: 30px; width: 100%; max-width: 500px; text-align: center; }
+        .btn-gen { background: var(--accent); color: #00334e; border: none; padding: 15px 30px; border-radius: 10px; font-weight: bold; cursor: pointer; width: 100%; font-size: 1rem; margin-top: 20px; }
+        .status-log { margin-top: 20px; font-family: monospace; font-size: 0.8rem; color: #888; text-align: left; max-height: 200px; overflow-y: auto; background: rgba(0,0,0,0.3); padding: 10px; border-radius: 8px; }
+        
+        #auth-screen { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 80vh; }
+        .btn-connect { background: #f6851b; color: white; padding: 15px 30px; border-radius: 50px; border: none; font-weight: bold; cursor: pointer; }
+    </style>
+</head>
+<body>
+
+    <div id="auth-screen">
+        <h1 style="letter-spacing: 2px;">FACTORY ACCESS</h1>
+        <button class="btn-connect" id="connectBtn">Connect MetaMask</button>
+    </div>
+
+    <div id="admin-ui" style="display:none;">
+        <div class="card">
+            <h2 style="color: var(--accent);">Car Generator</h2>
+            <p style="font-size: 0.9rem;">This will generate 20 cars (5 Teams x 4 Cars) with random traits (1-10) and reset their daily distance matrix.</p>
+            
+            <button class="btn-gen" id="btnGenerate">🚀 GENERATE & SYNC TO FIREBASE</button>
+            
+            <div id="log" class="status-log">System Ready...</div>
+        </div>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js";
+        import { getDatabase, ref, set } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-database.js";
+
+        const ADMIN = "0xCe9782f77eC560a1Cb329F935b5D416AA41f1a5d".toLowerCase();
+        const firebaseConfig = { apiKey: "AlzaSyBYxLOGFzaHN6CS4ro_bjnKEblbQE6Vtx4", databaseURL: "https://nuclearf1-94a6b-default-rtdb.asia-southeast1.firebasedatabase.app" };
+        const app = initializeApp(firebaseConfig);
+        const db = getDatabase(app);
+
+        const logEl = document.getElementById('log');
+        const addLog = (msg) => { logEl.innerHTML += `<div>> ${msg}</div>`; logEl.scrollTop = logEl.scrollHeight; };
+
+        document.getElementById('connectBtn').onclick = async () => {
+            if (window.ethereum) {
+                const accs = await window.ethereum.request({ method: 'eth_requestAccounts' });
+                if (accs[0].toLowerCase() === ADMIN) {
+                    document.getElementById('auth-screen').style.display = 'none';
+                    document.getElementById('admin-ui').style.display = 'block';
+                } else { alert("Unauthorized"); }
+            }
+        };
+
+        document.getElementById('btnGenerate').onclick = async () => {
+            if(!confirm("This will overwrite existing car data. Proceed?")) return;
+            
+            addLog("Initializing Generation...");
+            const cars = {};
+            const teamNames = ["Alpha", "Beta", "Gamma", "Delta", "Epsilon"];
+
+            for (let t = 0; t < 5; t++) {
+                const team = teamNames[t];
+                addLog(`Creating Team ${team}...`);
+                
+                for (let c = 1; c <= 4; c++) {
+                    const carId = (t * 4) + c; // 1 to 20
+                    const carKey = `car_${carId.toString().padStart(3, '0')}`;
+                    
+                    cars[carKey] = {
+                        id: carId,
+                        team: team,
+                        owner: "0x000...Demo",
+                        traits: {
+                            propulsion: Math.floor(Math.random() * 10) + 1,
+                            traction: Math.floor(Math.random() * 10) + 1,
+                            stability: Math.floor(Math.random() * 10) + 1,
+                            core: Math.floor(Math.random() * 10) + 1
+                        },
+                        // Initialize distance matrix for 7 days
+                        daily_dist: {
+                            day1: 0, day2: 0, day3: 0, day4: 0, day5: 0, day6: 0, day7: 0
+                        },
+                        total_dist: 0
+                    };
+                }
+            }
+
+            try {
+                await set(ref(db, 'cars'), cars);
+                addLog("✅ Success! 20 Cars synced to Firebase.");
+                alert("Generation Complete!");
+            } catch (e) {
+                addLog(`❌ Error: ${e.message}`);
+            }
+        };
+    </script>
+</body>
+</html>
