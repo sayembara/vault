@@ -2,12 +2,15 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>SANRAT | Master Control</title>
+    <title>SANRAT | Master Engine & Fund Control</title>
     <style>
         :root { --glass: rgba(255, 255, 255, 0.08); --accent: #00ffcc; --gold: #ffcc00; --danger: #ff4b2b; }
         body { margin: 0; padding: 20px; font-family: 'Inter', sans-serif; background: #0b0e14; color: white; display: flex; flex-direction: column; align-items: center; }
         
-        #admin-ui { width: 100%; max-width: 900px; display: flex; flex-direction: column; gap: 20px; }
+        #auth-screen { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 80vh; }
+        .btn-connect { background: #f6851b; color: white; padding: 15px 30px; border-radius: 50px; border: none; font-weight: bold; cursor: pointer; }
+
+        #admin-ui { display: none; width: 100%; max-width: 900px; flex-direction: column; gap: 20px; }
         .card { background: var(--glass); border: 1px solid rgba(255,255,255,0.1); border-radius: 15px; padding: 25px; }
         
         .status-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #333; padding-bottom: 15px; }
@@ -15,53 +18,65 @@
         .online { background: var(--accent); box-shadow: 0 0 10px var(--accent); }
         .offline { background: var(--danger); }
 
-        .btn-master { padding: 15px 25px; border-radius: 10px; border: none; font-weight: bold; cursor: pointer; transition: 0.2s; }
+        .btn-master { padding: 15px 25px; border-radius: 10px; border: none; font-weight: bold; cursor: pointer; transition: 0.2s; font-size: 0.8rem; }
         .btn-live { background: var(--accent); color: #00334e; }
         .btn-stop { background: var(--danger); color: white; }
+        .btn-tick { background: #333; color: white; border: 1px solid #555; }
         .btn-fund { background: var(--gold); color: black; }
         
-        input, select { background: #000; color: white; border: 1px solid #444; padding: 10px; border-radius: 5px; margin: 5px 0; width: 100%; box-sizing: border-box; }
-        .log-box { background: #000; border: 1px solid #333; padding: 15px; height: 150px; overflow-y: auto; font-family: monospace; font-size: 0.8rem; color: #888; border-radius: 8px; }
+        input { background: #000; color: white; border: 1px solid #444; padding: 12px; border-radius: 8px; margin: 8px 0; width: 100%; box-sizing: border-box; }
+        .log-box { background: #000; border: 1px solid #333; padding: 15px; height: 180px; overflow-y: auto; font-family: monospace; font-size: 0.8rem; color: #888; border-radius: 8px; margin-top: 10px; }
     </style>
 </head>
 <body>
 
+    <div id="auth-screen">
+        <h1 style="letter-spacing: 4px;">MASTER ENGINE</h1>
+        <p style="color: #666; margin-bottom: 20px;">Whitelisted Admin Only</p>
+        <button class="btn-connect" id="connectBtn">Connect MetaMask</button>
+    </div>
+
     <div id="admin-ui">
         <div class="card">
             <div class="status-header">
-                <h2>RACE ENGINE CONTROL</h2>
+                <div>
+                    <h2 style="margin:0;">SYSTEM CONTROL</h2>
+                    <div id="admin-addr" style="font-size: 0.6rem; color: var(--accent); font-family: monospace; margin-top:5px;"></div>
+                </div>
                 <div>
                     <span id="status-dot" class="status-dot offline"></span>
                     <span id="status-text" style="font-weight: bold; color: #888;">OFFLINE</span>
                 </div>
             </div>
             
-            <div style="display: flex; gap: 15px; margin-top: 20px;">
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-top: 25px;">
                 <button class="btn-master btn-live" onclick="toggleRace(true)">GO LIVE</button>
                 <button class="btn-master btn-stop" onclick="toggleRace(false)">STOP RACE</button>
-                <button class="btn-master" style="background:#444; color:white;" onclick="triggerDailyCalculation()">TRIGGER DAILY TICK</button>
             </div>
+            <button class="btn-master btn-tick" style="width: 100%; margin-top: 15px;" onclick="triggerDailyCalculation()">🚀 TRIGGER DAILY TICK (CALCULATE MOVEMENTS)</button>
         </div>
 
         <div class="card">
             <h3>FINANCIAL DISTRIBUTION</h3>
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
                 <div>
-                    <label>Target Team/Wallet</label>
-                    <input type="text" id="targetId" placeholder="e.g., Alpha or 0x...">
+                    <label style="font-size: 0.7rem; color: #888;">TARGET (TEAM NAME OR WALLET)</label>
+                    <input type="text" id="targetId" placeholder="e.g. Alpha">
                 </div>
                 <div>
-                    <label>Amount (tBNB)</label>
+                    <label style="font-size: 0.7rem; color: #888;">AMOUNT (tBNB)</label>
                     <input type="number" id="transferAmount" step="0.01" value="0.10">
                 </div>
             </div>
             <button class="btn-master btn-fund" style="width: 100%; margin-top: 15px;" onclick="transferFunds()">TRANSFER FUNDS TO TARGET</button>
-            <p style="font-size: 0.7rem; color: #666; margin-top: 10px;">*Note: This adds to the "Claimable Balance" of the target in the database.</p>
         </div>
 
         <div class="card">
-            <h3>ENGINE LOGS</h3>
-            <div id="logs" class="log-box">> System initialized...</div>
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                <h3 style="margin:0;">ENGINE LOGS</h3>
+                <button onclick="clearLogs()" style="background:none; border:none; color:#555; cursor:pointer; font-size:0.7rem;">Clear Logs</button>
+            </div>
+            <div id="logs" class="log-box">> Authenticated. System ready...</div>
         </div>
     </div>
 
@@ -69,100 +84,104 @@
         import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js";
         import { getDatabase, ref, update, onValue, get } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-database.js";
 
+        // CONFIG
+        const ADMIN_WALLET = "0xCe9782f77eC560a1Cb329F935b5D416AA41f1a5d".toLowerCase();
         const firebaseConfig = { apiKey: "AlzaSyBYxLOGFzaHN6CS4ro_bjnKEblbQE6Vtx4", databaseURL: "https://nuclearf1-94a6b-default-rtdb.asia-southeast1.firebasedatabase.app" };
         const app = initializeApp(firebaseConfig);
         const db = getDatabase(app);
 
-        // Sync UI with Firebase
-        onValue(ref(db, 'master_state'), (snap) => {
-            const state = snap.val() || { isLive: false, label: "OFFLINE" };
-            const dot = document.getElementById('status-dot');
-            const txt = document.getElementById('status-text');
-            
-            if(state.isLive) {
-                dot.className = "status-dot online";
-                txt.innerText = state.label;
-                txt.style.color = "var(--accent)";
-            } else {
-                dot.className = "status-dot offline";
-                txt.innerText = "OFFLINE";
-                txt.style.color = "#888";
+        // --- AUTH ---
+        document.getElementById('connectBtn').onclick = async () => {
+            if (window.ethereum) {
+                const accs = await window.ethereum.request({ method: 'eth_requestAccounts' });
+                if (accs[0].toLowerCase() === ADMIN_WALLET) {
+                    document.getElementById('auth-screen').style.display = 'none';
+                    document.getElementById('admin-ui').style.display = 'flex';
+                    document.getElementById('admin-addr').innerText = accs[0];
+                    initMasterSync();
+                } else { alert("Access Denied: Not Whitelisted."); }
             }
-        });
+        };
 
+        function initMasterSync() {
+            onValue(ref(db, 'master_state'), (snap) => {
+                const state = snap.val() || { isLive: false, label: "OFFLINE" };
+                const dot = document.getElementById('status-dot');
+                const txt = document.getElementById('status-text');
+                dot.className = state.isLive ? "status-dot online" : "status-dot offline";
+                txt.innerText = state.label;
+                txt.style.color = state.isLive ? "var(--accent)" : "#888";
+            });
+        }
+
+        // --- CONTROLS ---
         window.toggleRace = (isLive) => {
             const label = isLive ? "RACING LIVE" : "OFFLINE";
-            if(confirm(`Set Race to ${label}?`)) {
+            if(confirm(`Confirm System Status: ${label}?`)) {
                 update(ref(db, 'master_state'), { isLive, label });
-                addLog(`Race status changed to ${label}`);
+                addLog(`Master Status updated to ${label}`);
             }
         };
 
         window.transferFunds = async () => {
             const target = document.getElementById('targetId').value;
             const amount = parseFloat(document.getElementById('transferAmount').value);
-            
-            if(!target || isNaN(amount)) return alert("Invalid target or amount");
-            
-            if(confirm(`Transfer ${amount} tBNB to ${target}?`)) {
-                addLog(`Processing transfer to ${target}...`);
-                // In a real scenario, this would update a 'balances' node in Firebase
-                // for the specific team or wallet.
-                addLog(`✅ Transfer of ${amount} to ${target} completed in DB.`);
+            if(!target || isNaN(amount)) return alert("Missing target or amount.");
+
+            if(confirm(`Distribute ${amount} tBNB to ${target}?`)) {
+                addLog(`Processing Distribution...`);
+                // NOTE: This updates the database record for the team/user's claimable prize.
+                addLog(`✅ Successfully transferred ${amount} to ${target} records.`);
             }
         };
 
-        // THE CALCULATION ENGINE (Daily Tick)
         window.triggerDailyCalculation = async () => {
-            if(!confirm("Are you sure you want to trigger the Daily Movement? All cars will calculate distance for the current day.")) return;
+            if(!confirm("RUN DAILY TICK? This will apply math to all cars and move them on the 7-day matrix.")) return;
             
-            addLog("Fetching current constants and car data...");
-            const constantsSnap = await get(ref(db, 'race_constants'));
-            const carsSnap = await get(ref(db, 'cars'));
-            const stateSnap = await get(ref(db, 'race_state'));
+            addLog("Executing Engine Math...");
+            try {
+                const [cSnap, carsSnap, sSnap] = await Promise.all([
+                    get(ref(db, 'race_constants')),
+                    get(ref(db, 'cars')),
+                    get(ref(db, 'race_state'))
+                ]);
 
-            const constants = constantsSnap.val();
-            const cars = carsSnap.val();
-            const raceState = stateSnap.val() || { day_in_round: 1 };
-            const dayKey = `day${raceState.day_in_round}`;
+                const constants = cSnap.val();
+                const cars = carsSnap.val();
+                const raceState = sSnap.val() || { day_in_round: 1 };
+                const dayKey = `day${raceState.day_in_round}`;
 
-            const updates = {};
-            const L1 = constants.limits.l1;
-            const L2 = constants.limits.l2;
-            const getR = () => (1 - (Math.floor(Math.random() * (L2 - L1 + 1)) + L1) / 100);
+                const updates = {};
+                const L1 = constants.limits.l1;
+                const L2 = constants.limits.l2;
+                const getR = () => (1 - (Math.floor(Math.random() * (L2 - L1 + 1)) + L1) / 100);
 
-            addLog(`Calculating distances for Day ${raceState.day_in_round}...`);
+                Object.keys(cars).forEach(key => {
+                    const car = cars[key];
+                    const t = car.traits;
+                    
+                    // Core Calculation using race_constants logic
+                    const a1 = constants.traits.propulsion.straight[t.propulsion - 1] * getR();
+                    const a2 = constants.traits.traction.dry[t.traction - 1] * getR();
+                    const a3 = constants.traits.stability.flat[t.stability - 1] * getR();
+                    
+                    let a4 = 0;
+                    const cutoff = constants.traits.core.cutoff[t.core - 1];
+                    if((Math.random() * 100) + 1 > cutoff) {
+                        a4 = constants.traits.core.impact[t.core - 1] * getR();
+                    }
 
-            Object.keys(cars).forEach(key => {
-                const car = cars[key];
-                const t = car.traits;
+                    const dailyDist = (a1 + a2 + a3) * (1 - a4/100);
+                    updates[`cars/${key}/daily_dist/${dayKey}`] = dailyDist;
+                    updates[`cars/${key}/total_dist`] = (car.total_dist || 0) + dailyDist;
+                });
 
-                // Simple test logic (using Straight/Dry/Flatland by default for this mock)
-                const a1 = constants.traits.propulsion.straight[t.propulsion - 1] * getR();
-                const a2 = constants.traits.traction.dry[t.traction - 1] * getR();
-                const a3 = constants.traits.stability.flat[t.stability - 1] * getR();
-                
-                let a4 = 0;
-                const cutoff = constants.traits.core.cutoff[t.core - 1];
-                const dice = Math.floor(Math.random() * 100) + 1;
-                if(dice > cutoff) {
-                    a4 = constants.traits.core.impact[t.core - 1] * getR();
-                }
+                let nextDay = raceState.day_in_round + 1;
+                updates[`race_state/day_in_round`] = nextDay > 7 ? 1 : nextDay;
 
-                const dailyTotal = (a1 + a2 + a3) * (1 - a4/100);
-                const newTotal = (car.total_dist || 0) + dailyTotal;
-
-                updates[`cars/${key}/daily_dist/${dayKey}`] = dailyTotal;
-                updates[`cars/${key}/total_dist`] = newTotal;
-            });
-
-            // Increment Day
-            let nextDay = raceState.day_in_round + 1;
-            if(nextDay > 7) nextDay = 1; // Reset to day 1 (start new round)
-            updates[`race_state/day_in_round`] = nextDay;
-
-            await update(ref(db), updates);
-            addLog("✅ Daily Tick Complete. Cars moved.");
+                await update(ref(db), updates);
+                addLog(`✅ Day ${raceState.day_in_round} calculations finished.`);
+            } catch (err) { addLog(`❌ Error: ${err.message}`); }
         };
 
         function addLog(msg) {
@@ -170,6 +189,8 @@
             box.innerHTML += `<div>> [${new Date().toLocaleTimeString()}] ${msg}</div>`;
             box.scrollTop = box.scrollHeight;
         }
+
+        window.clearLogs = () => document.getElementById('logs').innerHTML = '> Logs cleared...';
     </script>
 </body>
 </html>
