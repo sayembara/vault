@@ -9,32 +9,23 @@
         :root { --glass: rgba(255, 255, 255, 0.08); --accent: #00ffcc; --gold: #ffcc00; --danger: #ff4b2b; --bg: #0b0e14; }
         body { margin: 0; padding: 20px; font-family: 'Inter', sans-serif; background: var(--bg); color: white; display: flex; flex-direction: column; align-items: center; }
         
-        /* Auth Screen */
         #auth-gate { position: fixed; inset: 0; background: var(--bg); z-index: 999; display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; }
-        .btn-connect { background: #f6851b; color: white; padding: 15px 40px; font-size: 1.2rem; border-radius: 50px; border: none; cursor: pointer; font-weight: bold; transition: 0.3s; }
-        .btn-connect:hover { transform: scale(1.05); box-shadow: 0 0 20px rgba(246, 133, 27, 0.4); }
+        .btn-connect { background: #f6851b; color: white; padding: 15px 40px; font-size: 1.2rem; border-radius: 50px; border: none; cursor: pointer; font-weight: bold; }
 
-        /* Main UI */
         #admin-ui { width: 100%; max-width: 1300px; display: none; grid-template-columns: 350px 1fr; gap: 20px; }
-        .card { background: var(--glass); border: 1px solid rgba(255,255,255,0.1); border-radius: 15px; padding: 20px; position: relative; }
+        .card { background: var(--glass); border: 1px solid rgba(255,255,255,0.1); border-radius: 15px; padding: 20px; }
         .full-width { grid-column: 1 / -1; }
         
         .status-tag { background: var(--accent); color: #000; padding: 4px 12px; border-radius: 4px; font-weight: bold; margin-left: 5px; }
         .btn-master { padding: 12px 20px; border-radius: 8px; border: none; font-weight: bold; cursor: pointer; transition: 0.2s; }
         
-        /* Table Styles */
         table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 0.75rem; }
         th, td { border: 1px solid #333; padding: 12px; text-align: center; }
         .active-day-col { background: rgba(255, 75, 43, 0.2) !important; border: 2px solid var(--danger) !important; }
 
-        /* Track UI */
         .track-box { background: #000; height: 450px; position: relative; border-radius: 10px; border: 1px solid #444; overflow-y: auto; overflow-x: hidden; padding-top: 10px; }
         .track-lane { position: relative; width: 100%; height: 38px; border-bottom: 1px solid #222; }
-        .track-car { 
-            position: absolute; height: 24px; width: 42px; border-radius: 4px; top: 6px; 
-            font-size: 0.65rem; color: black; font-weight: 900; text-align: center; line-height: 24px; 
-            transition: left 1.2s cubic-bezier(0.4, 0, 0.2, 1); z-index: 2; 
-        }
+        .track-car { position: absolute; height: 24px; width: 42px; border-radius: 4px; top: 6px; font-size: 0.65rem; color: black; font-weight: 900; text-align: center; line-height: 24px; transition: left 1.2s cubic-bezier(0.4, 0, 0.2, 1); z-index: 2; }
         .hp-container { width: 100%; height: 3px; background: #333; position: absolute; bottom: -5px; left: 0; }
         .hp-bar { height: 100%; transition: width 0.3s; }
     </style>
@@ -42,8 +33,7 @@
 <body>
 
     <div id="auth-gate">
-        <h1 style="letter-spacing: 4px; color: var(--accent);">MASTER ENGINE</h1>
-        <p style="color: #666; margin-bottom: 30px;">Whitelisted Admin Wallet Required</p>
+        <h1 style="color: var(--accent);">MASTER ENGINE</h1>
         <button class="btn-connect" onclick="connectWallet()">Connect MetaMask</button>
         <p id="wallet-status" style="margin-top: 20px; font-size: 0.8rem; color: var(--danger);"></p>
     </div>
@@ -57,13 +47,13 @@
             <div style="display: flex; gap: 10px;">
                 <button class="btn-master" style="background:var(--accent);" onclick="generateSeason()">GENERATE SEASON</button>
                 <button id="nextBtn" class="btn-master" style="background:white;" onclick="triggerTick()">NEXT DAY</button>
-                <button id="endRoundBtn" class="btn-master" style="background:var(--danger); color:white;" onclick="runToEndOfRound()">FAST END ROUND</button>
+                <button id="endRoundBtn" class="btn-master" style="background:var(--danger); color:white;" onclick="runToEndOfRound()">FAST END</button>
                 <button class="btn-master" style="background:#555; color:white;" onclick="window.location.href='race_constants.html'">CONFIG</button>
             </div>
         </div>
 
         <div class="card">
-            <h3 style="margin-top:0; color:var(--gold);">LEADERBOARD</h3>
+            <h3 style="margin-top:0; color:var(--gold);">RANKINGS</h3>
             <table>
                 <thead><tr><th>Rank</th><th>Unit</th><th>Dist</th></tr></thead>
                 <tbody id="rankBody"></tbody>
@@ -92,100 +82,88 @@
         const db = getDatabase(app);
 
         const ADMIN_WALLET = "0xCe9782f77eC560a1Cb329F935b5D416AA41f1a5d".toLowerCase();
+        const icons = { straight:"➡️", right:"⤴️", left:"⤵️", flatland:"➖", uphill:"🔼", downhill:"🔽", dry:"☀️", wet:"🌧️" };
 
-        // --- AUTH ---
         window.connectWallet = async () => {
             if (window.ethereum) {
                 const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
                 if (accounts[0].toLowerCase() === ADMIN_WALLET) {
                     document.getElementById('auth-gate').style.display = 'none';
                     document.getElementById('admin-ui').style.display = 'grid';
-                } else {
-                    document.getElementById('wallet-status').innerText = "Unauthorized Access.";
                 }
-            } else { alert("Please install MetaMask."); }
+            }
         };
 
-        // --- ENGINE LOGIC ---
+        async function syncMatrix(activeDay) {
+            const cSnap = await get(ref(db, 'race_constants'));
+            const c = cSnap.val();
+            if(!c || !c.direction) return;
+            let h = '<th>Type</th>';
+            for(let i=1; i<=7; i++) h += `<th class="${i===activeDay?'active-day-col':''}">D${i}</th>`;
+            document.getElementById('mat-head').innerHTML = h;
+            const rows = [{l:"Dir",d:c.direction,i:true},{l:"Elev",d:c.elevation,i:true},{l:"Hum",d:c.humidity,s:"%"},{l:"Wthr",d:c.weather,i:true}];
+            document.getElementById('mat-body').innerHTML = rows.map(r => `<tr><td><b>${r.l}</b></td>${r.d.map((v,idx)=>`<td class="${idx+1===activeDay?'active-day-col':''}">${r.i?icons[v]:v+(r.s||'')}</td>`).join('')}</tr>`).join('');
+        }
+
         window.triggerTick = async () => {
             const stateSnap = await get(ref(db, 'race_state'));
-            const state = stateSnap.val() || { day_in_round: 1, round: 1 };
+            const s = stateSnap.val() || { day_in_round: 1, round: 1 };
             const carsSnap = await get(ref(db, 'cars'));
             const cars = carsSnap.val();
             const configSnap = await get(ref(db, 'race_constants'));
             const hpSet = configSnap.val().hp_settings || { drain:{min:5,max:10}, heal:{min:5,max:10} };
             
-            const updates = {};
-
-            // DAY 8 WARP: If we are at the placeholder, reset for next round
-            if (state.day_in_round === 8) {
-                Object.keys(cars).forEach(id => updates[`cars/${id}/total_dist`] = 0);
-                updates['race_state/day_in_round'] = 1;
-                updates['race_state/round'] = (state.round || 1) + 1;
-                await update(ref(db), updates);
+            const up = {};
+            if (s.day_in_round === 8) {
+                Object.keys(cars).forEach(id => up[`cars/${id}/total_dist`] = 0);
+                up['race_state/day_in_round'] = 1;
+                up['race_state/round'] = (s.round || 1) + 1;
+                await update(ref(db), up);
                 return;
             }
 
-            // DAYS 1-7: Calculate Movement and HP
             Object.keys(cars).forEach(id => {
                 const car = cars[id];
-                const coreBonus = (car.traits?.core || 1) / 20;
-
+                const cb = (car.traits?.core || 1) / 20;
                 if (car.role === 'support' && (car.hp || 100) > 0) {
-                    updates[`cars/${id}/total_dist`] = (car.total_dist || 0) + (Math.random() * 200 + 100);
-                    const drain = (Math.random() * (hpSet.drain.max - hpSet.drain.min) + hpSet.drain.min) - coreBonus;
-                    updates[`cars/${id}/hp`] = Math.max(0, (car.hp || 100) - drain);
+                    up[`cars/${id}/total_dist`] = (car.total_dist || 0) + (Math.random() * 200 + 100);
+                    up[`cars/${id}/hp`] = Math.max(0, (car.hp || 100) - ((Math.random()*(hpSet.drain.max-hpSet.drain.min)+hpSet.drain.min)-cb));
                 } else if (!car.role) {
-                    const heal = (Math.random() * (hpSet.heal.max - hpSet.heal.min) + hpSet.heal.min) + coreBonus;
-                    updates[`cars/${id}/hp`] = Math.min(100, (car.hp || 100) + heal);
+                    up[`cars/${id}/hp`] = Math.min(100, (car.hp || 100) + ((Math.random()*(hpSet.heal.max-hpSet.heal.min)+hpSet.heal.min)+cb));
                 }
             });
-
-            updates['race_state/day_in_round'] = state.day_in_round + 1;
-            await update(ref(db), updates);
+            up['race_state/day_in_round'] = s.day_in_round + 1;
+            await update(ref(db), up);
         };
 
         window.runToEndOfRound = async () => {
-            const btn = document.getElementById('endRoundBtn');
-            btn.disabled = true;
             for(let i=0; i<8; i++) {
                 const s = (await get(ref(db, 'race_state'))).val();
                 if(s.day_in_round === 8) break;
                 await triggerTick();
-                await new Promise(r => setTimeout(r, 500));
+                await new Promise(r => setTimeout(r, 600));
             }
-            btn.disabled = false;
         };
 
-        // --- UI UPDATES ---
         onValue(ref(db, 'race_state'), snap => {
             const s = snap.val() || { day_in_round: 1 };
-            const label = document.getElementById('dayLabel');
-            const btn = document.getElementById('nextBtn');
-            
             document.getElementById('roundNum').innerText = s.round || 1;
-            
-            if (s.day_in_round === 8) {
-                label.innerText = "🏁 FINAL RESULTS";
-                label.style.color = "var(--gold)";
-                btn.innerText = "WARP TO NEXT ROUND";
-                btn.style.background = "var(--danger)";
-                btn.style.color = "white";
+            const lbl = document.getElementById('dayLabel');
+            const btn = document.getElementById('nextBtn');
+            if(s.day_in_round === 8) {
+                lbl.innerText = "🏁 FINAL RESULTS"; lbl.style.color = "var(--gold)";
+                btn.innerText = "WARP ROUND"; btn.style.background = "var(--danger)"; btn.style.color = "white";
             } else {
-                label.innerText = `DAY ${s.day_in_round}`;
-                label.style.color = "var(--danger)";
-                btn.innerText = "NEXT DAY";
-                btn.style.background = "white";
-                btn.style.color = "black";
+                lbl.innerText = `DAY ${s.day_in_round}`; lbl.style.color = "var(--danger)";
+                btn.innerText = "NEXT DAY"; btn.style.background = "white"; btn.style.color = "black";
             }
+            syncMatrix(s.day_in_round);
         });
 
         onValue(ref(db, 'cars'), snap => {
             const list = Object.values(snap.val() || {}).sort((a,b) => (b.total_dist||0) - (a.total_dist||0));
             document.getElementById('rankBody').innerHTML = list.slice(0,8).map((c,i)=>`<tr><td>${i+1}</td><td>${c.id}</td><td>${Math.round(c.total_dist)}m</td></tr>`).join('');
-            
-            const layer = document.getElementById('master-layer');
-            layer.innerHTML = '';
+            const layer = document.getElementById('master-layer'); layer.innerHTML = '';
             list.forEach(c => {
                 if(c.role) {
                     const p = Math.min((c.total_dist/2000)*100, 95);
@@ -195,18 +173,14 @@
         });
 
         window.generateSeason = async () => {
-            const dirs = ["straight", "right", "left"];
-            const elevs = ["flatland", "uphill", "downhill"];
-            const newC = { direction: [], elevation: [], humidity: [], weather: [] };
+            const d=["straight","right","left"], e=["flatland","uphill","downhill"], nc={direction:[],elevation:[],humidity:[],weather:[]};
             for(let i=0; i<7; i++) {
-                newC.direction.push(dirs[Math.floor(Math.random()*3)]);
-                newC.elevation.push(elevs[Math.floor(Math.random()*3)]);
-                newC.humidity.push(Math.floor(Math.random()*101));
-                newC.weather.push(newC.humidity[i] < 50 ? "dry" : "wet");
+                nc.direction.push(d[Math.floor(Math.random()*3)]); nc.elevation.push(e[Math.floor(Math.random()*3)]);
+                nc.humidity.push(Math.floor(Math.random()*101)); nc.weather.push(nc.humidity[i]<50?"dry":"wet");
             }
-            await update(ref(db, 'race_constants'), newC);
+            await update(ref(db, 'race_constants'), nc);
             await update(ref(db, 'race_state'), { day_in_round: 1 });
-            alert("New Season Matrix Generated!");
+            alert("Season Matrix Updated!");
         };
     </script>
 </body>
