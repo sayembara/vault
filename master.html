@@ -6,44 +6,99 @@
     <style>
         :root { --glass: rgba(255, 255, 255, 0.08); --accent: #00ffcc; --gold: #ffcc00; --danger: #ff4b2b; }
         body { margin: 0; padding: 20px; font-family: 'Inter', sans-serif; background: #0b0e14; color: white; display: flex; flex-direction: column; align-items: center; }
-        #admin-ui { width: 100%; max-width: 1000px; display: flex; flex-direction: column; gap: 20px; }
-        .card { background: var(--glass); border: 1px solid rgba(255,255,255,0.1); border-radius: 15px; padding: 20px; }
+        #admin-ui { width: 100%; max-width: 1100px; display: flex; flex-direction: column; gap: 20px; }
+        .card { background: var(--glass); border: 1px solid rgba(255,255,255,0.1); border-radius: 15px; padding: 20px; position: relative; }
+        
+        /* Season/Round Header */
+        .status-header { display: flex; gap: 20px; margin-bottom: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: 1px; }
+        .status-tag { background: var(--accent); color: #000; padding: 4px 12px; border-radius: 4px; font-size: 0.9rem; }
+
         .btn-master { padding: 12px 20px; border-radius: 8px; border: none; font-weight: bold; cursor: pointer; font-size: 0.8rem; }
         table { width: 100%; border-collapse: collapse; margin-top: 15px; }
         th, td { border: 1px solid #333; padding: 12px; text-align: center; font-size: 0.75rem; }
         th { background: rgba(255,255,255,0.05); color: var(--accent); }
-        .cur-day { background: var(--danger) !important; color: white !important; font-weight: bold; }
-        select, input { background:#000; color:white; border:1px solid #444; padding:10px; border-radius:5px; }
-        .track-box { background: #000; height: 300px; position: relative; overflow-y: auto; border-radius: 10px; border: 1px solid #444; }
-        .track-lane { position: relative; width: 100%; height: 32px; border-bottom: 1px solid #222; }
-        .track-car { position: absolute; height: 20px; width: 35px; border-radius: 4px; top: 6px; font-size: 0.6rem; color: black; font-weight: 900; text-align: center; line-height: 20px; transition: 1s linear; }
-        .track-car.hero { background: var(--gold); }
-        .track-car.support { background: var(--accent); }
+        .cur-day { background: var(--danger) !important; color: white !important; }
+
+        /* Track Styles */
+        .track-box { 
+            background: #000; 
+            height: 350px; 
+            position: relative; 
+            overflow-x: hidden; 
+            overflow-y: auto; 
+            border-radius: 10px; 
+            border: 1px solid #444; 
+            padding-top: 20px;
+        }
+        .track-lane { position: relative; width: 100%; height: 35px; border-bottom: 1px solid #222; }
+        
+        /* 1000m Marker */
+        .marker-1000 {
+            position: absolute;
+            left: 50%; /* 1000m is half of the 2000m scale */
+            top: 0;
+            bottom: 0;
+            width: 2px;
+            background: rgba(255, 255, 255, 0.2);
+            z-index: 1;
+        }
+        .marker-1000::after {
+            content: "1000m";
+            position: absolute;
+            top: -18px;
+            left: -20px;
+            font-size: 0.6rem;
+            color: #888;
+        }
+
+        .track-car { 
+            position: absolute; 
+            height: 22px; 
+            width: 38px; 
+            border-radius: 4px; 
+            top: 6px; 
+            font-size: 0.65rem; 
+            color: black; 
+            font-weight: 900; 
+            text-align: center; 
+            line-height: 22px; 
+            transition: left 1.5s cubic-bezier(0.25, 0.1, 0.25, 1); 
+            z-index: 2;
+        }
+        .track-car.hero { background: var(--gold); box-shadow: 0 0 10px var(--gold); }
+        .track-car.support { background: var(--accent); box-shadow: 0 0 10px var(--accent); }
     </style>
 </head>
 <body>
     <div id="admin-ui">
         <div class="card">
-            <h2 style="margin:0; color:var(--accent);">RACE ENGINE MASTER</h2>
-            <div style="display: flex; gap: 10px; margin-top: 20px;">
-                <button class="btn-master" style="background:var(--accent); color:#00334e;" onclick="generateSeason()">GENERATE NEW SEASON</button>
+            <div class="status-header">
+                <div>Season: <span id="seasonNum" class="status-tag">1</span></div>
+                <div>Round: <span id="roundNum" class="status-tag">1</span></div>
+            </div>
+            <h2 style="margin:0 0 20px 0; color:var(--accent);">RACE ENGINE MASTER</h2>
+            <div style="display: flex; gap: 10px;">
+                <button class="btn-master" style="background:var(--accent); color:#00334e;" onclick="generateSeason()">GENERATE SEASON</button>
                 <button class="btn-master" style="background:var(--danger); color:white;" onclick="toggleRace(true)">GO LIVE</button>
                 <button class="btn-master" style="background:#555; color:white;" onclick="triggerTick()">TRIGGER DAILY TICK</button>
-                <button class="btn-master" style="background:orange; color:black;" onclick="resetSeason()">RESET SEASON</button>
+                <button class="btn-master" style="background:orange; color:black;" onclick="resetSeason()">RESET DATA</button>
             </div>
         </div>
 
         <div class="card">
             <h3>THE 7-DAY MATRIX</h3>
-            <table id="matrixTable">
+            <table>
                 <thead><tr id="mat-head"><th>Detail</th></tr></thead>
                 <tbody id="mat-body"></tbody>
             </table>
         </div>
 
         <div class="card">
-            <h3>MASTER TRACK MONITOR</h3>
-            <div class="track-box"><div id="master-layer"></div></div>
+            <h3>LIVE TRACK MONITOR (Scale: 2000m)</h3>
+            <div class="track-box">
+                <div class="marker-1000"></div>
+                <div id="master-layer"></div>
+            </div>
         </div>
     </div>
 
@@ -57,71 +112,60 @@
 
         const icons = { straight:"➡️", right:"⤴️", left:"⤵️", flatland:"➖", uphill:"🔼", downhill:"🔽", dry:"☀️", wet:"🌧️" };
 
-window.generateSeason = async () => {
-    if(!confirm("Generate new random season parameters?")) return;
-    
-    // Fetch state to check for Round 2 logic
-    const sSnap = await get(ref(db, 'race_state'));
-    const state = sSnap.val() || { day_in_round: 1, round: 1 };
-    
-    const directions = ["straight", "straight", "right", "left"];
-    const elevations = ["flatland", "flatland", "uphill", "downhill"];
-    
-    const newConsts = {
-        direction: Array.from({length: 7}, () => directions[Math.floor(Math.random()*4)]),
-        elevation: Array.from({length: 7}, () => elevations[Math.floor(Math.random()*4)]),
-        humidity: Array.from({length: 7}, () => Math.floor(Math.random()*101)),
-        weather: []
-    };
+        // 1. Sync Season and Round Numbers
+        onValue(ref(db, 'race_state'), snap => {
+            const data = snap.val() || { season: 1, round: 1 };
+            document.getElementById('seasonNum').innerText = data.season || 1;
+            document.getElementById('roundNum').innerText = data.round || 1;
+        });
 
-    // Weather Generation Engine
-    for(let i=0; i<7; i++) {
-        const hum = newConsts.humidity[i];
-        
-        // Day 1 Specialized Logic
-        if (i === 0) {
-            if (state.round === 1) {
-                // Round 1: Random flip
-                newConsts.weather[i] = Math.random() > 0.5 ? "dry" : "wet";
-            } else if (state.round === 2) {
-                // Round 2: Opposite of Winner's Traction
-                const carsSnap = await get(ref(db, 'cars'));
-                const cars = Object.values(carsSnap.val() || {});
-                // Find car with highest distance
-                const winner = cars.reduce((prev, current) => (prev.total_dist > current.total_dist) ? prev : current);
-                const traction = winner.traits.traction;
-                
-                // Logic: Wet if traction 1-5, Dry if 6-10
-                newConsts.weather[i] = (traction <= 5) ? "wet" : "dry";
-                console.log(`Round 2 Logic Triggered. Winner Traction: ${traction}. Weather: ${newConsts.weather[i]}`);
+        window.generateSeason = async () => {
+            if(!confirm("Generate new random season parameters?")) return;
+            
+            const sSnap = await get(ref(db, 'race_state'));
+            const state = sSnap.val() || { season: 1, round: 1, day_in_round: 1 };
+            
+            const directions = ["straight", "straight", "right", "left"];
+            const elevations = ["flatland", "flatland", "uphill", "downhill"];
+            
+            const newConsts = {
+                direction: Array.from({length: 7}, () => directions[Math.floor(Math.random()*4)]),
+                elevation: Array.from({length: 7}, () => elevations[Math.floor(Math.random()*4)]),
+                humidity: Array.from({length: 7}, () => Math.floor(Math.random()*101)),
+                weather: []
+            };
+
+            // Day 1 Specialized Weather Logic
+            for(let i=0; i<7; i++) {
+                if(i === 0) {
+                    if(state.round === 1) {
+                        newConsts.weather[i] = Math.random() > 0.5 ? "dry" : "wet";
+                    } else {
+                        const carsSnap = await get(ref(db, 'cars'));
+                        const cars = Object.values(carsSnap.val() || {});
+                        const winner = cars.reduce((p, c) => (p.total_dist > c.total_dist) ? p : c);
+                        newConsts.weather[i] = (winner.traits.traction <= 5) ? "wet" : "dry";
+                    }
+                } else {
+                    const hum = newConsts.humidity[i];
+                    const roll = Math.floor(Math.random()*100)+1;
+                    newConsts.weather[i] = (hum <= 40) ? "dry" : (roll > hum ? "dry" : "wet");
+                }
             }
-        } else {
-            // Future Days Standard Logic
-            const roll = Math.floor(Math.random() * 100) + 1;
-            if (hum <= 40) {
-                newConsts.weather[i] = "dry";
-            } else {
-                newConsts.weather[i] = (roll > hum) ? "dry" : "wet";
-            }
-        }
-    }
 
-    await set(ref(db, 'race_constants'), newConsts);
-    // Reset day to 1 but keep the current round count
-    await update(ref(db, 'race_state'), { day_in_round: 1 });
-    alert(`Season Generated! Weather for Day 1 is ${newConsts.weather[0].toUpperCase()}`);
-};
+            await set(ref(db, 'race_constants'), newConsts);
+            await update(ref(db, 'race_state'), { day_in_round: 1 });
+            alert("New Season Matrix Generated!");
+        };
 
+        // Render Matrix
         onValue(ref(db, 'race_constants'), snap => {
             const c = snap.val();
             if(!c) return;
             onValue(ref(db, 'race_state'), sSnap => {
-                const state = sSnap.val() || { day_in_round: 1 };
-                const curDay = state.day_in_round;
-
-                // Header
+                const day = sSnap.val()?.day_in_round || 1;
                 let hHtml = '<th>Detail</th>';
-                for(let i=1; i<=7; i++) hHtml += `<th class="${i===curDay?'cur-day':''}">Day ${i}</th>`;
+                for(let i=1; i<=7; i++) hHtml += `<th class="${i===day?'cur-day':''}">Day ${i}</th>`;
                 document.getElementById('mat-head').innerHTML = hHtml;
 
                 const rows = [
@@ -136,7 +180,7 @@ window.generateSeason = async () => {
                     bHtml += `<tr><td><b>${r.label}</b></td>`;
                     for(let i=0; i<7; i++) {
                         let val = r.data[i];
-                        if(r.dynamic && (i+1) > curDay) val = "?";
+                        if(r.dynamic && (i+1) > day) val = "?";
                         const display = r.icon ? (icons[val] || val) : (val + (r.suffix || ""));
                         bHtml += `<td>${display}</td>`;
                     }
@@ -146,6 +190,7 @@ window.generateSeason = async () => {
             });
         });
 
+        // Track Movement Logic
         onValue(ref(db, 'race_state/paid_teams'), paidSnap => {
             const paid = paidSnap.val() || {};
             onValue(ref(db, 'cars'), carSnap => {
@@ -153,8 +198,14 @@ window.generateSeason = async () => {
                 layer.innerHTML = '';
                 Object.values(carSnap.val() || {}).forEach(c => {
                     if(paid[c.team] && c.role) {
-                        const p = Math.min((c.total_dist || 0) / 2000 * 100, 95);
-                        layer.innerHTML += `<div class="track-lane"><div class="track-car ${c.role}" style="left:${p}%">${c.id}</div></div>`;
+                        // Position based on 2000m total track length
+                        const progress = Math.min((c.total_dist || 0) / 2000 * 100, 98);
+                        layer.innerHTML += `
+                            <div class="track-lane">
+                                <div class="track-car ${c.role}" style="left:${progress}%" title="Dist: ${c.total_dist?.toFixed(1)}m">
+                                    ${c.id}
+                                </div>
+                            </div>`;
                     }
                 });
             });
@@ -165,15 +216,34 @@ window.generateSeason = async () => {
         window.triggerTick = async () => {
             const s = await get(ref(db, 'race_state'));
             const day = s.val()?.day_in_round || 1;
-            await update(ref(db, 'race_state'), { day_in_round: day >= 7 ? 1 : day + 1 });
+            // Simple distance increment for demo - your physics formula goes here
+            const carsSnap = await get(ref(db, 'cars'));
+            const cars = carsSnap.val();
+            const updates = {};
+            Object.keys(cars).forEach(k => {
+                updates[`cars/${k}/total_dist`] = (cars[k].total_dist || 0) + (Math.random() * 200 + 100);
+            });
+            updates['race_state/day_in_round'] = day >= 7 ? 1 : day + 1;
+            await update(ref(db), updates);
         };
 
         window.resetSeason = async () => {
-            await update(ref(db, 'race_state'), { day_in_round: 1, paid_teams: null });
-            const cars = (await get(ref(db, 'cars'))).val();
-            const up = {};
-            Object.keys(cars).forEach(k => { up[`cars/${k}/total_dist`] = 0; });
-            await update(ref(db), up);
+            if(!confirm("Reset all distances and start new Season/Round?")) return;
+            const sSnap = await get(ref(db, 'race_state'));
+            const s = sSnap.val() || { season: 1, round: 1 };
+            
+            const updates = {
+                'race_state/day_in_round': 1,
+                'race_state/paid_teams': null,
+                'race_state/season': (s.season || 1) + 1,
+                'race_state/round': 1
+            };
+            
+            const carsSnap = await get(ref(db, 'cars'));
+            const cars = carsSnap.val();
+            Object.keys(cars).forEach(k => { updates[`cars/${k}/total_dist`] = 0; });
+            
+            await update(ref(db), updates);
         };
     </script>
 </body>
