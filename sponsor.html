@@ -4,42 +4,68 @@
     <meta charset="UTF-8">
     <title>SANRAT | Sponsor Control</title>
     <style>
-        :root { --glass: rgba(255, 255, 255, 0.08); --accent: #00ffcc; }
+        :root { --glass: rgba(255, 255, 255, 0.08); --accent: #00ffcc; --danger: #ff4b2b; }
         body { margin: 0; padding: 20px; font-family: 'Inter', sans-serif; background: #0f0c29; color: white; display: flex; flex-direction: column; align-items: center; }
         .container { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; max-width: 900px; width: 100%; margin-bottom: 20px; }
         .card { background: var(--glass); border: 1px solid rgba(255,255,255,0.1); border-radius: 20px; padding: 20px; text-align: center; }
-        input { background: rgba(0,0,0,0.4); border: 1px solid rgba(255,255,255,0.2); padding: 8px; border-radius: 5px; color: white; width: 60px; }
-        button { padding: 10px; border-radius: 8px; border: none; font-weight: bold; cursor: pointer; margin-top: 10px; width: 100%; }
+        input { background: rgba(0,0,0,0.4); border: 1px solid rgba(255,255,255,0.2); padding: 8px; border-radius: 5px; color: white; width: 60px; text-align: center; }
+        button { padding: 12px; border-radius: 10px; border: none; font-weight: bold; cursor: pointer; transition: 0.3s; margin-top: 10px; width: 100%; }
         .btn-set { background: #fff; color: #000; width: auto; margin-left: 5px; }
         .btn-reallocate { background: var(--accent); color: #00334e; font-size: 1.1rem; }
+        .btn-wipe { background: transparent; border: 2px solid var(--danger); color: var(--danger); margin-top: 20px; }
+        .btn-wipe:hover { background: var(--danger); color: white; }
         .overflow-val { font-size: 2rem; color: #ffcc00; font-family: monospace; }
         .sensor-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; width: 100%; max-width: 900px; }
         .sensor-box { background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.1); padding: 10px; border-radius: 10px; text-align: center; }
+        .total-label { font-size: 1.1rem; color: var(--accent); font-weight: bold; }
     </style>
 </head>
 <body>
-    <h1>SPONSOR CONTROL</h1>
+    <h1>SPONSOR COMMAND CENTER</h1>
+    
     <div class="container">
         <div class="card">
-            <h3>LIMITS</h3>
-            <div>Min: <input type="number" id="minIn"> <button class="btn-set" id="btnMin">SET</button></div>
-            <div style="margin-top:10px;">Max: <input type="number" id="maxIn"> <button class="btn-set" id="btnMax">SET</button></div>
+            <h3>SYSTEM LIMITS</h3>
+            <div style="margin-bottom:10px;">
+                Min: <input type="number" id="minIn" step="0.1"> 
+                <button class="btn-set" id="btnMin">UPDATE</button>
+            </div>
+            <div>
+                Max: <input type="number" id="maxIn" step="0.1"> 
+                <button class="btn-set" id="btnMax">UPDATE</button>
+            </div>
+            <p id="curLimits" style="font-size: 0.8rem; color:#888; margin-top:10px;">Loading limits...</p>
         </div>
+
         <div class="card">
-            <h3>OVERFLOW</h3>
+            <h3>VAULT OVERFLOW</h3>
             <div class="overflow-val" id="disp-overflow">0.000</div>
             <button class="btn-reallocate" id="btnReallocate">REALLOCATE BY LIMITS</button>
         </div>
     </div>
+
     <div class="sensor-grid" id="sensorGrid"></div>
+
+    <div style="width: 100%; max-width: 900px; margin-top: 30px;">
+        <button class="btn-wipe" id="btnWipe">🚨 WIPE ALL BUCKETS (RESET TO 0.00)</button>
+    </div>
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js";
-        import { getDatabase, ref, onValue, update, get } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-database.js";
+        import { getDatabase, ref, onValue, update, set, get } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-database.js";
 
-        const firebaseConfig = { apiKey: "AlzaSyBYxLOGFzaHN6CS4ro_bjnKEblbQE6Vtx4", databaseURL: "https://nuclearf1-94a6b-default-rtdb.asia-southeast1.firebasedatabase.app" };
+        const firebaseConfig = { 
+            apiKey: "AlzaSyBYxLOGFzaHN6CS4ro_bjnKEblbQE6Vtx4", 
+            databaseURL: "https://nuclearf1-94a6b-default-rtdb.asia-southeast1.firebasedatabase.app" 
+        };
         const app = initializeApp(firebaseConfig);
         const db = getDatabase(app);
+
+        // --- 1. SYNC UI ---
+        onValue(ref(db, 'master_settings/limits'), (s) => {
+            const l = s.val() || { min: 0, max: 0 };
+            document.getElementById('curLimits').innerText = `CURRENT: MIN ${l.min} | MAX ${l.max}`;
+        });
 
         onValue(ref(db, 'vault'), (snap) => {
             const d = snap.val() || {};
@@ -49,13 +75,20 @@
             for(let i=1; i<=12; i++) {
                 const r = d.rounds?.[`r${i}`] || { normal: 0, boost: 0 };
                 const total = (parseFloat(r.normal || 0) + parseFloat(r.boost || 0)).toFixed(3);
-                grid.innerHTML += `<div class="sensor-box"><div style="font-size:0.6rem;color:#888;">ROUND ${i}</div><div style="font-size:0.7rem;">N:${parseFloat(r.normal).toFixed(2)} B:${parseFloat(r.boost).toFixed(2)}</div><div style="color:var(--accent);font-weight:bold;">${total}</div></div>`;
+                grid.innerHTML += `
+                    <div class="sensor-box">
+                        <div style="font-size:0.6rem;color:#888;">ROUND ${i}</div>
+                        <div style="font-size:0.7rem;color:#aaa;">N:${parseFloat(r.normal).toFixed(2)} B:${parseFloat(r.boost).toFixed(2)}</div>
+                        <div class="total-label">${total}</div>
+                    </div>`;
             }
         });
 
+        // --- 2. LIMIT UPDATES ---
         document.getElementById('btnMin').onclick = () => update(ref(db, 'master_settings/limits'), { min: parseFloat(document.getElementById('minIn').value) });
         document.getElementById('btnMax').onclick = () => update(ref(db, 'master_settings/limits'), { max: parseFloat(document.getElementById('maxIn').value) });
 
+        // --- 3. REALLOCATE LOGIC ---
         document.getElementById('btnReallocate').onclick = async () => {
             const snap = await get(ref(db));
             const data = snap.val() || {};
@@ -75,7 +108,25 @@
                     overflow -= fill;
                 }
             }
-            update(ref(db, 'vault'), { rounds, overflow: parseFloat(overflow.toFixed(3)) }).then(() => alert("Done"));
+            update(ref(db, 'vault'), { rounds, overflow: parseFloat(overflow.toFixed(3)) }).then(() => alert("Reallocation Complete"));
+        };
+
+        // --- 4. WIPE ALL LOGIC ---
+        document.getElementById('btnWipe').onclick = () => {
+            if(!confirm("DANGER: This will reset all 12 buckets and Overflow to 0.00. Are you sure?")) return;
+            
+            const freshVault = {
+                overflow: 0,
+                rounds: {}
+            };
+            
+            for(let i=1; i<=12; i++) {
+                freshVault.rounds[`r${i}`] = { normal: 0, boost: 0 };
+            }
+
+            set(ref(db, 'vault'), freshVault).then(() => {
+                alert("VAULT WIPED. All buckets reset to 0.00.");
+            }).catch(e => alert("Wipe failed: " + e.message));
         };
     </script>
 </body>
