@@ -2,85 +2,230 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>SANRAT | Funding Ops</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SANRAT | Funding Operations</title>
     <style>
-        :root { --glass: rgba(255, 255, 255, 0.08); --border: rgba(255, 255, 255, 0.15); }
-        body { margin: 0; padding: 40px; font-family: 'Inter', sans-serif; background: radial-gradient(circle at top right, #1a1a2e, #0f0c29); color: white; display: flex; flex-direction: column; align-items: center; }
-        .container { display: grid; grid-template-columns: 1fr 1fr; gap: 30px; max-width: 900px; width: 100%; margin-bottom: 40px; }
-        .card { background: var(--glass); backdrop-filter: blur(20px); border: 1px solid var(--border); border-radius: 24px; padding: 25px; box-shadow: 0 10px 40px rgba(0,0,0,0.4); }
-        input, select { background: rgba(0, 0, 0, 0.4); border: 1px solid var(--border); padding: 12px; border-radius: 10px; color: white; width: calc(100% - 26px); margin-bottom: 15px; }
-        button { width: 100%; padding: 15px; border: none; border-radius: 12px; font-weight: 700; cursor: pointer; transition: 0.3s; color: white; }
-        .btn-normal { background: #6dd5ed; color: #00334e; }
-        .btn-boost { background: #ff4b2b; }
-        .sensor-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; width: 100%; max-width: 900px; }
-        .sensor-box { background: rgba(0, 255, 204, 0.05); border: 1px solid rgba(0, 255, 204, 0.2); padding: 15px; border-radius: 12px; text-align: center; }
-        .sensor-val { font-family: monospace; font-size: 1.1rem; color: #00ffcc; }
+        :root {
+            --glass: rgba(255, 255, 255, 0.08);
+            --border: rgba(255, 255, 255, 0.15);
+            --normal-color: #6dd5ed;
+            --boost-color: #ff4b2b;
+            --accent: #00ffcc;
+        }
+
+        body {
+            margin: 0;
+            padding: 40px 20px;
+            font-family: 'Inter', system-ui, -apple-system, sans-serif;
+            background: radial-gradient(circle at top right, #1a1a2e, #0f0c29);
+            color: white;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+        }
+
+        .header { text-align: center; margin-bottom: 40px; }
+        .header h1 { font-size: 2.2rem; letter-spacing: 3px; margin-bottom: 5px; }
+        .header p { color: var(--accent); font-size: 0.9rem; letter-spacing: 2px; }
+
+        .container {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 30px;
+            max-width: 900px;
+            width: 100%;
+            margin-bottom: 50px;
+        }
+
+        .card {
+            background: var(--glass);
+            backdrop-filter: blur(20px);
+            border: 1px solid var(--border);
+            border-radius: 24px;
+            padding: 30px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.4);
+            display: flex;
+            flex-direction: column;
+        }
+
+        .card h2 { margin: 0 0 10px 0; font-size: 1.5rem; }
+        .remark { font-size: 0.85rem; color: #aaa; margin-bottom: 20px; line-height: 1.5; }
+
+        label { font-size: 0.8rem; color: var(--accent); margin-bottom: 5px; text-transform: uppercase; }
+
+        input, select {
+            background: rgba(0, 0, 0, 0.4);
+            border: 1px solid var(--border);
+            padding: 15px;
+            border-radius: 12px;
+            color: white;
+            font-size: 1.1rem;
+            margin-bottom: 20px;
+            outline: none;
+        }
+
+        button {
+            padding: 16px;
+            border: none;
+            border-radius: 12px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+        }
+
+        .btn-normal { background: var(--normal-color); color: #00334e; }
+        .btn-boost { background: var(--boost-color); color: white; }
+        button:hover { transform: translateY(-2px); filter: brightness(1.2); }
+
+        /* Bucket Sensors */
+        .sensor-title { width: 100%; max-width: 900px; margin-bottom: 15px; color: var(--accent); font-weight: bold; }
+        .sensor-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+            gap: 15px;
+            max-width: 900px;
+            width: 100%;
+            background: rgba(255,255,255,0.02);
+            padding: 20px;
+            border-radius: 20px;
+            border: 1px solid var(--border);
+        }
+
+        .sensor-box {
+            background: rgba(0, 255, 204, 0.05);
+            border: 1px solid rgba(0, 255, 204, 0.1);
+            padding: 15px;
+            border-radius: 12px;
+            text-align: center;
+        }
+
+        .sensor-label { font-size: 0.7rem; color: #888; margin-bottom: 5px; }
+        .sensor-val { font-family: monospace; font-size: 1.1rem; color: var(--accent); }
     </style>
 </head>
 <body>
-    <h1>FUNDING OPERATIONS (tBNB)</h1>
+
+    <div class="header">
+        <h1>FUNDING OPS</h1>
+        <p>NETWORK: BSC TESTNET (tBNB)</p>
+    </div>
+
     <div class="container">
         <div class="card">
             <h2>🔋 Normal Refill</h2>
-            <p style="font-size:0.8rem; color:#aaa;">Distributes equally to all 12 Round Buckets.</p>
-            <input type="number" id="normalAmount" placeholder="Amount tBNB" step="0.1">
-            <button class="btn-normal" onclick="executeFund('normal')">Execute Normal Fund</button>
+            <p class="remark">Injects new capital and distributes it <strong>equally</strong> across all 12 round buckets automatically.</p>
+            
+            <label>Amount to Inject</label>
+            <input type="number" id="normalAmt" placeholder="0.00 tBNB" step="0.1">
+            
+            <button class="btn-normal" onclick="executeInjection('normal')">Execute Normal Fund</button>
         </div>
 
         <div class="card">
             <h2>🚀 Boost Injection</h2>
-            <p style="font-size:0.8rem; color:#aaa;">Inject directly into a specific Round Bucket.</p>
-            <select id="boostTarget"></select>
-            <input type="number" id="boostAmount" placeholder="Amount tBNB" step="0.01">
-            <button class="btn-boost" onclick="executeFund('boost')">Execute Boost Fund</button>
+            <p class="remark">Injects new capital into <strong>one specific</strong> round bucket to spike the current rewards.</p>
+            
+            <label>Target Round</label>
+            <select id="boostTarget">
+                </select>
+
+            <label>Amount to Inject</label>
+            <input type="number" id="boostAmt" placeholder="0.00 tBNB" step="0.01">
+            
+            <button class="btn-boost" onclick="executeInjection('boost')">Execute Boost Fund</button>
         </div>
     </div>
 
+    <div class="sensor-title">📡 LIVE ROUND BUCKETS</div>
     <div class="sensor-grid" id="sensorGrid"></div>
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js";
         import { getDatabase, ref, onValue, update, get } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-database.js";
 
-        const firebaseConfig = { apiKey: "AlzaSyBYxLOGFzaHN6CS4ro_bjnKEblbQE6Vtx4", authDomain: "nuclearf1-94a6b.firebaseapp.com", databaseURL: "https://nuclearf1-94a6b-default-rtdb.asia-southeast1.firebasedatabase.app", projectId: "nuclearf1-94a6b" };
+        // CONFIGURATION
+        const firebaseConfig = {
+            apiKey: "AlzaSyBYxLOGFzaHN6CS4ro_bjnKEblbQE6Vtx4",
+            authDomain: "nuclearf1-94a6b.firebaseapp.com",
+            databaseURL: "https://nuclearf1-94a6b-default-rtdb.asia-southeast1.firebasedatabase.app",
+            projectId: "nuclearf1-94a6b"
+        };
+
         const app = initializeApp(firebaseConfig);
         const db = getDatabase(app);
 
-        // Setup UI
-        const grid = document.getElementById('sensorGrid');
+        // Initialize UI Elements
         const select = document.getElementById('boostTarget');
+        const grid = document.getElementById('sensorGrid');
+
         for (let i = 1; i <= 12; i++) {
-            grid.innerHTML += `<div class="sensor-box"><div style="font-size:0.7rem;color:#888;">ROUND ${i}</div><div class="sensor-val" id="r${i}-val">0.00</div></div>`;
-            select.innerHTML += `<option value="r${i}">Round ${i}</option>`;
+            // Populate Select
+            const opt = document.createElement('option');
+            opt.value = `r${i}`;
+            opt.innerText = `Round ${i}`;
+            select.appendChild(opt);
+
+            // Populate Grid
+            grid.innerHTML += `
+                <div class="sensor-box">
+                    <div class="sensor-label">ROUND ${i}</div>
+                    <div class="sensor-val" id="r${i}-val">0.000</div>
+                </div>`;
         }
 
-        // Sync Buckets
-        onValue(ref(db, 'vault/rounds'), (snap) => {
-            const d = snap.val() || {};
-            for (let i = 1; i <= 12; i++) document.getElementById(`r${i}-val`).innerText = parseFloat(d[`r${i}`] || 0).toFixed(3);
+        // Live Listener for Buckets
+        onValue(ref(db, 'vault/rounds'), (snapshot) => {
+            const data = snapshot.val() || {};
+            for (let i = 1; i <= 12; i++) {
+                const el = document.getElementById(`r${i}-val`);
+                if(el) el.innerText = parseFloat(data[`r${i}`] || 0).toFixed(3);
+            }
         });
 
-        window.executeFund = async function(type) {
-            const amt = parseFloat(document.getElementById(type + 'Amount').value);
-            if (!amt || amt <= 0) return alert("Enter valid amount");
+        // EXECUTION LOGIC
+        window.executeInjection = async function(type) {
+            const inputId = type === 'normal' ? 'normalAmt' : 'boostAmt';
+            const amount = parseFloat(document.getElementById(inputId).value);
 
-            const snap = await get(ref(db, 'vault/rounds'));
-            let data = snap.val() || {};
-            const updates = {};
-
-            if (type === 'normal') {
-                const share = amt / 12;
-                for (let i = 1; i <= 12; i++) {
-                    const current = parseFloat(data[`r${i}`] || 0);
-                    updates[`vault/rounds/r${i}`] = parseFloat((current + share).toFixed(3));
-                }
-            } else {
-                const target = document.getElementById('boostTarget').value;
-                const current = parseFloat(data[target] || 0);
-                updates[`vault/rounds/${target}`] = parseFloat((current + amt).toFixed(3));
+            if (!amount || amount <= 0) {
+                alert("Please enter a valid tBNB amount.");
+                return;
             }
 
-            update(ref(db), updates).then(() => alert("Fund Injected Successfully!"));
+            console.log(`Processing ${type} injection of ${amount} tBNB...`);
+
+            try {
+                // 1. Get current values
+                const snap = await get(ref(db, 'vault/rounds'));
+                const currentRounds = snap.val() || {};
+                const updates = {};
+
+                if (type === 'normal') {
+                    // Split equally among 12 rounds
+                    const share = amount / 12;
+                    for (let i = 1; i <= 12; i++) {
+                        const currentVal = parseFloat(currentRounds[`r${i}`] || 0);
+                        updates[`vault/rounds/r${i}`] = parseFloat((currentVal + share).toFixed(3));
+                    }
+                } else {
+                    // Target specific round
+                    const target = document.getElementById('boostTarget').value;
+                    const currentVal = parseFloat(currentRounds[target] || 0);
+                    updates[`vault/rounds/${target}`] = parseFloat((currentVal + amount).toFixed(3));
+                }
+
+                // 2. Push to Firebase
+                await update(ref(db), updates);
+                
+                alert(`SUCCESS: ${type.toUpperCase()} injection complete!`);
+                document.getElementById(inputId).value = '';
+
+            } catch (error) {
+                console.error("Injection Failed:", error);
+                alert("Critical Error: " + error.message);
+            }
         };
     </script>
 </body>
