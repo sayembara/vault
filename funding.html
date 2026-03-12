@@ -7,21 +7,21 @@
         :root { --glass: rgba(255, 255, 255, 0.08); --accent: #00ffcc; --boost: #ff4b2b; }
         body { margin: 0; padding: 20px; font-family: 'Inter', sans-serif; background: #0f0c29; color: white; display: flex; flex-direction: column; align-items: center; }
         .container { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; max-width: 900px; width: 100%; }
-        .card { background: var(--glass); border: 1px solid rgba(255,255,255,0.1); border-radius: 20px; padding: 20px; box-shadow: 0 8px 32px rgba(0,0,0,0.3); }
-        input { background: rgba(0,0,0,0.4); border: 1px solid rgba(255,255,255,0.2); padding: 12px; border-radius: 10px; color: white; width: calc(100% - 32px); margin-bottom: 10px; font-size: 1rem; }
-        button { width: 100%; padding: 14px; border: none; border-radius: 10px; font-weight: 700; cursor: pointer; color: white; transition: 0.2s; }
-        button:active { transform: scale(0.98); }
+        .card { background: var(--glass); border: 1px solid rgba(255,255,255,0.1); border-radius: 20px; padding: 20px; text-align: center; }
+        input { background: rgba(0,0,0,0.4); border: 1px solid rgba(255,255,255,0.2); padding: 12px; border-radius: 10px; color: white; width: 80%; margin-bottom: 10px; }
+        button { width: 100%; padding: 14px; border-radius: 10px; border: none; font-weight: bold; cursor: pointer; color: white; }
         .btn-normal { background: #6dd5ed; color: #00334e; }
         .btn-boost { background: var(--boost); }
         .overflow-box { font-size: 1.8rem; color: #ffcc00; margin: 20px 0; font-family: monospace; border: 1px dashed #ffcc0044; padding: 10px 30px; border-radius: 15px; }
         .sensor-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; width: 100%; max-width: 900px; margin-top: 20px; }
-        .sensor-box { background: rgba(255,255,255,0.03); border: 1px solid rgba(0, 255, 204, 0.1); padding: 12px; border-radius: 12px; text-align: center; position: relative; }
-        .sub-amt { font-size: 0.75rem; color: #888; margin: 2px 0; }
+        .sensor-box { background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.1); padding: 12px; border-radius: 12px; text-align: center; }
+        .active-round { border: 2px solid var(--accent); background: rgba(0, 255, 204, 0.1); transform: scale(1.05); }
+        .past-round { opacity: 0.25; filter: grayscale(1); }
         .total-amt { font-size: 1.2rem; color: var(--accent); font-weight: bold; margin-top: 6px; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 4px; }
-        .status-tag { font-size: 0.6rem; font-weight: 900; margin-top: 6px; padding: 3px; border-radius: 4px; text-transform: uppercase; }
-        .st-low { color: #ff4b2b; background: rgba(255, 75, 43, 0.15); }
-        .st-mid { color: #ffcc00; background: rgba(255, 204, 0, 0.15); }
-        .st-full { color: #00ffcc; background: rgba(0, 255, 204, 0.15); }
+        .status-tag { font-size: 0.6rem; font-weight: 900; margin-top: 5px; padding: 2px; border-radius: 4px; }
+        .st-low { color: #ff4b2b; background: rgba(255, 75, 43, 0.1); }
+        .st-mid { color: #ffcc00; background: rgba(255, 204, 0, 0.1); }
+        .st-full { color: #00ffcc; background: rgba(0, 255, 204, 0.1); }
     </style>
 </head>
 <body>
@@ -29,16 +29,8 @@
     <div class="overflow-box">OVERFLOW: <span id="val-overflow">0.000</span></div>
 
     <div class="container">
-        <div class="card">
-            <h3 style="margin:0 0 10px 0; color:#6dd5ed;">🔋 NORMAL FUND</h3>
-            <input type="number" id="normalAmt" placeholder="Amount tBNB" step="0.1">
-            <button class="btn-normal" id="btnNormal">Inject Normal</button>
-        </div>
-        <div class="card">
-            <h3 style="margin:0 0 10px 0; color:var(--boost);">🚀 BOOST FUND</h3>
-            <input type="number" id="boostAmt" placeholder="Amount tBNB" step="0.01">
-            <button class="btn-boost" id="btnBoost">Inject Boost</button>
-        </div>
+        <div class="card"><h3>🔋 NORMAL</h3><input type="number" id="normalAmt"><button class="btn-normal" id="btnNormal">Inject Normal</button></div>
+        <div class="card"><h3>🚀 BOOST</h3><input type="number" id="boostAmt"><button class="btn-boost" id="btnBoost">Inject Boost</button></div>
     </div>
 
     <div class="sensor-grid" id="sensorGrid"></div>
@@ -47,106 +39,69 @@
         import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js";
         import { getDatabase, ref, onValue, update, get } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-database.js";
 
-        const firebaseConfig = { 
-            apiKey: "AlzaSyBYxLOGFzaHN6CS4ro_bjnKEblbQE6Vtx4", 
-            databaseURL: "https://nuclearf1-94a6b-default-rtdb.asia-southeast1.firebasedatabase.app" 
-        };
+        const firebaseConfig = { apiKey: "AlzaSyBYxLOGFzaHN6CS4ro_bjnKEblbQE6Vtx4", databaseURL: "https://nuclearf1-94a6b-default-rtdb.asia-southeast1.firebasedatabase.app" };
         const app = initializeApp(firebaseConfig);
         const db = getDatabase(app);
 
-        // SYNC DATA TO UI
-onValue(ref(db), (snap) => {
-    const data = snap.val() || {};
-    const vault = data.vault || {};
-    const curRound = data.race_data?.current_round || 1; // Pulled from Master
-    const limits = data.master_settings?.limits || { min: 0.1, max: 2.0 };
-    
-    document.getElementById('val-overflow').innerText = parseFloat(vault.overflow || 0).toFixed(3);
-    const grid = document.getElementById('sensorGrid');
-    grid.innerHTML = '';
+        onValue(ref(db), (snap) => {
+            const data = snap.val() || {};
+            const vault = data.vault || {};
+            const curRound = data.race_data?.current_round || 1;
+            const limits = data.master_settings?.limits || { min: 0.1, max: 2.0 };
+            
+            document.getElementById('val-overflow').innerText = parseFloat(vault.overflow || 0).toFixed(3);
+            const grid = document.getElementById('sensorGrid');
+            grid.innerHTML = '';
 
-    for(let i=1; i<=12; i++) {
-        let r = vault.rounds?.[`r${i}`] || { normal: 0, boost: 0 };
-        if (typeof r === 'number') r = { normal: r, boost: 0 };
-        
-        const curN = parseFloat(r.normal || 0);
-        const total = (curN + parseFloat(r.boost || 0)).toFixed(3);
-        
-        // VISUAL SYNC WITH MASTER
-        let extraClass = i < curRound ? 'past-round' : (i === curRound ? 'active-round' : '');
-        let statusClass = curN >= limits.max ? 'st-full' : (curN >= limits.min ? 'st-mid' : 'st-low');
-        let statusText = curN >= limits.max ? 'MAXED' : (curN >= limits.min ? 'AT MIN+' : 'BELOW MIN');
+            for(let i=1; i<=12; i++) {
+                let r = vault.rounds?.[`r${i}`] || { normal: 0, boost: 0 };
+                const curN = parseFloat(r.normal || 0);
+                const total = (curN + parseFloat(r.boost || 0)).toFixed(3);
+                
+                let extraClass = i < curRound ? 'past-round' : (i === curRound ? 'active-round' : '');
+                let stClass = curN >= limits.max ? 'st-full' : (curN >= limits.min ? 'st-mid' : 'st-low');
+                let stText = curN >= limits.max ? 'MAXED' : (curN >= limits.min ? 'MIN+' : 'LOW');
 
-        grid.innerHTML += `
-            <div class="sensor-box ${extraClass}">
-                <div style="font-size:0.7rem;color:#888;">ROUND ${i}</div>
-                <div class="sub-amt">N: ${curN.toFixed(3)}</div>
-                <div class="sub-amt">B: ${parseFloat(r.boost).toFixed(3)}</div>
-                <div class="total-amt">${total}</div>
-                <div class="status-tag ${statusClass}">${statusText}</div>
-            </div>`;
-    }
-});
+                grid.innerHTML += `<div class="sensor-box ${extraClass}">
+                    <div style="font-size:0.7rem;color:#888;">RD ${i}</div>
+                    <div class="total-amt">${total}</div>
+                    <div class="status-tag ${stClass}">${stText}</div>
+                </div>`;
+            }
+        });
 
         async function processFund(type) {
-            const amtIn = document.getElementById(type + 'Amt');
-            let remaining = parseFloat(amtIn.value);
-            if(!remaining || remaining <= 0) return alert("Please enter a valid amount.");
+            let amt = parseFloat(document.getElementById(type + 'Amt').value);
+            if(!amt || amt <= 0) return alert("Enter amount");
+            const snap = await get(ref(db));
+            const all = snap.val() || {};
+            const limits = all.master_settings?.limits || { min: 0.1, max: 2.0 };
+            const curRound = all.race_data?.current_round || 1;
+            let rounds = all.vault?.rounds || {};
+            let overflow = parseFloat(all.vault?.overflow || 0);
 
-            try {
-                const snap = await get(ref(db));
-                const all = snap.val() || {};
-                const limits = all.master_settings?.limits || { min: 0.1, max: 2.0 };
-                const activeRound = all.race_data?.current_round || 1;
-                
-                let currentOverflow = parseFloat(all.vault?.overflow || 0);
-                let rounds = all.vault?.rounds || {};
-
-                // Initializing round structures
+            if(type === 'normal') {
                 for(let i=1; i<=12; i++) {
-                    if(!rounds[`r${i}`] || typeof rounds[`r${i}`] === 'number') {
-                        rounds[`r${i}`] = { normal: (typeof rounds[`r${i}`] === 'number' ? rounds[`r${i}`] : 0), boost: 0 };
-                    }
+                    if(!rounds[`r${i}`]) rounds[`r${i}`] = {normal:0, boost:0};
+                    let space = limits.min - rounds[`r${i}`].normal;
+                    if(space > 0 && amt > 0) { let fill = Math.min(amt, space); rounds[`r${i}`].normal += fill; amt -= fill; }
                 }
-
-                if(type === 'normal') {
-                    // TIER 1: FILL ALL TO MIN
+                if(amt > 0) {
                     for(let i=1; i<=12; i++) {
-                        let curN = rounds[`r${i}`].normal;
-                        if(curN < limits.min && remaining > 0) {
-                            let fill = Math.min(remaining, limits.min - curN);
-                            rounds[`r${i}`].normal = parseFloat((curN + fill).toFixed(3));
-                            remaining -= fill;
-                        }
-                    }
-                    // TIER 2: FILL ALL TO MAX
-                    if(remaining > 0) {
-                        for(let i=1; i<=12; i++) {
-                            let curN = rounds[`r${i}`].normal;
-                            if(curN < limits.max && remaining > 0) {
-                                let fill = Math.min(remaining, limits.max - curN);
-                                rounds[`r${i}`].normal = parseFloat((curN + fill).toFixed(3));
-                                remaining -= fill;
-                            }
-                        }
-                    }
-                    // TIER 3: OVERFLOW
-                    currentOverflow = parseFloat((currentOverflow + remaining).toFixed(3));
-                } else {
-                    // BOOST: Split across active + remaining rounds
-                    let roundsLeft = (12 - activeRound) + 1;
-                    let share = remaining / roundsLeft;
-                    for(let i = activeRound; i <= 12; i++) {
-                        rounds[`r${i}`].boost = parseFloat((rounds[`r${i}`].boost + share).toFixed(3));
+                        let space = limits.max - rounds[`r${i}`].normal;
+                        if(space > 0 && amt > 0) { let fill = Math.min(amt, space); rounds[`r${i}`].normal += fill; amt -= fill; }
                     }
                 }
-
-                await update(ref(db, 'vault'), { rounds, overflow: currentOverflow });
-                amtIn.value = '';
-                alert("Funding Success!");
-            } catch (e) {
-                alert("Database Error: " + e.message);
+                overflow += amt;
+            } else {
+                let share = amt / (13 - curRound);
+                for(let i=curRound; i<=12; i++) {
+                    if(!rounds[`r${i}`]) rounds[`r${i}`] = {normal:0, boost:0};
+                    rounds[`r${i}`].boost += share;
+                }
             }
+            update(ref(db, 'vault'), { rounds, overflow: parseFloat(overflow.toFixed(3)) });
+            document.getElementById(type + 'Amt').value = '';
         }
 
         document.getElementById('btnNormal').onclick = () => processFund('normal');
