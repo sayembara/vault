@@ -2,63 +2,61 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>SANRAT | Secure Sponsor Control</title>
+    <title>SANRAT | Sponsor Audit & Control</title>
     <style>
-        :root { --glass: rgba(255, 255, 255, 0.08); --accent: #00ffcc; --danger: #ff4b2b; }
+        :root { --glass: rgba(255, 255, 255, 0.08); --accent: #00ffcc; --danger: #ff4b2b; --gold: #ffcc00; }
         body { margin: 0; padding: 20px; font-family: 'Inter', sans-serif; background: #0f0c29; color: white; display: flex; flex-direction: column; align-items: center; min-height: 100vh; }
         
-        /* Auth Screen */
         #auth-screen { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 80vh; text-align: center; }
         .btn-connect { background: #f6851b; color: white; padding: 15px 30px; font-size: 1.2rem; border-radius: 50px; border: none; cursor: pointer; font-weight: bold; }
         
-        /* Main UI */
-        #admin-ui { display: none; width: 100%; max-width: 900px; flex-direction: column; align-items: center; }
-        .container { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; width: 100%; margin-bottom: 20px; }
+        #admin-ui { display: none; width: 100%; max-width: 900px; flex-direction: column; gap: 20px; }
         .card { background: var(--glass); border: 1px solid rgba(255,255,255,0.1); border-radius: 20px; padding: 20px; text-align: center; }
-        input { background: rgba(0,0,0,0.4); border: 1px solid rgba(255,255,255,0.2); padding: 10px; border-radius: 8px; color: white; width: 80px; text-align: center; }
         
-        button { padding: 12px; border-radius: 10px; border: none; font-weight: bold; cursor: pointer; transition: 0.3s; margin-top: 10px; width: 100%; }
-        .btn-set { background: #fff; color: #000; width: auto; margin-left: 5px; }
-        .btn-reallocate { background: var(--accent); color: #00334e; font-size: 1.1rem; }
-        .btn-wipe { background: transparent; border: 2px solid var(--danger); color: var(--danger); margin-top: 30px; max-width: 400px; }
-
-        .sensor-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; width: 100%; margin-top: 20px; }
-        .sensor-box { background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.1); padding: 12px; border-radius: 12px; text-align: center; }
-        .active-round { border: 2px solid var(--accent); background: rgba(0, 255, 204, 0.1); }
-        .past-round { opacity: 0.3; filter: grayscale(1); }
-        .total-label { font-size: 1.1rem; color: var(--accent); font-weight: bold; border-top: 1px solid rgba(255,255,255,0.1); margin-top: 4px; padding-top: 4px; }
+        .history-card { text-align: left; background: rgba(0,0,0,0.2); }
+        .log-entry { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid rgba(255,255,255,0.05); }
+        
+        button { padding: 10px 20px; border-radius: 8px; border: none; font-weight: bold; cursor: pointer; transition: 0.3s; }
+        .btn-view { background: var(--accent); color: #00334e; font-size: 0.75rem; }
+        
+        /* Modal Style */
+        #historyModal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); z-index: 100; justify-content: center; align-items: center; }
+        .modal-content { background: #1a1a2e; border: 1px solid var(--accent); padding: 30px; border-radius: 20px; width: 90%; max-width: 600px; max-height: 80vh; overflow-y: auto; }
+        table { width: 100%; border-collapse: collapse; margin-top: 15px; font-size: 0.85rem; }
+        th, td { border: 1px solid rgba(255,255,255,0.1); padding: 8px; text-align: center; }
+        th { background: rgba(0, 255, 204, 0.1); color: var(--accent); }
     </style>
 </head>
 <body>
 
     <div id="auth-screen">
-        <h1>SPONSOR GATEWAY</h1>
+        <h1>SPONSOR AUDIT</h1>
         <button class="btn-connect" id="connectBtn">Connect MetaMask</button>
-        <p id="auth-error" style="color: var(--danger); margin-top: 20px;"></p>
     </div>
 
     <div id="admin-ui">
-        <h1>SPONSOR COMMAND CENTER</h1>
-        <div class="container">
-            <div class="card">
-                <h3>SET LIMITS</h3>
-                <div>Min: <input type="number" id="minIn" step="0.1"> <button class="btn-set" id="btnMin">SET</button></div>
-                <div style="margin-top:10px;">Max: <input type="number" id="maxIn" step="0.1"> <button class="btn-set" id="btnMax">SET</button></div>
-                <p id="curLimits" style="font-size: 0.7rem; color:#888; margin-top:10px;"></p>
-            </div>
-            <div class="card">
-                <h3>VAULT OVERFLOW</h3>
-                <div style="font-size: 2.2rem; color: #ffcc00; font-family: monospace;" id="disp-overflow">0.000</div>
-                <button class="btn-reallocate" id="btnReallocate">REALLOCATE FUNDS</button>
-            </div>
+        <div class="card">
+            <h3>VAULT OVERFLOW</h3>
+            <div style="font-size: 2.5rem; color: var(--gold); font-family: monospace;" id="disp-overflow">0.000</div>
         </div>
-        <div class="sensor-grid" id="sensorGrid"></div>
-        <button class="btn-wipe" id="btnWipe">🚨 WIPE ALL ROUNDS</button>
+
+        <div class="card history-card">
+            <h4 style="margin-top:0; color:#888;">PREVIOUS SEASON RECORDS</h4>
+            <div id="log-content"><i>No historical data available.</i></div>
+        </div>
+    </div>
+
+    <div id="historyModal">
+        <div class="modal-content">
+            <h2 id="modalTitle" style="color: var(--accent); margin-top:0;">Season Details</h2>
+            <div id="modalBody"></div>
+            <button onclick="document.getElementById('historyModal').style.display='none'" style="margin-top:20px; width:100%; background:var(--danger); color:white;">CLOSE</button>
+        </div>
     </div>
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js";
-        import { getDatabase, ref, onValue, update, set, get } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-database.js";
+        import { getDatabase, ref, onValue } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-database.js";
 
         const WHITELISTED_ADMIN = "0xCe9782f77eC560a1Cb329F935b5D416AA41f1a5d".toLowerCase(); 
         const firebaseConfig = { apiKey: "AlzaSyBYxLOGFzaHN6CS4ro_bjnKEblbQE6Vtx4", databaseURL: "https://nuclearf1-94a6b-default-rtdb.asia-southeast1.firebasedatabase.app" };
@@ -71,67 +69,54 @@
                 if (accounts[0].toLowerCase() === WHITELISTED_ADMIN) {
                     document.getElementById('auth-screen').style.display = 'none';
                     document.getElementById('admin-ui').style.display = 'flex';
-                    setupAdminActions();
-                } else { document.getElementById('auth-error').innerText = "Not authorized."; }
+                    loadSponsorData();
+                }
             }
         };
 
-        function setupAdminActions() {
-            // Real-time listener for UI
+        function loadSponsorData() {
             onValue(ref(db), (snap) => {
                 const data = snap.val() || {};
-                const vault = data.vault || {};
-                const limits = data.master_settings?.limits || { min: 0.1, max: 2.0 };
-                const curRound = data.race_data?.current_round || 1;
+                const history = data.history?.transitions || {};
+                document.getElementById('disp-overflow').innerText = parseFloat(data.vault?.overflow || 0).toFixed(3);
+
+                const logBox = document.getElementById('log-content');
+                const entries = Object.entries(history).reverse();
                 
-                document.getElementById('curLimits').innerText = `CURRENT: MIN ${limits.min} | MAX ${limits.max}`;
-                document.getElementById('disp-overflow').innerText = parseFloat(vault.overflow || 0).toFixed(3);
-                
-                const grid = document.getElementById('sensorGrid');
-                grid.innerHTML = '';
-                for(let i=1; i<=12; i++) {
-                    let r = vault.rounds?.[`r${i}`] || { normal: 0, boost: 0 };
-                    let extraClass = i < curRound ? 'past-round' : (i === curRound ? 'active-round' : '');
-                    grid.innerHTML += `<div class="sensor-box ${extraClass}">
-                        <div style="font-size:0.7rem;color:#aaa;">RD ${i}</div>
-                        <div style="font-size:0.7rem; color:#666;">N: ${parseFloat(r.normal||0).toFixed(2)} | B: ${parseFloat(r.boost||0).toFixed(2)}</div>
-                        <div class="total-label">${(parseFloat(r.normal||0)+parseFloat(r.boost||0)).toFixed(3)}</div>
-                    </div>`;
+                if(entries.length > 0) {
+                    logBox.innerHTML = entries.map(([id, e]) => `
+                        <div class="log-entry">
+                            <div>
+                                <b>Season ${e.from_season}</b><br>
+                                <small style="color:#666;">${e.timestamp}</small>
+                            </div>
+                            <div style="color:var(--gold); font-size:0.9rem;">${e.moved_from_overflow} tBNB Reclaimed</div>
+                            <button class="btn-view" onclick="window.showDetails('${id}')">VIEW DETAILS</button>
+                        </div>
+                    `).join('');
+
+                    // Global function for the buttons to trigger
+                    window.showDetails = (id) => {
+                        const record = history[id];
+                        const states = record.final_vault_state;
+                        document.getElementById('modalTitle').innerText = `Season ${record.from_season} Final Audit`;
+                        
+                        let tableHTML = `<table><thead><tr><th>RD</th><th>Normal</th><th>Boost</th><th>Total</th></tr></thead><tbody>`;
+                        for(let i=1; i<=12; i++) {
+                            let rd = states[`r${i}`];
+                            tableHTML += `<tr>
+                                <td>${i}</td>
+                                <td>${parseFloat(rd.normal).toFixed(2)}</td>
+                                <td>${parseFloat(rd.boost).toFixed(2)}</td>
+                                <td style="color:var(--accent)">${rd.total}</td>
+                            </tr>`;
+                        }
+                        tableHTML += `</tbody></table>`;
+                        document.getElementById('modalBody').innerHTML = tableHTML;
+                        document.getElementById('historyModal').style.display = 'flex';
+                    };
                 }
             });
-
-            // Button Logic
-            document.getElementById('btnMin').onclick = () => update(ref(db, 'master_settings/limits'), { min: parseFloat(document.getElementById('minIn').value) });
-            document.getElementById('btnMax').onclick = () => update(ref(db, 'master_settings/limits'), { max: parseFloat(document.getElementById('maxIn').value) });
-
-            document.getElementById('btnReallocate').onclick = async () => {
-                const snap = await get(ref(db));
-                const data = snap.val() || {};
-                const limits = data.master_settings?.limits || { min: 0.1, max: 2.0 };
-                let overflow = parseFloat(data.vault?.overflow || 0);
-                let rounds = data.vault?.rounds || {};
-
-                for(let i=1; i<=12; i++) {
-                    if(!rounds[`r${i}`] || typeof rounds[`r${i}`] === 'number') rounds[`r${i}`] = { normal: 0, boost: 0 };
-                    let curN = rounds[`r${i}`].normal;
-                    if(curN > limits.max) {
-                        overflow += (curN - limits.max);
-                        rounds[`r${i}`].normal = limits.max;
-                    } else if(curN < limits.max && overflow > 0) {
-                        let fill = Math.min(overflow, limits.max - curN);
-                        rounds[`r${i}`].normal = parseFloat((curN + fill).toFixed(3));
-                        overflow -= fill;
-                    }
-                }
-                update(ref(db, 'vault'), { rounds, overflow: parseFloat(overflow.toFixed(3)) }).then(() => alert("Reallocated!"));
-            };
-
-            document.getElementById('btnWipe').onclick = () => {
-                if(!confirm("Wipe everything?")) return;
-                const fresh = { overflow: 0, rounds: {} };
-                for(let i=1; i<=12; i++) fresh.rounds[`r${i}`] = { normal: 0, boost: 0 };
-                set(ref(db, 'vault'), fresh);
-            };
         }
     </script>
 </body>
