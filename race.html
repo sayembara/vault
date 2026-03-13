@@ -7,21 +7,19 @@
         :root { --glass: rgba(255, 255, 255, 0.08); --accent: #00ffcc; --gold: #ffcc00; --danger: #ff4b2b; --bg: #0b0e14; }
         body { margin: 0; padding: 0; font-family: 'Inter', sans-serif; background: var(--bg); color: white; display: flex; justify-content: center; align-items: center; min-height: 100vh; }
         
-        /* Login Overlay */
-        #loginOverlay { text-align: center; z-index: 100; }
-        .wallet-btn { background: #f6851b; color: white; border: none; padding: 20px 40px; border-radius: 12px; cursor: pointer; font-weight: bold; font-size: 1.2rem; display: flex; align-items: center; gap: 15px; transition: 0.3s; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
-        .wallet-btn:hover { transform: translateY(-3px); background: #e27613; }
+        #loginOverlay { text-align: center; z-index: 100; padding: 20px; }
+        .wallet-btn { background: #f6851b; color: white; border: none; padding: 20px 40px; border-radius: 12px; cursor: pointer; font-weight: bold; font-size: 1.2rem; display: flex; align-items: center; gap: 15px; transition: 0.3s; margin: 0 auto; }
+        .wallet-btn:hover { transform: scale(1.05); background: #e27613; }
 
-        /* Main Content (Hidden by default) */
         #mainContent { display: none; width: 100%; max-width: 1200px; padding: 20px; }
         .card { background: var(--glass); border: 1px solid rgba(255,255,255,0.1); border-radius: 15px; padding: 20px; margin-bottom: 20px; }
         
-        /* Layout Components */
         .header-nav { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
         .track-box { background: #000; height: 300px; position: relative; border-radius: 10px; border: 1px solid #444; overflow: hidden; }
         .track-lane { position: relative; width: 100%; height: 35px; border-bottom: 1px solid #222; }
-        .track-car { position: absolute; height: 20px; width: 35px; border-radius: 3px; top: 7px; font-size: 0.6rem; color: black; font-weight: 900; text-align: center; line-height: 20px; }
-        .start-light { position: absolute; top: 15px; left: 20px; width: 25px; height: 25px; border-radius: 50%; border: 3px solid #333; }
+        .track-car { position: absolute; height: 20px; width: 35px; border-radius: 3px; top: 7px; font-size: 0.6rem; color: black; font-weight: 900; text-align: center; line-height: 20px; background: var(--accent); }
+        .finish-marker { position: absolute; top: 0; bottom: 0; width: 2px; border-left: 2px dashed var(--danger); z-index: 1; }
+        .start-light { position: absolute; top: 15px; left: 20px; width: 25px; height: 25px; border-radius: 50%; border: 3px solid #333; z-index: 10; }
         .light-red { background: #ff0000; box-shadow: 0 0 20px #ff0000; }
         .light-green { background: #00ff00; box-shadow: 0 0 20px #00ff00; }
 
@@ -38,10 +36,11 @@
 <body>
 
     <div id="loginOverlay">
-        <h1 style="color:var(--gold); margin-bottom: 30px;">SANRAT ADMIN ENGINE</h1>
-        <button class="wallet-btn" onclick="connectAdminWallet()">
+        <h1 style="color:var(--gold); margin-bottom: 10px;">SANRAT ADMIN</h1>
+        <p style="color:#666; margin-bottom: 30px;">Secure Logic Gateway</p>
+        <button class="wallet-btn" id="loginBtn">
             <img src="https://upload.wikimedia.org/wikipedia/commons/3/36/MetaMask_Logo.svg" width="30"> 
-            ADMIN LOGIN
+            SIGN IN WITH METAMASK
         </button>
     </div>
 
@@ -51,7 +50,7 @@
                 SEASON <span id="seasonNum" style="color:var(--gold)">-</span> | 
                 ROUND <span id="roundNum" style="color:var(--gold)">-</span>
             </div>
-            <div id="statusLabel" style="color:var(--danger); font-weight:bold;">CONNECTING...</div>
+            <div id="statusLabel" style="color:var(--danger); font-weight:bold;">SYSTEM READY</div>
         </div>
 
         <div class="card">
@@ -94,10 +93,10 @@
                     <div class="tier-row"><input type="number" id="t3_min"><input type="number" id="t3_max"><input type="number" id="t3_mult" step="0.1"></div>
                 </div>
             </div>
-            <div style="background:rgba(0,0,0,0.3); padding:15px; border-radius:8px; margin-top:15px;">
+            <div class="formula-box" style="background:rgba(0,0,0,0.3); padding:15px; border-radius:8px; margin-top:15px;">
                 Points = <input type="number" id="base_pts" style="width:70px;"> * (<input type="number" id="decay_const" step="0.01" style="width:60px;">)<sup>(Pos-1)</sup>
             </div>
-            <button class="btn-update" onclick="saveMasterConfig()">💾 SYNC GLOBAL CONFIGURATION</button>
+            <button class="btn-update" id="syncBtn">💾 SYNC GLOBAL CONFIGURATION</button>
         </div>
     </div>
 
@@ -109,70 +108,62 @@
         const app = initializeApp(firebaseConfig);
         const db = getDatabase(app);
 
-        // --- PASTE YOUR WALLET HERE ---
+        // --- AUTH GATE ---
         const ADMIN_WALLET = "0xCe9782f77eC560a1Cb329F935b5D416AA41f1a5d".toLowerCase(); 
 
-        window.connectAdminWallet = async () => {
-            if (!window.ethereum) return alert("Please install MetaMask!");
-            
+        document.getElementById('loginBtn').addEventListener('click', async () => {
+            if (!window.ethereum) return alert("MetaMask not found!");
             try {
                 const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
                 if (accounts[0].toLowerCase() === ADMIN_WALLET) {
-                    // Unlock UI
                     document.body.style.alignItems = "flex-start";
                     document.getElementById('loginOverlay').style.display = "none";
                     document.getElementById('mainContent').style.display = "block";
-                    
-                    startLiveSync();
-                    loadInputs();
+                    startEngine();
                 } else {
-                    alert("Unauthorized wallet. Access denied.");
+                    alert("Unauthorized wallet detected.");
                 }
-            } catch (err) { alert("Login failed."); }
-        };
+            } catch (err) { console.error(err); }
+        });
 
-        async function loadInputs() {
+        async function startEngine() {
+            // 1. Fetch current settings from Firebase
             const snap = await get(ref(db, 'season_config'));
             const cfg = snap.val();
-            if(!cfg) return;
+            if(cfg) {
+                document.getElementById('rounds_per_season').value = cfg.max_rounds;
+                document.getElementById('days_per_round').value = cfg.days_per_round;
+                document.getElementById('total_track_m').value = cfg.track_len;
+                document.getElementById('finish_m').value = cfg.finish_m;
+                document.getElementById('min_cars_start').value = cfg.min_cars_to_start;
+                document.getElementById('t1_min').value = cfg.tiers.t1.min;
+                document.getElementById('t1_max').value = cfg.tiers.t1.max;
+                document.getElementById('t1_mult').value = cfg.tiers.t1.mult;
+                document.getElementById('t2_min').value = cfg.tiers.t2.min;
+                document.getElementById('t2_max').value = cfg.tiers.t2.max;
+                document.getElementById('t2_mult').value = cfg.tiers.t2.mult;
+                document.getElementById('t3_min').value = cfg.tiers.t3.min;
+                document.getElementById('t3_max').value = cfg.tiers.t3.max;
+                document.getElementById('t3_mult').value = cfg.tiers.t3.mult;
+                document.getElementById('base_pts').value = cfg.points.base;
+                document.getElementById('decay_const').value = cfg.points.decay;
+            }
 
-            // Explicitly set every input from Firebase
-            document.getElementById('rounds_per_season').value = cfg.max_rounds || 20;
-            document.getElementById('days_per_round').value = cfg.days_per_round || 7;
-            document.getElementById('total_track_m').value = cfg.track_len || 1500;
-            document.getElementById('finish_m').value = cfg.finish_m || 1000;
-            document.getElementById('min_cars_start').value = cfg.min_cars_to_start || 10;
-            document.getElementById('t1_min').value = cfg.tiers.t1.min;
-            document.getElementById('t1_max').value = cfg.tiers.t1.max;
-            document.getElementById('t1_mult').value = cfg.tiers.t1.mult;
-            document.getElementById('t2_min').value = cfg.tiers.t2.min;
-            document.getElementById('t2_max').value = cfg.tiers.t2.max;
-            document.getElementById('t2_mult').value = cfg.tiers.t2.mult;
-            document.getElementById('t3_min').value = cfg.tiers.t3.min;
-            document.getElementById('t3_max').value = cfg.tiers.t3.max;
-            document.getElementById('t3_mult').value = cfg.tiers.t3.mult;
-            document.getElementById('base_pts').value = cfg.points.base;
-            document.getElementById('decay_const').value = cfg.points.decay;
-        }
-
-        function startLiveSync() {
+            // 2. Start Live Track Feed
             onValue(ref(db, '/'), snap => {
                 const data = snap.val();
                 const s = data.race_state || { season:1, round:1, day_in_round:1 };
-                const cfg = data.season_config || {};
-                const cars = Object.values(data.cars || {}).filter(c => c.role === 'support');
-                
+                const c = data.season_config || {};
+                const cars = Object.values(data.cars || {}).filter(v => v.role === 'support');
+
                 document.getElementById('seasonNum').innerText = s.season;
                 document.getElementById('roundNum').innerText = s.round;
                 document.getElementById('countLabel').innerText = `Active Cars: ${cars.length}`;
                 
-                const maxD = cfg.days_per_round || 7;
-                document.getElementById('statusLabel').innerText = s.day_in_round > maxD ? `END OF DAY ${maxD}` : `DAY ${s.day_in_round}`;
-                
                 const light = document.getElementById('raceLight');
-                light.className = cars.length >= (cfg.min_cars_to_start || 10) ? "start-light light-green" : "start-light light-red";
+                light.className = cars.length >= (c.min_cars_to_start || 10) ? "start-light light-green" : "start-light light-red";
                 
-                renderTrack(cfg.track_len || 1500, cfg.finish_m || 1000, data.cars);
+                renderTrack(c.track_len || 1500, c.finish_m || 1000, data.cars);
             });
         }
 
@@ -180,5 +171,44 @@
             const layer = document.getElementById('master-layer');
             const light = document.getElementById('raceLight');
             layer.innerHTML = ''; layer.appendChild(light);
+            
             const marker = document.createElement('div');
-            marker.className = "finish-marker"; marker.style.left = (finishM/
+            marker.className = "finish-marker"; marker.style.left = (finishM/maxM*100) + "%";
+            layer.appendChild(marker);
+
+            Object.values(carData || {}).filter(c => c.role === 'support').forEach(c => {
+                const p = Math.min(((c.total_dist || 0) / maxM) * 100, 98);
+                const carDiv = document.createElement('div');
+                carDiv.className = "track-lane";
+                carDiv.innerHTML = `<div class="track-car" style="left:${p}%">${c.id}</div>`;
+                layer.appendChild(carDiv);
+            });
+        }
+
+        // --- THE MASTER SAVE BUTTON ---
+        document.getElementById('syncBtn').addEventListener('click', async () => {
+            const config = {
+                max_rounds: Number(document.getElementById('rounds_per_season').value),
+                days_per_round: Number(document.getElementById('days_per_round').value),
+                track_len: Number(document.getElementById('total_track_m').value),
+                finish_m: Number(document.getElementById('finish_m').value),
+                min_cars_to_start: Number(document.getElementById('min_cars_start').value),
+                tiers: {
+                    t1: { min: Number(document.getElementById('t1_min').value), max: Number(document.getElementById('t1_max').value), mult: Number(document.getElementById('t1_mult').value) },
+                    t2: { min: Number(document.getElementById('t2_min').value), max: Number(document.getElementById('t2_max').value), mult: Number(document.getElementById('t2_mult').value) },
+                    t3: { min: Number(document.getElementById('t3_min').value), max: Number(document.getElementById('t3_max').value), mult: Number(document.getElementById('t3_mult').value) }
+                },
+                points: {
+                    base: Number(document.getElementById('base_pts').value),
+                    decay: Number(document.getElementById('decay_const').value)
+                }
+            };
+            
+            try {
+                await update(ref(db, 'season_config'), config);
+                alert("Cloud Sync Successful!");
+            } catch (e) { alert("Save failed!"); }
+        });
+    </script>
+</body>
+</html>
