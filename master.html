@@ -2,26 +2,41 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>SANRAT | Master Engine</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/6.7.0/ethers.umd.min.js"></script>
     <style>
         :root { --glass: rgba(255, 255, 255, 0.08); --accent: #00ffcc; --gold: #ffcc00; --danger: #ff4b2b; --bg: #0b0e14; }
         body { margin: 0; padding: 20px; font-family: 'Inter', sans-serif; background: var(--bg); color: white; display: flex; flex-direction: column; align-items: center; }
-        #admin-ui { width: 100%; max-width: 1300px; display: grid; grid-template-columns: 350px 1fr; gap: 20px; }
+        
+        #auth-gate { position: fixed; inset: 0; background: var(--bg); z-index: 999; display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; }
+        .btn-connect { background: #f6851b; color: white; padding: 15px 40px; font-size: 1.2rem; border-radius: 50px; border: none; cursor: pointer; font-weight: bold; }
+
+        #admin-ui { width: 100%; max-width: 1300px; display: none; grid-template-columns: 350px 1fr; gap: 20px; }
         .card { background: var(--glass); border: 1px solid rgba(255,255,255,0.1); border-radius: 15px; padding: 20px; }
         .full-width { grid-column: 1 / -1; }
+        
         .status-tag { background: var(--accent); color: #000; padding: 4px 12px; border-radius: 4px; font-weight: bold; margin-left: 5px; }
         .btn-master { padding: 12px 20px; border-radius: 8px; border: none; font-weight: bold; cursor: pointer; transition: 0.2s; }
+        
         table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 0.75rem; }
         th, td { border: 1px solid #333; padding: 12px; text-align: center; }
         .active-day-col { background: rgba(255, 75, 43, 0.2) !important; border: 2px solid var(--danger) !important; }
-        .track-box { background: #000; height: 450px; position: relative; border-radius: 10px; border: 1px solid #444; padding-top: 10px; overflow: hidden; }
+
+        .track-box { background: #000; height: 450px; position: relative; border-radius: 10px; border: 1px solid #444; overflow: hidden; padding-top: 10px; }
         .finish-line { position: absolute; left: 50%; top: 0; bottom: 0; width: 2px; border-left: 2px dashed rgba(255,255,255,0.4); z-index: 1; }
-        .track-lane { position: relative; width: 100%; height: 40px; border-bottom: 1px solid #222; }
-        .track-car { position: absolute; height: 24px; width: 42px; border-radius: 4px; top: 8px; font-size: 0.65rem; color: black; font-weight: 900; text-align: center; line-height: 24px; transition: left 0.8s linear; z-index: 2; }
+        
+        .track-lane { position: relative; width: 100%; height: 38px; border-bottom: 1px solid #222; }
+        .track-car { position: absolute; height: 24px; width: 42px; border-radius: 4px; top: 6px; font-size: 0.65rem; color: black; font-weight: 900; text-align: center; line-height: 24px; transition: left 0.8s linear; z-index: 2; }
     </style>
 </head>
 <body>
+
+    <div id="auth-gate">
+        <h1>MASTER ENGINE</h1>
+        <button class="btn-connect" onclick="connectWallet()">Connect MetaMask</button>
+    </div>
+
     <div id="admin-ui">
         <div class="card full-width" style="display:flex; justify-content:space-between; align-items:center;">
             <div>
@@ -30,8 +45,8 @@
                 <span id="dayLabel" style="margin-left:25px; font-weight: 800; color: var(--danger);">DAY 1</span>
             </div>
             <div style="display: flex; gap: 10px;">
-                <button class="btn-master" style="background:var(--accent);" onclick="generateSeason(true)">REGENERATE MATRIX</button>
                 <button id="nextBtn" class="btn-master" style="background:white;" onclick="triggerTick()">NEXT DAY</button>
+                <button id="endRoundBtn" class="btn-master" style="background:var(--danger); color:white;" onclick="runToEndOfRound()">FAST END</button>
                 <button class="btn-master" style="background:#555; color:white;" onclick="window.location.href='race_constants.html'">CONFIG</button>
             </div>
         </div>
@@ -43,7 +58,7 @@
 
         <div class="card">
             <h3 style="margin-top:0;">7-DAY SEASON MATRIX</h3>
-            <div id="penalty-notice" style="font-size: 0.7rem; color: var(--gold); margin-bottom: 5px;"></div>
+            <div id="penalty-notice" style="font-size: 0.7rem; color: var(--gold); margin-bottom: 5px; font-weight: bold;"></div>
             <table><thead><tr id="mat-head"></tr></thead><tbody id="mat-body"></tbody></table>
         </div>
 
@@ -55,53 +70,66 @@
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js";
         import { getDatabase, ref, update, onValue, get } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-database.js";
+
         const firebaseConfig = { apiKey: "AlzaSyBYxLOGFzaHN6CS4ro_bjnKEblbQE6Vtx4", databaseURL: "https://nuclearf1-94a6b-default-rtdb.asia-southeast1.firebasedatabase.app" };
         const app = initializeApp(firebaseConfig);
         const db = getDatabase(app);
 
-        async function applyPenaltyLogic(matrix, winner, runnerUp) {
-            const apply = (dayIdx, target) => {
-                const t = target.traits || { propulsion: 1, traction: 1, stability: 1 };
-                // a) Propulsion check
-                matrix.direction[dayIdx] = t.propulsion <= 5 ? "straight" : (Math.random() > 0.5 ? "right" : "left");
-                // b) Traction check
-                const isRain = t.traction <= 5;
-                matrix.humidity[dayIdx] = isRain ? 100 : 0;
-                matrix.weather[dayIdx] = isRain ? "wet" : "dry";
-                // c) Stability check
-                matrix.elevation[dayIdx] = t.stability <= 5 ? (Math.random() > 0.5 ? "uphill" : "downhill") : "flatland";
-            };
+        const ADMIN_WALLET = "0xCe9782f77eC560a1Cb329F935b5D416AA41f1a5d".toLowerCase();
+        const icons = { straight:"➡️", right:"⤴️", left:"⤵️", flatland:"➖", uphill:"🔼", downhill:"🔽", dry:"☀️", wet:"🌧️" };
+        let lastRoundProcessed = -1;
 
-            if (winner) { apply(0, winner); apply(2, winner); } // Day 1 & 3
-            if (runnerUp) { apply(1, runnerUp); } // Day 2
-            return matrix;
-        }
-
-        window.generateSeason = async (manual = false) => {
-            const state = (await get(ref(db, 'race_state'))).val() || { round: 1 };
-            const d=["straight","right","left"], e=["flatland","uphill","downhill"], nc={direction:[],elevation:[],humidity:[],weather:[]};
-            
-            for(let i=0; i<7; i++) {
-                nc.direction.push(d[Math.floor(Math.random()*3)]);
-                nc.elevation.push(e[Math.floor(Math.random()*3)]);
-                const hum = Math.floor(Math.random()*101);
-                nc.humidity.push(hum);
-                nc.weather.push(hum < 50 ? "dry" : "wet");
-            }
-
-            if (state.round >= 2) {
-                const cars = Object.values((await get(ref(db, 'cars'))).val() || {}).sort((a,b) => (b.total_dist||0) - (a.total_dist||0));
-                if (cars.length >= 2) {
-                    await applyPenaltyLogic(nc, cars[0], cars[1]);
-                    document.getElementById('penalty-notice').innerText = `⚠️ Penalty Applied for ${cars[0].id} & ${cars[1].id}`;
+        window.connectWallet = async () => {
+            if (window.ethereum) {
+                const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
+                if (accounts[0].toLowerCase() === ADMIN_WALLET) {
+                    document.getElementById('auth-gate').style.display = 'none';
+                    document.getElementById('admin-ui').style.display = 'grid';
                 }
-            } else {
-                document.getElementById('penalty-notice').innerText = "";
             }
-
-            await update(ref(db, 'race_constants'), nc);
         };
 
+        // --- CORE LOGIC: MATRIX & PENALTIES ---
+        async function generateSeason() {
+            const stateSnap = await get(ref(db, 'race_state'));
+            const s = stateSnap.val() || { round: 1 };
+            
+            const dirs = ["straight", "right", "left"], elevs = ["flatland", "uphill", "downhill"];
+            const matrix = { direction: [], elevation: [], humidity: [], weather: [] };
+
+            for (let i = 0; i < 7; i++) {
+                matrix.direction.push(dirs[Math.floor(Math.random() * 3)]);
+                matrix.elevation.push(elevs[Math.floor(Math.random() * 3)]);
+                const hum = Math.floor(Math.random() * 101);
+                matrix.humidity.push(hum);
+                matrix.weather.push(hum < 50 ? "dry" : "wet");
+            }
+
+            if (s.round >= 2) {
+                const carsSnap = await get(ref(db, 'cars'));
+                const cars = Object.values(carsSnap.val() || {}).sort((a,b) => (b.total_dist||0) - (a.total_dist||0));
+                
+                if (cars.length >= 2) {
+                    const winner = cars[0], runner = cars[1];
+                    const apply = (day, car) => {
+                        const t = car.traits || { propulsion: 1, traction: 1, stability: 1 };
+                        matrix.direction[day] = t.propulsion <= 5 ? "straight" : (Math.random() > 0.5 ? "right" : "left");
+                        const rain = t.traction <= 5;
+                        matrix.humidity[day] = rain ? 100 : 0;
+                        matrix.weather[day] = rain ? "wet" : "dry";
+                        matrix.elevation[day] = t.stability <= 5 ? (Math.random() > 0.5 ? "uphill" : "downhill") : "flatland";
+                    };
+                    apply(0, winner); apply(2, winner); // Day 1 & 3
+                    apply(1, runner); // Day 2
+                    document.getElementById('penalty-notice').innerText = `⚠️ PENALTY APPLIED: ${winner.id} & ${runner.id}`;
+                }
+            } else {
+                document.getElementById('penalty-notice').innerText = "ROUND 1: RANDOM SELECTION";
+            }
+            await update(ref(db, 'race_constants'), matrix);
+        }
+
+        // --- ENGINE: DAILY TICK ---
         window.triggerTick = async () => {
             const snap = await get(ref(db));
             const data = snap.val();
@@ -120,7 +148,6 @@
                 return;
             }
 
-            // Real Engine Calculation for Movement
             const dayIdx = s.day_in_round - 1;
             const L1 = c.limits?.l1 || 5, L2 = c.limits?.l2 || 15;
             const getR = () => (1 - (Math.floor(Math.random() * (L2 - L1 + 1)) + L1) / 100);
@@ -132,7 +159,6 @@
                     const a1 = (c.traits.propulsion[c.direction[dayIdx]][t.propulsion-1] || 0) * getR();
                     const a2 = (c.traits.traction[c.weather[dayIdx]][t.traction-1] || 0) * getR();
                     const a3 = (c.traits.stability[c.elevation[dayIdx]][t.stability-1] || 0) * getR();
-                    
                     const roll = Math.floor(Math.random() * 100);
                     const a4 = roll > c.traits.core.cutoff[t.core-1] ? (c.traits.core.impact[t.core-1] * getR()) : 0;
                     
@@ -146,15 +172,40 @@
             await update(ref(db), up);
         };
 
-        onValue(ref(db, 'race_state'), snap => {
-            const s = snap.val() || { day_in_round: 1, round: 1 };
+        window.runToEndOfRound = async () => {
+            for(let i=0; i<8; i++) {
+                const s = (await get(ref(db, 'race_state'))).val() || { day_in_round: 1 };
+                if(s.day_in_round === 8) break;
+                await triggerTick();
+                await new Promise(r => setTimeout(r, 900));
+            }
+        };
+
+        // --- LISTENERS: UI UPDATES ---
+        onValue(ref(db, 'race_state'), async snap => {
+            const s = snap.val() || { day_in_round: 1, round: 1, season: 1 };
             document.getElementById('seasonNum').innerText = s.season || 1;
             document.getElementById('roundNum').innerText = s.round;
             document.getElementById('dayLabel').innerText = s.day_in_round === 8 ? "🏁 RESULTS" : `DAY ${s.day_in_round}`;
-            if (s.day_in_round === 1) generateSeason(); 
+            
+            if (s.round !== lastRoundProcessed && s.day_in_round === 1) {
+                lastRoundProcessed = s.round;
+                await generateSeason();
+            }
+            syncMatrix(s.day_in_round);
         });
 
-        onValue(ref(db, 'race_constants'), () => syncMatrix());
+        async function syncMatrix(activeDay) {
+            const cSnap = await get(ref(db, 'race_constants'));
+            const c = cSnap.val();
+            if(!c || !c.direction) return;
+            let h = '<th>Type</th>';
+            for(let i=1; i<=7; i++) h += `<th class="${i===activeDay?'active-day-col':''}">D${i}</th>`;
+            document.getElementById('mat-head').innerHTML = h;
+            const rows = [{l:"Dir",d:c.direction,i:true},{l:"Elev",d:c.elevation,i:true},{l:"Hum",d:c.humidity,s:"%"},{l:"Wx",d:c.weather,i:true}];
+            document.getElementById('mat-body').innerHTML = rows.map(r => `<tr><td><b>${r.l}</b></td>${r.d.map((v,idx)=>`<td class="${idx+1===activeDay?'active-day-col':''}">${r.i?icons[v]||v:v+(r.s||'')}</td>`).join('')}</tr>`).join('');
+        }
+
         onValue(ref(db, 'cars'), snap => {
             const list = Object.values(snap.val() || {}).sort((a,b) => (b.total_dist||0) - (a.total_dist||0));
             document.getElementById('rankBody').innerHTML = list.slice(0,8).map((c,i)=>`<tr><td>${i+1}</td><td>${c.id}</td><td>${Math.round(c.total_dist)}m</td></tr>`).join('');
@@ -164,18 +215,6 @@
                 layer.innerHTML += `<div class="track-lane"><div class="track-car" style="left:${p}%; background:${c.role==='support'?'#00ffcc':'#ffcc00'}">${c.id}</div></div>`;
             });
         });
-
-        async function syncMatrix() {
-            const c = (await get(ref(db, 'race_constants'))).val();
-            const s = (await get(ref(db, 'race_state'))).val() || { day_in_round: 1 };
-            if(!c || !c.direction) return;
-            const activeDay = s.day_in_round;
-            let h = '<th>Type</th>';
-            for(let i=1; i<=7; i++) h += `<th class="${i===activeDay?'active-day-col':''}">D${i}</th>`;
-            document.getElementById('mat-head').innerHTML = h;
-            const rows = [{l:"Dir",d:c.direction,i:true},{l:"Elev",d:c.elevation,i:true},{l:"Hum",d:c.humidity,s:"%"},{l:"Wx",d:c.weather,i:true}];
-            document.getElementById('mat-body').innerHTML = rows.map(r => `<tr><td><b>${r.l}</b></td>${r.d.map((v,idx)=>`<td class="${idx+1===activeDay?'active-day-col':''}">${r.i?icons[v]||v:v+(r.s||'')}</td>`).join('')}</tr>`).join('');
-        }
     </script>
 </body>
 </html>
