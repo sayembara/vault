@@ -2,114 +2,160 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>SANRAT | Ranking & Prize Setup</title>
+    <title>SANRAT | Prize Allocation</title>
     <style>
         :root { --glass: rgba(255, 255, 255, 0.08); --accent: #00ffcc; --gold: #ffcc00; --bg: #0b0e14; }
-        body { margin: 0; padding: 20px; font-family: 'Inter', sans-serif; background: var(--bg); color: white; display: flex; flex-direction: column; align-items: center; }
-        .container { width: 100%; max-width: 1000px; }
-        .card { background: var(--glass); border: 1px solid rgba(255,255,255,0.1); border-radius: 15px; padding: 25px; margin-bottom: 20px; }
-        .grid-config { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; }
-        .input-group { display: flex; flex-direction: column; gap: 8px; margin-bottom: 15px; }
-        input { background: #000; border: 1px solid #444; color: var(--accent); padding: 10px; border-radius: 5px; }
-        .btn-save { background: var(--accent); color: #000; border: none; padding: 15px 30px; border-radius: 8px; font-weight: bold; cursor: pointer; width: 100%; transition: 0.3s; }
-        .highlight-val { color: var(--gold); font-weight: bold; }
+        body { margin: 0; padding: 20px; font-family: 'Inter', sans-serif; background: var(--bg); color: white; }
+        .card { background: var(--glass); border: 1px solid rgba(255,255,255,0.1); border-radius: 15px; padding: 20px; margin-bottom: 20px; }
+        
+        .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; }
+        .stat-val { font-size: 1.8rem; font-weight: 900; color: var(--gold); }
+        .stat-label { font-size: 0.7rem; color: #888; text-transform: uppercase; }
+
+        table { width: 100%; border-collapse: collapse; margin-top: 15px; font-size: 0.85rem; }
+        th { text-align: left; color: #888; padding: 10px; border-bottom: 2px solid #333; }
+        td { padding: 12px 10px; border-bottom: 1px solid #222; }
+        
+        .tier-tag { padding: 4px 8px; border-radius: 4px; font-size: 0.7rem; font-weight: bold; }
+        .t1 { background: rgba(0, 255, 204, 0.2); color: var(--accent); }
+        .t2 { background: rgba(255, 204, 0, 0.2); color: var(--gold); }
+        .t3 { background: rgba(255, 75, 43, 0.2); color: #ff4b2b; }
     </style>
 </head>
 <body>
 
-    <div class="container">
-        <h1>⚙️ Season Ranking & Prize Setup</h1>
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+        <h1 style="margin:0;">🏆 PRIZE ALLOCATION</h1>
+        <button onclick="window.location.href='race.html'" style="background:#333; color:white; border:none; padding:8px 15px; border-radius:5px; cursor:pointer;">⬅ BACK TO RACE</button>
+    </div>
 
+    <div class="grid">
         <div class="card">
-            <h2>Live Funding Data</h2>
-            <div class="grid-config">
-                <div class="input-group">
-                    <label>Sponsor Pool (BNB)</label>
-                    <input type="number" id="sponsor_pool" readonly value="0.00">
-                </div>
-                <div class="input-group">
-                    <label>Funding Pool (BNB)</label>
-                    <input type="number" id="funding_pool" readonly value="0.00">
-                </div>
-                <div class="input-group">
-                    <label>Total Combined Pool</label>
-                    <div id="total_display" class="highlight-val" style="font-size: 1.5rem;">0.00 BNB</div>
-                </div>
-            </div>
+            <div class="stat-label">Total Funding Pool</div>
+            <div class="stat-val" id="totalPool">$0.00</div>
         </div>
-
         <div class="card">
-            <h2>Tiering & Points</h2>
-            <div class="grid-config">
-                <div class="input-group">
-                    <label>Base Points (P1)</label>
-                    <input type="number" id="base_points" value="1000">
-                </div>
-                <div class="input-group">
-                    <label>Decay Multiplier</label>
-                    <input type="number" id="decay_rate" step="0.01" value="0.95">
-                </div>
-                <div class="input-group">
-                    <label>Promotion Window (Rounds)</label>
-                    <input type="number" id="promo_window" value="5">
-                </div>
-                <div class="input-group">
-                    <label>Carryover %</label>
-                    <input type="number" id="carry_pct" value="50">
-                </div>
-            </div>
+            <div class="stat-label">Sponsor Contributions</div>
+            <div id="sponsorTotal" class="stat-val" style="color:var(--accent);">$0.00</div>
         </div>
-
         <div class="card">
-            <h2>Prize Distribution (%)</h2>
-            <div class="grid-config">
-                <div class="input-group"><label>Podium (1-3)</label><input type="number" class="pct" data-key="podium" value="55"></div>
-                <div class="input-group"><label>Top 10</label><input type="number" class="pct" data-key="top10" value="15"></div>
-                <div class="input-group"><label>Weekly</label><input type="number" class="pct" data-key="weekly" value="10"></div>
-                <div class="input-group"><label>Constructor</label><input type="number" class="pct" data-key="constructor" value="10"></div>
-                <div class="input-group"><label>Bonus/Fastest</label><input type="number" class="pct" data-key="bonus" value="10"></div>
-            </div>
+            <div class="stat-label">Total Points in Play</div>
+            <div id="totalPoints" class="stat-val" style="color:white;">0 pts</div>
         </div>
+    </div>
 
-        <button class="btn-save" onclick="saveSeasonConfig()">💾 SYNC CONFIG & START ROUND</button>
+    <div class="card">
+        <h3>TIER DISTRIBUTION SUMMARY</h3>
+        <table>
+            <thead>
+                <tr>
+                    <th>Tier</th>
+                    <th>Car Range</th>
+                    <th>Multiplier</th>
+                    <th>Allocated Pool %</th>
+                    <th>Est. Value / Point</th>
+                </tr>
+            </thead>
+            <tbody id="tierTable">
+                </tbody>
+        </table>
+    </div>
+
+    <div class="card">
+        <h3>LIVE RANKING PRIZE ESTIMATES</h3>
+        <table id="prizePreview">
+            <thead>
+                <tr>
+                    <th>Rank</th>
+                    <th>Car ID</th>
+                    <th>Points</th>
+                    <th>Tier</th>
+                    <th>Estimated Prize</th>
+                </tr>
+            </thead>
+            <tbody>
+                </tbody>
+        </table>
     </div>
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js";
-        import { getDatabase, ref, onValue, update, get } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-database.js";
+        import { getDatabase, ref, onValue } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-database.js";
 
         const firebaseConfig = { apiKey: "AlzaSyBYxLOGFzaHN6CS4ro_bjnKEblbQE6Vtx4", databaseURL: "https://nuclearf1-94a6b-default-rtdb.asia-southeast1.firebasedatabase.app" };
         const app = initializeApp(firebaseConfig);
         const db = getDatabase(app);
 
-        // Fetch Live Pool Data from other pages
-        onValue(ref(db, 'funding_data'), (snap) => {
-            const data = snap.val() || { sponsor: 0, player_funding: 0 };
-            document.getElementById('sponsor_pool').value = data.sponsor;
-            document.getElementById('funding_pool').value = data.player_funding;
-            const total = parseFloat(data.sponsor) + parseFloat(data.player_funding);
-            document.getElementById('total_display').innerText = total.toFixed(2) + " BNB";
-        });
-
-        window.saveSeasonConfig = async () => {
-            const pcts = {};
-            document.querySelectorAll('.pct').forEach(el => pcts[el.dataset.key] = parseInt(el.value));
+        onValue(ref(db, '/'), snap => {
+            const data = snap.val();
+            const cfg = data.season_config;
+            const cars = Object.values(data.cars || {}).filter(c => c.role === 'support');
             
-            const config = {
-                points: {
-                    base: parseInt(document.getElementById('base_points').value),
-                    decay: parseFloat(document.getElementById('decay_rate').value)
-                },
-                rules: {
-                    promo_round: parseInt(document.getElementById('promo_window').value),
-                    carryover: parseInt(document.getElementById('carry_pct').value) / 100
-                },
-                allocation: pcts
-            };
+            // 1. CALCULATE FUNDING
+            const sponsorTotal = data.funding?.sponsor_total || 0;
+            const communityTotal = data.funding?.community_total || 0;
+            const grandTotal = sponsorTotal + communityTotal;
+            
+            document.getElementById('totalPool').innerText = `$${grandTotal.toLocaleString()}`;
+            document.getElementById('sponsorTotal').innerText = `$${sponsorTotal.toLocaleString()}`;
 
-            await update(ref(db, 'season_config'), config);
-            alert("Season logic synced to Master Engine.");
-        };
+            // 2. READ TIERING & POINTS
+            const tiers = cfg.tiers;
+            const ptsBase = cfg.points.base;
+            const ptsDecay = cfg.points.decay;
+
+            // 3. RENDER TIER SUMMARY
+            const tierRows = [
+                { id: 'T1', range: `${tiers.t1.min}-${tiers.t1.max}`, mult: tiers.t1.mult, class: 't1' },
+                { id: 'T2', range: `${tiers.t2.min}-${tiers.t2.max}`, mult: tiers.t2.mult, class: 't2' },
+                { id: 'T3', range: `${tiers.t3.min}-${tiers.t3.max}`, mult: tiers.t3.mult, class: 't3' }
+            ];
+
+            // 4. CALCULATE RANKING PRIZES (Simulated Top 10)
+            let totalPointsInSystem = 0;
+            const rankedList = cars.sort((a,b) => (b.total_dist || 0) - (a.total_dist || 0));
+            
+            const tableBody = rankedList.slice(0, 15).map((car, index) => {
+                const pos = index + 1;
+                let mult = 1;
+                let tLabel = "T3";
+                let tClass = "t3";
+
+                if (pos <= tiers.t1.max) { mult = tiers.t1.mult; tLabel="T1"; tClass="t1"; }
+                else if (pos <= tiers.t2.max) { mult = tiers.t2.mult; tLabel="T2"; tClass="t2"; }
+                
+                const points = Math.floor(ptsBase * Math.pow(ptsDecay, pos - 1) * mult);
+                totalPointsInSystem += points; // Simplified for preview
+
+                return { id: car.id, pts: points, tier: tLabel, tClass: tClass };
+            });
+
+            document.getElementById('totalPoints').innerText = `${totalPointsInSystem.toLocaleString()} pts`;
+
+            // Calculate Value per point
+            const valPerPoint = grandTotal / (totalPointsInSystem || 1);
+
+            // Render Tables
+            document.getElementById('tierTable').innerHTML = tierRows.map(r => `
+                <tr>
+                    <td><span class="tier-tag ${r.class}">${r.id}</span></td>
+                    <td>${r.range} Cars</td>
+                    <td>x${r.mult}</td>
+                    <td>${((r.mult / 3) * 100).toFixed(1)}% Weight</td>
+                    <td style="color:var(--accent)">$${(valPerPoint * r.mult).toFixed(4)}</td>
+                </tr>
+            `).join('');
+
+            document.getElementById('prizePreview').querySelector('tbody').innerHTML = tableBody.map((row, i) => `
+                <tr>
+                    <td>#${i+1}</td>
+                    <td>${row.id}</td>
+                    <td>${row.pts}</td>
+                    <td><span class="tier-tag ${row.tClass}">${row.tier}</span></td>
+                    <td style="color:var(--gold); font-weight:bold;">$${(row.pts * valPerPoint).toFixed(2)}</td>
+                </tr>
+            `).join('');
+        });
     </script>
 </body>
 </html>
