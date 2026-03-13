@@ -3,66 +3,250 @@
  * Handles dynamic scaling, tiers, and constructor logic.
  */
 
-function calculateRaceResults(participants) {
+function calculateRaceResults(participants, config = {}) {
+    // Configuration with defaults
+    const {
+        basePoints = 1000,
+        decayFactor = 0.95,
+        minPoints = 1,
+        topCarsPerTeam = 2,
+        multiplierThresholds = [
+            { min: 3001, multiplier: 2.0 },
+            { min: 201, max: 3000, multiplier: 1.5 },
+            { min: 61, max: 200, multiplier: 1.0 },
+            { min: 1, max: 60, multiplier: 0.5 }
+        ]
+    } = config;
+
+    // Input validation
+    if (!Array.isArray(participants)) {
+        throw new Error('Participants must be an array');
+    }
+
+    if (participants.length === 0) {
+        return {
+            individualResults: [],
+            constructorResults: []
+        };
+    }
+
+    // Validate required fields and check for duplicate ranks
+    participants.forEach((car, index) => {
+        if (!car.hasOwnProperty('rank') || car.rank === null || car.rank === undefined) {
+            throw new Error(`Participant at index ${index} missing 'rank' field`);
+        }
+        if (!car.teamId) {
+            throw new Error(`Participant at index ${index} missing 'teamId' field`);
+        }
+        if (typeof car.rank !== 'number' || car.rank < 1) {
+            throw new Error(`Participant at index ${index} has invalid rank: ${car.rank}`);
+        }
+    });
+
+    // Check for duplicate ranks
+    const ranks = participants.map(car => car.rank);
+    const uniqueRanks = new Set(ranks);
+    if (uniqueRanks.size !== participants.length) {
+        throw new Error('Duplicate ranks detected - each car must have a unique rank');
+    }
+
     const totalCars = participants.length;
-    let multiplier = 0.5;
 
     // 1. Determine Multiplier based on Field Size
-    if (totalCars > 3000) multiplier = 2.0;
-    else if (totalCars > 200) multiplier = 1.5;
-    else if (totalCars > 60) multiplier = 1.0;
+    let multiplier = 0.5; // Default
+    for (const threshold of multiplierThresholds) {
+        if (totalCars >= threshold.min && (!threshold.max || totalCars <= threshold.max)) {
+            multiplier = threshold.multiplier;
+            break;
+        }
+    }
 
-    // 2. Sort participants by finish rank (assuming input might be unsorted)
-    const sortedField = participants.sort((a, b) => a.rank - b.rank);
+    // 2. Sort participants by finish rank (create copy to avoid mutating original)
+    const sortedField = [...participants].sort((a, b) => a.rank - b.rank);
 
     // 3. Calculate Individual Points
     const processedCars = sortedField.map(car => {
-        let points = 0;
+        let points;
         
         // Bottom 50% Rule
         if (car.rank > (totalCars / 2)) {
-            points = 1; // Participation dust
+            points = minPoints; // Participation points
         } else {
-            // Exponential Formula: Base 1000 * 0.95^(rank-1) * multiplier
-            points = Math.round((1000 * Math.pow(0.95, car.rank - 1)) * multiplier);
+            // Exponential Formula: basePoints * decayFactor^(rank-1) * multiplier
+            const rawPoints = basePoints * Math.pow(decayFactor, car.rank - 1) * multiplier;
+            points = Math.max(minPoints, Math.round(rawPoints));
         }
 
-        return { ...car, pointsEarned: points };
+        return {
+            ...car,
+            pointsEarned: points,
+            multiplier: multiplier // Include multiplier used for transparency
+        };
     });
 
-    // 4. Constructor (Team) Logic: Max 2 cars per team
+    // 4. Constructor (Team) Logic: Top N cars per team (configurable)
     const teamPoints = {};
+    
+    // Group points by team
     processedCars.forEach(car => {
         if (!teamPoints[car.teamId]) {
             teamPoints[car.teamId] = [];
         }
-        teamPoints[car.teamId].push(car.pointsEarned);
+        teamPoints[car.teamId].push({
+            points: car.pointsEarned,
+            carId: car.carId,
+            rank: car.rank
+        });
     });
 
-    const constructorStandings = Object.keys(teamPoints).map(teamId => {
-        // Sort team's car points descending and take top 2
-        const topTwoPoints = teamPoints[teamId]
-            .sort((a, b) => b - a)
-            .slice(0, 2)
-            .reduce((sum, p) => sum + p, 0);
+    // Calculate constructor standings
+    const constructorStandings = Object.entries(teamPoints).map(([teamId, cars]) => {
+        // Sort team's car points descending and take top N
+        const topCars = [...cars]
+            .sort((a, b) => b.points - a.points)
+            .slice(0, topCarsPerTeam);
+        
+        const totalTeamPoints = topCars.reduce((sum, car) => sum + car.points, 0);
+        
+        // Include details for transparency
+        const countingCars = topCars.map(car => ({
+            carId: car.carId,
+            rank: car.rank,
+            points: car.points
+        }));
 
-        return { teamId: teamId, totalTeamPoints: topTwoPoints };
+        return {
+            teamId,
+            totalTeamPoints,
+            countingCars,
+            totalCarsInTeam: cars.length
+        };
     });
+
+    // Sort constructor standings by points (descending)
+    const sortedConstructorStandings = constructorStandings
+        .sort((a, b) => b.totalTeamPoints - a.totalTeamPoints)
+        .map((standing, index) => ({
+            ...standing,
+            position: index + 1
+        }));
+
+    // Sort individual results by rank for consistent output
+    const sortedIndividualResults = [...processedCars].sort((a, b) => a.rank - b.rank);
 
     return {
-        individualResults: processedCars,
-        constructorResults: constructorStandings.sort((a, b) => b.totalTeamPoints - a.totalTeamPoints)
+        metadata: {
+            totalCars,
+            multiplierUsed: multiplier,
+            calculationDate: new Date().toISOString(),
+            config: {
+                basePoints,
+                decayFactor,
+                minPoints,
+                topCarsPerTeam
+            }
+        },
+        individualResults: sortedIndividualResults,
+        constructorResults: sortedConstructorStandings
     };
 }
 
-// --- Example Usage ---
-const mockRace = [
-    { carId: "NFT_1", teamId: "Team_A", rank: 1 },
-    { carId: "NFT_2", teamId: "Team_A", rank: 2 },
-    { carId: "NFT_3", teamId: "Team_A", rank: 5 }, // This car shouldn't count for Team A
-    { carId: "NFT_4", teamId: "Team_B", rank: 3 },
-    { carId: "NFT_5", teamId: "Team_B", rank: 4 },
-];
+/**
+ * Helper function to format results for display
+ */
+function formatResults(results) {
+    if (!results || !results.individualResults) {
+        return 'No results to display';
+    }
 
-const results = calculateRaceResults(mockRace);
-console.log(results);
+    let output = '🏁 RACE RESULTS 🏁\n';
+    output += `Total Cars: ${results.metadata.totalCars}\n`;
+    output += `Points Multiplier: ${results.metadata.multiplierUsed}x\n\n`;
+
+    output += '--- INDIVIDUAL STANDINGS ---\n';
+    results.individualResults.forEach(car => {
+        output += `#${car.rank} | Car: ${car.carId} | Team: ${car.teamId} | Points: ${car.pointsEarned}\n`;
+    });
+
+    output += '\n--- CONSTRUCTOR STANDINGS ---\n';
+    results.constructorResults.forEach((team, index) => {
+        output += `${index + 1}. ${team.teamId} | Total: ${team.totalTeamPoints} points (${team.countingCars.length} of ${team.totalCarsInTeam} cars counting)\n`;
+        team.countingCars.forEach(car => {
+            output += `   ↳ Car #${car.rank}: ${car.carId} - ${car.points} pts\n`;
+        });
+    });
+
+    return output;
+}
+
+// --- Example Usage ---
+try {
+    const mockRace = [
+        { carId: "NFT_1", teamId: "Team_A", rank: 1 },
+        { carId: "NFT_2", teamId: "Team_A", rank: 2 },
+        { carId: "NFT_3", teamId: "Team_A", rank: 5 },
+        { carId: "NFT_4", teamId: "Team_B", rank: 3 },
+        { carId: "NFT_5", teamId: "Team_B", rank: 4 },
+    ];
+
+    // Example with custom configuration
+    const customConfig = {
+        basePoints: 1200,
+        decayFactor: 0.96,
+        minPoints: 2,
+        topCarsPerTeam: 2
+    };
+
+    const results = calculateRaceResults(mockRace, customConfig);
+    
+    // Pretty print the results
+    console.log(formatResults(results));
+    
+    // Also show raw data if needed
+    console.log('\n--- RAW DATA ---');
+    console.log(JSON.stringify(results, null, 2));
+
+} catch (error) {
+    console.error('Error calculating race results:', error.message);
+}
+
+// --- Additional Test Cases ---
+console.log('\n=== TESTING EDGE CASES ===\n');
+
+// Test empty race
+try {
+    console.log('Empty race:');
+    const emptyResults = calculateRaceResults([]);
+    console.log(formatResults(emptyResults));
+} catch (error) {
+    console.error('Empty race error:', error.message);
+}
+
+// Test small field
+try {
+    console.log('\nSmall field (3 cars):');
+    const smallRace = [
+        { carId: "Car1", teamId: "Team_X", rank: 1 },
+        { carId: "Car2", teamId: "Team_X", rank: 2 },
+        { carId: "Car3", teamId: "Team_Y", rank: 3 }
+    ];
+    const smallResults = calculateRaceResults(smallRace);
+    console.log(formatResults(smallResults));
+} catch (error) {
+    console.error('Small field error:', error.message);
+}
+
+// Test large field simulation
+console.log('\nLarge field simulation:');
+const largeRace = Array.from({ length: 250 }, (_, i) => ({
+    carId: `Car_${i + 1}`,
+    teamId: `Team_${String.fromCharCode(65 + (i % 10))}`,
+    rank: i + 1
+}));
+
+const largeResults = calculateRaceResults(largeRace);
+console.log(`Processed ${largeResults.metadata.totalCars} cars`);
+console.log(`Multiplier used: ${largeResults.metadata.multiplierUsed}x`);
+console.log(`Top constructor: ${largeResults.constructorResults[0].teamId} with ${largeResults.constructorResults[0].totalTeamPoints} points`);
+
+module.exports = { calculateRaceResults, formatResults };
