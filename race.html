@@ -9,23 +9,26 @@
         .card { background: var(--glass); border: 1px solid rgba(255,255,255,0.1); border-radius: 15px; padding: 20px; margin-bottom: 20px; }
         
         .header-nav { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+        .wallet-btn { background: #f6851b; color: white; border: none; padding: 10px 15px; border-radius: 8px; cursor: pointer; font-weight: bold; font-size: 0.8rem; display: flex; align-items: center; gap: 8px; }
 
+        /* Track & Start Light */
         .track-box { background: #000; height: 350px; position: relative; border-radius: 10px; border: 1px solid #444; overflow: hidden; }
         .track-lane { position: relative; width: 100%; height: 35px; border-bottom: 1px solid #222; }
         .track-car { position: absolute; height: 20px; width: 35px; border-radius: 3px; top: 7px; font-size: 0.6rem; color: black; font-weight: 900; text-align: center; line-height: 20px; transition: left 0.8s linear; z-index: 2; }
         .finish-marker { position: absolute; top: 0; bottom: 0; width: 2px; border-left: 2px dashed var(--danger); z-index: 1; }
+        
+        .start-light { position: absolute; top: 15px; left: 20px; width: 25px; height: 25px; border-radius: 50%; border: 3px solid #333; z-index: 5; box-shadow: 0 0 10px rgba(0,0,0,0.5); }
+        .light-red { background: #ff0000; box-shadow: 0 0 20px #ff0000; }
+        .light-green { background: #00ff00; box-shadow: 0 0 20px #00ff00; }
 
-        /* Responsive Grid System */
+        /* Form Layouts */
         .config-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px; }
         .input-group { display: flex; flex-direction: column; gap: 8px; margin-bottom: 10px; }
-        
-        /* Fixed Tier Layout to prevent overlapping */
         .tier-row { display: flex; gap: 8px; width: 100%; }
-        .tier-row input { flex: 1; min-width: 0; } /* Ensures inputs shrink equally */
-
+        .tier-row input { flex: 1; min-width: 0; }
+        
         label { font-size: 0.7rem; color: #888; text-transform: uppercase; font-weight: bold; }
         input { background: #000; border: 1px solid #555; color: var(--accent); padding: 10px; border-radius: 4px; font-family: monospace; }
-        
         .formula-box { background: rgba(0,0,0,0.4); padding: 15px; border-radius: 8px; border-left: 4px solid var(--gold); margin-top: 15px; }
         .btn-update { background: var(--accent); color: #000; border: none; padding: 15px; border-radius: 8px; font-weight: 800; cursor: pointer; margin-top: 20px; width: 100%; text-transform: uppercase; }
     </style>
@@ -37,12 +40,19 @@
             SEASON <span id="seasonNum" style="color:var(--gold)">1</span> | 
             ROUND <span id="roundNum" style="color:var(--gold)">1</span>
         </div>
-        <div id="statusLabel" style="color:var(--danger); font-weight:bold; font-size: 0.9rem;">DAY 1</div>
+        <div style="display:flex; align-items:center; gap:20px;">
+            <div id="statusLabel" style="color:var(--danger); font-weight:bold;">DAY 1</div>
+            <button class="wallet-btn" id="walletBtn" onclick="connectWallet()">
+                <img src="https://upload.wikimedia.org/wikipedia/commons/3/36/MetaMask_Logo.svg" width="20"> 
+                <span id="walletTxt">CONNECT WALLET</span>
+            </button>
+        </div>
     </div>
 
     <div class="card">
-        <h2 style="margin:0 0 15px 0; font-size: 1.2rem;">LIVE RACE TRACK</h2>
-        <div class="track-box" id="master-layer"></div>
+        <div class="track-box" id="master-layer">
+            <div id="raceLight" class="start-light light-red"></div>
+        </div>
     </div>
 
     <div class="config-grid">
@@ -51,20 +61,15 @@
             <div class="input-group"><label>Rounds Per Season</label><input type="number" id="rounds_per_season" value="20"></div>
             <div class="input-group"><label>Days Per Round</label><input type="number" id="days_per_round" value="7"></div>
         </div>
-
         <div class="card">
             <h3>📐 GEOMETRY</h3>
             <div class="input-group"><label>Total Track Length (m)</label><input type="number" id="total_track_m" value="1500"></div>
             <div class="input-group"><label>Finish Line Marker (m)</label><input type="number" id="finish_m" value="1000"></div>
         </div>
-
         <div class="card">
             <h3>🚦 RACE START</h3>
-            <div class="input-group">
-                <label>Min Cars to Start Race</label>
-                <input type="number" id="min_cars_start" value="10">
-            </div>
-            <p style="font-size: 0.65rem; color: #666; margin: 0;">Race will not trigger until this threshold is met.</p>
+            <div class="input-group"><label>Min Cars to Start Race</label><input type="number" id="min_cars_start" value="10"></div>
+            <div id="countLabel" style="font-size: 0.7rem; color: var(--accent);">Active Cars: 0</div>
         </div>
     </div>
 
@@ -73,35 +78,20 @@
         <div class="config-grid">
             <div class="input-group">
                 <label>Tier 1 (Min / Max / Mult)</label>
-                <div class="tier-row">
-                    <input type="number" id="t1_min" value="1">
-                    <input type="number" id="t1_max" value="60">
-                    <input type="number" id="t1_mult" step="0.1" value="0.5">
-                </div>
+                <div class="tier-row"><input type="number" id="t1_min" value="1"><input type="number" id="t1_max" value="60"><input type="number" id="t1_mult" step="0.1" value="0.5"></div>
             </div>
             <div class="input-group">
                 <label>Tier 2 (Min / Max / Mult)</label>
-                <div class="tier-row">
-                    <input type="number" id="t2_min" value="61">
-                    <input type="number" id="t2_max" value="200">
-                    <input type="number" id="t2_mult" step="0.1" value="1.0">
-                </div>
+                <div class="tier-row"><input type="number" id="t2_min" value="61"><input type="number" id="t2_max" value="200"><input type="number" id="t2_mult" step="0.1" value="1.0"></div>
             </div>
             <div class="input-group">
                 <label>Tier 3 (Min / Max / Mult)</label>
-                <div class="tier-row">
-                    <input type="number" id="t3_min" value="201">
-                    <input type="number" id="t3_max" value="9999">
-                    <input type="number" id="t3_mult" step="0.1" value="1.5">
-                </div>
+                <div class="tier-row"><input type="number" id="t3_min" value="201"><input type="number" id="t3_max" value="9999"><input type="number" id="t3_mult" step="0.1" value="1.5"></div>
             </div>
         </div>
-
         <div class="formula-box">
-            <strong>Global Formula:</strong><br>
             Points = <input type="number" id="base_pts" value="1000" style="width:70px;"> * (<input type="number" id="decay_const" step="0.01" value="0.95" style="width:60px;">)<sup>(Pos-1)</sup> * [Tier Mult]
         </div>
-
         <button class="btn-update" onclick="saveMasterConfig()">💾 SYNC GLOBAL CONFIGURATION</button>
     </div>
 
@@ -113,57 +103,90 @@
         const app = initializeApp(firebaseConfig);
         const db = getDatabase(app);
 
+        // WALLET LOGIN
+        window.connectWallet = async () => {
+            if (window.ethereum) {
+                try {
+                    const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
+                    document.getElementById('walletTxt').innerText = accounts[0].slice(0,6) + "..." + accounts[0].slice(-4);
+                    document.getElementById('walletBtn').style.background = "#00ffcc";
+                    document.getElementById('walletBtn').style.color = "#000";
+                } catch (err) { alert("Wallet connection failed."); }
+            } else { alert("Please install MetaMask!"); }
+        };
+
+        // SYNC DATA FROM FIREBASE
         onValue(ref(db, '/'), snap => {
             const data = snap.val();
             const s = data.race_state || { season:1, round:1, day_in_round:1 };
             const cfg = data.season_config || {};
+            const cars = Object.values(data.cars || {}).filter(c => c.role === 'support');
             
             document.getElementById('seasonNum').innerText = s.season;
             document.getElementById('roundNum').innerText = s.round;
-            
-            // Fix: No "Day 8", show "End of Day 7"
-            const maxDays = cfg.days_per_round || 7;
-            if (s.day_in_round > maxDays) {
-                document.getElementById('statusLabel').innerText = `END OF DAY ${maxDays}`;
+            document.getElementById('countLabel').innerText = `Active Cars: ${cars.length}`;
+
+            // LIGHT & STATUS LOGIC
+            const minCars = cfg.min_cars_to_start || 10;
+            const light = document.getElementById('raceLight');
+            if(cars.length >= minCars) {
+                light.className = "start-light light-green";
             } else {
-                document.getElementById('statusLabel').innerText = `DAY ${s.day_in_round}`;
+                light.className = "start-light light-red";
             }
+
+            const maxDays = cfg.days_per_round || 7;
+            document.getElementById('statusLabel').innerText = (s.day_in_round > maxDays) ? `END OF DAY ${maxDays}` : `DAY ${s.day_in_round}`;
             
             renderTrack(cfg.track_len || 1500, cfg.finish_m || 1000, data.cars);
         });
 
         function renderTrack(maxM, finishM, carData) {
             const layer = document.getElementById('master-layer');
+            const light = document.getElementById('raceLight'); // Keep light
             layer.innerHTML = '';
-            const finishPct = (finishM / maxM) * 100;
-            layer.innerHTML += `<div class="finish-marker" style="left: ${finishPct}%"></div>`;
+            layer.appendChild(light);
 
-            const cars = Object.values(carData || {}).filter(c => c.role === 'support');
-            cars.forEach(c => {
+            const finishPct = (finishM / maxM) * 100;
+            const marker = document.createElement('div');
+            marker.className = "finish-marker";
+            marker.style.left = finishPct + "%";
+            layer.appendChild(marker);
+
+            Object.values(carData || {}).filter(c => c.role === 'support').forEach(c => {
                 const p = Math.min(((c.total_dist || 0) / maxM) * 100, 98);
-                layer.innerHTML += `<div class="track-lane"><div class="track-car" style="left:${p}%; background:#00ffcc">${c.id}</div></div>`;
+                const carDiv = document.createElement('div');
+                carDiv.className = "track-lane";
+                carDiv.innerHTML = `<div class="track-car" style="left:${p}%; background:#00ffcc">${c.id}</div>`;
+                layer.appendChild(carDiv);
             });
         }
 
+        // SAVE LOGIC - FIXED SELECTORS
         window.saveMasterConfig = async () => {
             const config = {
-                max_rounds: parseInt(document.getElementById('rounds_per_season').value),
-                days_per_round: parseInt(document.getElementById('days_per_round').value),
-                track_len: parseInt(document.getElementById('total_track_m').value),
-                finish_m: parseInt(document.getElementById('finish_m').value),
-                min_cars_to_start: parseInt(document.getElementById('min_cars_start').value),
+                max_rounds: Number(document.getElementById('rounds_per_season').value),
+                days_per_round: Number(document.getElementById('days_per_round').value),
+                track_len: Number(document.getElementById('total_track_m').value),
+                finish_m: Number(document.getElementById('finish_m').value),
+                min_cars_to_start: Number(document.getElementById('min_cars_start').value),
                 tiers: {
-                    t1: { min: parseInt(document.getElementById('t1_min').value), max: parseInt(document.getElementById('t1_max').value), mult: parseFloat(document.getElementById('t1_mult').value) },
-                    t2: { min: parseInt(document.getElementById('t2_min').value), max: parseInt(document.getElementById('t2_max').value), mult: parseFloat(document.getElementById('t2_mult').value) },
-                    t3: { min: parseInt(document.getElementById('t3_min').value), max: parseInt(document.getElementById('t3_max').value), mult: parseFloat(document.getElementById('t3_mult').value) }
+                    t1: { min: Number(document.getElementById('t1_min').value), max: Number(document.getElementById('t1_max').value), mult: Number(document.getElementById('t1_mult').value) },
+                    t2: { min: Number(document.getElementById('t2_min').value), max: Number(document.getElementById('t2_max').value), mult: Number(document.getElementById('t2_mult').value) },
+                    t3: { min: Number(document.getElementById('t3_min').value), max: Number(document.getElementById('t3_max').value), mult: Number(document.getElementById('t3_mult').value) }
                 },
                 points: {
-                    base: parseInt(document.getElementById('base_pts').value),
-                    decay: parseFloat(document.getElementById('decay_const').value)
+                    base: Number(document.getElementById('base_pts').value),
+                    decay: Number(document.getElementById('decay_const').value)
                 }
             };
-            await update(ref(db, 'season_config'), config);
-            alert("Master Season Configuration Updated!");
+            
+            try {
+                await update(ref(db, 'season_config'), config);
+                alert("Master Season Configuration Updated & Saved!");
+            } catch (e) {
+                alert("Error saving: " + e.message);
+            }
         };
     </script>
 </body>
