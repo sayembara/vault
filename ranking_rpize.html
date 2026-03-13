@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SANRAT | Ranking & Prize Engine</title>
+    <style>
+        :root { --glass: rgba(255, 255, 255, 0.08); --accent: #00ffcc; --gold: #ffcc00; --bg: #0b0e14; }
+        body { margin: 0; padding: 20px; font-family: 'Inter', sans-serif; background: var(--bg); color: white; }
+        .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(350px, 1fr)); gap: 20px; }
+        .card { background: var(--glass); border: 1px solid rgba(255,255,255,0.1); border-radius: 15px; padding: 20px; }
+        h2 { color: var(--gold); margin-top: 0; border-bottom: 1px solid #333; padding-bottom: 10px; }
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 0.85rem; }
+        th, td { text-align: left; padding: 12px; border-bottom: 1px solid #222; }
+        .tier-badge { padding: 4px 8px; border-radius: 4px; font-weight: bold; font-size: 0.7rem; }
+        .diamond { background: #b9f2ff; color: #000; }
+        .gold { background: var(--gold); color: #000; }
+        .silver { background: #c0c0c0; color: #000; }
+        .btn-claim { background: var(--accent); color: #00334e; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; font-weight: bold; }
+        .stat-box { display: flex; justify-content: space-between; margin-bottom: 10px; font-size: 0.9rem; }
+    </style>
+</head>
+<body>
+
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:30px;">
+        <h1>🏆 SEASON STANDINGS & PRIZES</h1>
+        <div id="pool-info" class="card" style="padding:10px 20px;">
+            Total Pool: <span id="totalBNB" style="color:var(--accent); font-weight:bold;">0.00 BNB</span>
+        </div>
+    </div>
+
+    <div class="grid">
+        <div class="card" style="grid-column: span 2;">
+            <h2>Driver Standings</h2>
+            <div id="tier-filters" style="margin-bottom:15px;"></div>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Rank</th>
+                        <th>Car ID</th>
+                        <th>Owner</th>
+                        <th>Tier</th>
+                        <th>Season Points</th>
+                        <th>Pending BNB</th>
+                    </tr>
+                </thead>
+                <tbody id="driverBody"></tbody>
+            </table>
+        </div>
+
+        <div class="card">
+            <h2>Constructor Cup (Top 2 Logic)</h2>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Rank</th>
+                        <th>Team/Owner</th>
+                        <th>Points</th>
+                    </tr>
+                </thead>
+                <tbody id="teamBody"></tbody>
+            </table>
+        </div>
+
+        <div class="card">
+            <h2>Prize Distribution Logic</h2>
+            <div class="stat-box"><span>Season Podium (55%)</span><span id="p-podium">0 BNB</span></div>
+            <div class="stat-box"><span>Season Top 10 (15%)</span><span id="p-top10">0 BNB</span></div>
+            <div class="stat-box"><span>Constructor Cup (10%)</span><span id="p-team">0 BNB</span></div>
+            <div class="stat-box"><span>Weekly/Fastest (20%)</span><span id="p-bonus">0 BNB</span></div>
+            <hr border="0" style="border-top:1px solid #333;">
+            <button class="btn-claim" style="width:100%; margin-top:10px;">CLAIM ALL EARNINGS</button>
+        </div>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js";
+        import { getDatabase, ref, onValue, get } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-database.js";
+
+        const firebaseConfig = { apiKey: "AlzaSyBYxLOGFzaHN6CS4ro_bjnKEblbQE6Vtx4", databaseURL: "https://nuclearf1-94a6b-default-rtdb.asia-southeast1.firebasedatabase.app" };
+        const app = initializeApp(firebaseConfig);
+        const db = getDatabase(app);
+
+        // --- CORE MATH FUNCTIONS ---
+        const calculatePoints = (pos, fieldSize) => {
+            const base = 1000 * Math.pow(0.95, pos - 1);
+            let multiplier = 0.5;
+            if (fieldSize > 500) multiplier = 2.0;
+            else if (fieldSize > 200) multiplier = 1.5;
+            else if (fieldSize > 50) multiplier = 1.0;
+            return Math.round(base * multiplier);
+        };
+
+        const getTier = (rank, total) => {
+            if (total <= 60) return "Single Grid";
+            if (total <= 200) return rank <= total * 0.4 ? "Pro" : "Amateur";
+            if (rank <= total * 0.1) return "Diamond";
+            if (rank <= total * 0.4) return "Gold";
+            return "Silver";
+        };
+
+        // --- DATA PROCESSING ---
+        onValue(ref(db, '/'), async (snap) => {
+            const data = snap.val();
+            const cars = Object.values(data.cars || {});
+            const poolBNB = data.prize_pool || 5.5; // Default for demo
+
+            document.getElementById('totalBNB').innerText = `${poolBNB} BNB`;
+            document.getElementById('p-podium').innerText = `${(poolBNB * 0.55).toFixed(2)} BNB`;
+            document.getElementById('p-top10').innerText = `${(poolBNB * 0.15).toFixed(2)} BNB`;
+            document.getElementById('p-team').innerText = `${(poolBNB * 0.10).toFixed(2)} BNB`;
+            document.getElementById('p-bonus').innerText = `${(poolBNB * 0.20).toFixed(2)} BNB`;
+
+            // 1. Sort by total distance/points
+            const sortedCars = cars.sort((a,b) => (b.total_dist || 0) - (a.total_dist || 0));
+            const total = sortedCars.length;
+
+            // 2. Process Drivers & Tiers
+            let driverHTML = "";
+            let teamPoints = {};
+
+            sortedCars.forEach((car, index) => {
+                const rank = index + 1;
+                const tier = getTier(rank, total);
+                const points = calculatePoints(rank, total);
+                const owner = car.owner || "0xUnknown...";
+
+                // Constructor Logic: Track all cars for owner
+                if (!teamPoints[owner]) teamPoints[owner] = [];
+                teamPoints[owner].push(points);
+
+                driverHTML += `
+                    <tr>
+                        <td><b>#${rank}</b></td>
+                        <td>${car.id}</td>
+                        <td style="font-size:0.7rem; opacity:0.7;">${owner}</td>
+                        <td><span class="tier-badge ${tier.toLowerCase()}">${tier}</span></td>
+                        <td>${points.toLocaleString()}</td>
+                        <td>${(points * 0.0001).toFixed(4)} BNB</td>
+                    </tr>
+                `;
+            });
+            document.getElementById('driverBody').innerHTML = driverHTML;
+
+            // 3. Process Constructor Standings (Top 2 Logic)
+            const teamRankings = Object.entries(teamPoints).map(([owner, scores]) => {
+                // Sort scores descending and take top 2
+                const top2Sum = scores.sort((a,b) => b-a).slice(0, 2).reduce((a,b) => a+b, 0);
+                return { owner, score: top2Sum };
+            }).sort((a,b) => b.score - a.score);
+
+            document.getElementById('teamBody').innerHTML = teamRankings.map((team, idx) => `
+                <tr>
+                    <td>${idx+1}</td>
+                    <td style="font-size:0.75rem;">${team.owner}</td>
+                    <td>${team.score.toLocaleString()}</td>
+                </tr>
+            `).join('');
+        });
+
+    </script>
+</body>
+</html>
