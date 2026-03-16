@@ -18,25 +18,26 @@
         .stats-bar { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; margin-bottom: 30px; }
         .stat-card { background: var(--card); border: 1px solid var(--border); padding: 20px; border-radius: 12px; text-align: center; }
         .stat-label { font-size: 0.6rem; color: var(--text); text-transform: uppercase; font-weight: 800; }
-        .stat-value { font-size: 2rem; font-weight: 900; color: var(--accent); font-family: 'Courier New', monospace; margin-top: 5px; }
+        .stat-value { font-size: 2.2rem; font-weight: 900; color: var(--accent); font-family: 'Courier New', monospace; margin-top: 5px; }
         .stat-value.boost { color: var(--boost); }
 
-        /* Injection Panel with Remark */
+        /* Injection Panel */
         .injection-panel { background: var(--card); border: 1px solid var(--border); padding: 20px; border-radius: 12px; margin-bottom: 30px; }
-        .row { display: flex; gap: 15px; align-items: flex-end; margin-bottom: 15px; }
+        .row { display: flex; gap: 15px; align-items: flex-end; margin-bottom: 12px; }
         .input-group { flex: 1; }
         .input-group label { display: block; font-size: 0.65rem; font-weight: 800; color: var(--text); margin-bottom: 8px; text-transform: uppercase; }
         input { width: 100%; background: #0d1117; border: 1px solid var(--border); padding: 12px; border-radius: 6px; color: var(--accent); font-weight: 900; outline: none; }
         
-        .btn-inject { padding: 12px 20px; border-radius: 6px; border: none; font-weight: 900; cursor: pointer; text-transform: uppercase; transition: 0.2s; height: 45px; font-size: 0.75rem; }
+        .btn-inject { padding: 0 25px; border-radius: 6px; border: none; font-weight: 900; cursor: pointer; text-transform: uppercase; height: 45px; font-size: 0.75rem; transition: 0.2s; }
         .btn-n { background: var(--accent); color: #000; }
         .btn-b { background: var(--boost); color: #fff; }
+        .btn-inject:hover { filter: brightness(1.2); transform: translateY(-1px); }
 
         /* Grid */
         .bucket-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 12px; }
         .b-card { background: #0d1117; border: 1px solid var(--border); padding: 15px; border-radius: 10px; position: relative; }
-        .b-card.active { border-color: var(--accent); border-width: 2px; }
-        .b-card.past { opacity: 0.3; filter: grayscale(1); border-color: transparent; }
+        .b-card.active { border-color: var(--accent); box-shadow: 0 0 15px rgba(0,255,204,0.05); }
+        .b-card.past { opacity: 0.3; filter: grayscale(1); border-style: dotted; }
         
         .status-tag { position: absolute; top: 10px; right: 10px; font-size: 0.5rem; font-weight: 900; padding: 2px 6px; border-radius: 4px; text-transform: uppercase; }
         .status-max { background: var(--accent); color: #000; }
@@ -49,7 +50,8 @@
         .total-val { font-weight: 900; color: var(--accent); }
         .b-breakdown { font-size: 0.55rem; color: #555; display: flex; justify-content: space-between; border-top: 1px solid #222; padding-top: 8px; }
 
-        .footer-info { display: flex; justify-content: space-between; margin-top: 30px; font-size: 0.65rem; color: #444; font-weight: 800; text-transform: uppercase; }
+        .footer-bar { display: flex; justify-content: space-between; margin-top: 30px; padding-top: 20px; border-top: 1px solid var(--border); font-size: 0.65rem; color: #444; font-weight: 800; text-transform: uppercase; }
+        #latest_remark { color: var(--accent); font-style: italic; }
     </style>
 </head>
 <body>
@@ -57,15 +59,15 @@
 <div class="container">
     <div class="stats-bar">
         <div class="stat-card">
-            <span class="stat-label">Normal (N)</span>
+            <span class="stat-label">Normal Treasury (N)</span>
             <div id="stat_n" class="stat-value">0</div>
         </div>
         <div class="stat-card">
-            <span class="stat-label">Boost (B)</span>
+            <span class="stat-label">Boost Pool (B)</span>
             <div id="stat_b" class="stat-value boost">0</div>
         </div>
         <div class="stat-card">
-            <span class="stat-label">Total Liquid</span>
+            <span class="stat-label">Total Liquid Assets</span>
             <div id="stat_total" class="stat-value">0</div>
         </div>
     </div>
@@ -77,20 +79,20 @@
                 <input type="number" id="inject_amt" placeholder="0.00">
             </div>
             <div class="input-group" style="flex: 2;">
-                <label>Injection Remark / Note</label>
-                <input type="text" id="inject_note" placeholder="e.g. Weekly Sponsor Deposit">
+                <label>Injection Remark</label>
+                <input type="text" id="inject_note" placeholder="Note for the ledger...">
             </div>
             <button class="btn-inject btn-n" onclick="processInjection('normal')">Inject N</button>
             <button class="btn-inject btn-b" onclick="processInjection('boost')">Inject B</button>
         </div>
-        <div id="latest_remark" style="font-size: 0.65rem; color: var(--accent); font-weight: bold;">Remark: None</div>
+        <div id="latest_remark">Remark: No recent injections</div>
     </div>
 
     <div id="main_grid" class="bucket-grid"></div>
     
-    <div class="footer-info">
-        <div id="last_update">Last Sync: Awaiting...</div>
-        <div>Current Round: <span id="round_display">4</span></div>
+    <div class="footer-bar">
+        <div id="last_update">Last Sync: --:--:--</div>
+        <div>Active Context: Round <span id="round_display" style="color:var(--accent)">-</span></div>
     </div>
 </div>
 
@@ -107,22 +109,31 @@
     firebase.initializeApp(firebaseConfig);
     const db = firebase.database();
 
-    let currentRound = 4; // Hardcoded or pulled from DB
-    let treasury = { normal: 0, boost: 0 };
+    let currentRound = 1; 
+    let treasury = { normal: 0, boost: 0, remark: "" };
     let policy = { wk_min: 10, wk_max: 50, sea_min: 100, sea_max: 500, con_min: 50, con_max: 200 };
 
     window.onload = () => {
-        db.ref('treasury').on('value', (snap) => {
-            treasury = snap.val() || { normal: 0, boost: 0 };
-            document.getElementById('latest_remark').innerText = `Latest Remark: ${treasury.remark || 'None'}`;
-            syncComplete();
+        // Listen for Round Advancement (Shared with Sponsor Page)
+        db.ref('currentRound').on('value', (snap) => {
+            currentRound = snap.val() || 1;
+            render();
         });
+
+        // Listen for Treasury
+        db.ref('treasury').on('value', (snap) => {
+            treasury = snap.val() || { normal: 0, boost: 0, remark: "" };
+            document.getElementById('latest_remark').innerText = `Remark: ${treasury.remark || 'None'}`;
+            syncDone();
+        });
+
+        // Listen for Policy
         db.ref('policy').on('value', (snap) => {
-            if (snap.val()) { policy = snap.val(); syncComplete(); }
+            if (snap.val()) { policy = snap.val(); syncDone(); }
         });
     };
 
-    function syncComplete() {
+    function syncDone() {
         const now = new Date();
         document.getElementById('last_update').innerText = `Last Sync: ${now.toLocaleTimeString()}`;
         document.getElementById('round_display').innerText = currentRound;
@@ -144,12 +155,10 @@
         const bShare = total > 0 ? (treasury.boost / divisor) : 0;
 
         let bucketN = {};
-
-        // 1. Initialize all buckets to 0
         for(let i=1; i<=12; i++) bucketN[`r${i}`] = 0;
         bucketN['sea'] = 0; bucketN['con'] = 0;
 
-        // --- PASS 1: MINIMUMS (Skipping Past Rounds) ---
+        // --- PASS 1: FILL MINIMUMS (Active + Future + Specials) ---
         for (let i = currentRound; i <= 12; i++) {
             let n = Math.min(remNrm, policy.wk_min);
             bucketN[`r${i}`] = n;
@@ -163,7 +172,7 @@
         bucketN['con'] = cMin;
         remNrm -= cMin;
 
-        // --- PASS 2: MAXIMUMS (Skipping Past Rounds) ---
+        // --- PASS 2: FILL TO MAXIMUMS ---
         for (let i = currentRound; i <= 12; i++) {
             let space = policy.wk_max - bucketN[`r${i}`];
             let n = Math.min(remNrm, space);
@@ -180,7 +189,7 @@
         bucketN['con'] += cExtra;
         remNrm -= cExtra;
 
-        // --- RENDERING ---
+        // --- RENDER GRID ---
         for (let i = 1; i <= 12; i++) {
             renderBucket(grid, `Round ${i}`, bucketN[`r${i}`], (i >= currentRound ? bShare : 0), policy.wk_max, policy.wk_min, i < currentRound ? 'past' : (i === currentRound ? 'active' : ''));
         }
@@ -194,7 +203,7 @@
         let statusText = 'Empty';
 
         if (state === 'overflow') { statusText = n > 0 ? 'Overflow' : 'Idle'; statusClass = n > 0 ? 'status-max' : 'status-empty'; }
-        else if (state === 'past') { statusText = 'Past'; statusClass = 'status-empty'; }
+        else if (state === 'past') { statusText = 'LOCKED'; statusClass = 'status-empty'; }
         else {
             if (n >= max && max > 0) { statusClass = 'status-max'; statusText = 'Maxed'; }
             else if (n >= min && min > 0) { statusClass = 'status-min'; statusText = 'At Min'; }
@@ -220,12 +229,12 @@
     function processInjection(type) {
         const amt = parseInt(document.getElementById('inject_amt').value);
         const note = document.getElementById('inject_note').value;
-        if (!amt || amt <= 0) return alert("Enter amount");
+        if (!amt || amt <= 0) return alert("Enter valid amount");
 
         if (type === 'normal') treasury.normal += amt;
         else treasury.boost += amt;
         
-        treasury.remark = note || "Manual Injection"; // Save remark
+        treasury.remark = note || "Injected " + amt + " TBNB";
 
         db.ref('treasury').set(treasury).then(() => {
             document.getElementById('inject_amt').value = '';
