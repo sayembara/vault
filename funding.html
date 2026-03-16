@@ -2,121 +2,178 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>SANRAT | Funding Ops</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SANRAT | Funding & Treasury</title>
     <style>
-        :root { --glass: rgba(255, 255, 255, 0.08); --accent: #00ffcc; --boost: #ff4b2b; }
-        body { margin: 0; padding: 20px; font-family: 'Inter', sans-serif; background: #0f0c29; color: white; display: flex; flex-direction: column; align-items: center; }
-        .container { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; max-width: 900px; width: 100%; }
-        .card { background: var(--glass); border: 1px solid rgba(255,255,255,0.1); border-radius: 20px; padding: 20px; text-align: center; }
-        input { background: rgba(0,0,0,0.4); border: 1px solid rgba(255,255,255,0.2); padding: 12px; border-radius: 10px; color: white; width: 80%; margin-bottom: 10px; font-size: 1rem; }
-        button { width: 100%; padding: 14px; border-radius: 10px; border: none; font-weight: bold; cursor: pointer; color: white; transition: 0.2s; }
-        button:active { transform: scale(0.98); }
-        .btn-normal { background: #6dd5ed; color: #00334e; }
-        .btn-boost { background: var(--boost); }
-        .overflow-box { font-size: 1.8rem; color: #ffcc00; margin: 20px 0; font-family: monospace; border: 1px dashed #ffcc0044; padding: 10px 30px; border-radius: 15px; }
-        .sensor-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; width: 100%; max-width: 900px; margin-top: 20px; }
-        .sensor-box { background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.1); padding: 12px; border-radius: 12px; text-align: center; transition: 0.3s; }
-        .active-round { border: 2px solid var(--accent); background: rgba(0, 255, 204, 0.1); transform: scale(1.05); box-shadow: 0 0 15px rgba(0, 255, 204, 0.2); }
-        .past-round { opacity: 0.25; filter: grayscale(1); pointer-events: none; }
-        .total-amt { font-size: 1.2rem; color: var(--accent); font-weight: bold; margin-top: 6px; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 4px; }
-        .sub-values { font-size: 0.75rem; color: #888; margin-top: 4px; }
-        .status-tag { font-size: 0.6rem; font-weight: 900; margin-top: 5px; padding: 2px; border-radius: 4px; display: inline-block; }
-        .st-low { color: #ff4b2b; background: rgba(255, 75, 43, 0.1); }
-        .st-mid { color: #ffcc00; background: rgba(255, 204, 0, 0.1); }
-        .st-full { color: #00ffcc; background: rgba(0, 255, 204, 0.1); }
+        :root { 
+            --accent: #00ffcc; --bg: #0b0e14; --card: #161b22; --border: #30363d; 
+            --danger: #ff4b2b; --warning: #ffcc00; --success: #00ffcc;
+        }
+        body { background: var(--bg); color: white; font-family: 'Inter', sans-serif; padding: 20px; }
+        .container { max-width: 1200px; margin: 0 auto; }
+        
+        /* Treasury Header */
+        .treasury-header { display: flex; justify-content: space-between; align-items: center; background: var(--card); padding: 30px; border-radius: 12px; border: 1px solid var(--border); margin-bottom: 25px; }
+        .total-fund { font-size: 2.5rem; font-weight: 900; color: var(--accent); }
+        
+        /* Deposit Controls */
+        .deposit-box { display: flex; gap: 10px; margin-top: 15px; }
+        .deposit-input { background: #0d1117; border: 1px solid var(--border); color: var(--accent); padding: 12px; border-radius: 6px; width: 150px; font-weight: bold; }
+        .btn-deposit { background: var(--accent); color: #000; border: none; padding: 12px 24px; border-radius: 6px; font-weight: bold; cursor: pointer; }
+
+        /* Bucket Grid */
+        .section-title { font-size: 0.8rem; text-transform: uppercase; letter-spacing: 2px; color: #8b949e; margin: 30px 0 15px 0; display: flex; align-items: center; gap: 10px; }
+        .section-title::after { content: ""; flex: 1; height: 1px; background: var(--border); }
+
+        .bucket-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 15px; }
+        .card { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 15px; position: relative; }
+        .card.active { border: 2px solid var(--accent); background: rgba(0, 255, 204, 0.03); }
+        .card.past { opacity: 0.5; filter: grayscale(0.5); }
+        
+        .bucket-label { font-size: 0.7rem; color: #8b949e; font-weight: bold; }
+        .bucket-main { font-family: 'Courier New', monospace; font-size: 1.1rem; margin: 8px 0; }
+        .target { color: #8b949e; }
+        .balance { color: var(--accent); font-weight: bold; }
+        
+        /* Status Tags */
+        .status { font-size: 0.6rem; text-transform: uppercase; font-weight: 900; padding: 2px 6px; border-radius: 4px; }
+        .status-below { background: rgba(255, 75, 43, 0.1); color: var(--danger); }
+        .status-min { background: rgba(255, 204, 0, 0.1); color: var(--warning); }
+        .status-max { background: rgba(0, 255, 204, 0.1); color: var(--success); }
     </style>
 </head>
 <body>
-    <h1>FUNDING OPERATIONS</h1>
-    <div class="overflow-box">OVERFLOW: <span id="val-overflow">0.000</span></div>
 
-    <div class="container">
-        <div class="card"><h3>🔋 NORMAL</h3><input type="number" id="normalAmt" step="0.1"><button class="btn-normal" id="btnNormal">Inject Normal</button></div>
-        <div class="card"><h3>🚀 BOOST</h3><input type="number" id="boostAmt" step="0.01"><button class="btn-boost" id="btnBoost">Inject Boost</button></div>
+<div class="container">
+    <div class="treasury-header">
+        <div>
+            <label style="color: #8b949e; text-transform: uppercase; font-size: 0.75rem;">Global Treasury Balance</label>
+            <div class="total-fund" id="total_display">0 TBNB</div>
+            <div class="deposit-box">
+                <input type="number" id="deposit_amt" class="deposit-input" placeholder="Amount">
+                <button class="btn-deposit" onclick="addFunds()">ADD SPONSORSHIP</button>
+            </div>
+        </div>
+        <div style="text-align: right;">
+            <div id="round_status" style="color: var(--accent); font-weight: bold;">ROUND 4 ACTIVE</div>
+            <div style="font-size: 0.8rem; color: #8b949e;">Next Transition: Sunday 00:00</div>
+        </div>
     </div>
 
-    <div class="sensor-grid" id="sensorGrid"></div>
+    <div class="section-title">Primary Pool Allocations</div>
+    <div class="bucket-grid" style="grid-template-columns: 1fr 1fr 1fr;">
+        <div id="weekly_bucket_ui"></div>
+        <div id="season_bucket_ui"></div>
+        <div id="constructor_bucket_ui"></div>
+    </div>
 
-    <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js";
-        import { getDatabase, ref, onValue, update, get } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-database.js";
+    <div class="section-title">Round-by-Round Breakdown</div>
+    <div class="bucket-grid" id="rounds_grid">
+        </div>
 
-        const firebaseConfig = { apiKey: "AlzaSyBYxLOGFzaHN6CS4ro_bjnKEblbQE6Vtx4", databaseURL: "https://nuclearf1-94a6b-default-rtdb.asia-southeast1.firebasedatabase.app" };
-        const app = initializeApp(firebaseConfig);
-        const db = getDatabase(app);
+    <div class="section-title">Treasury Overflow</div>
+    <div id="overflow_ui"></div>
+</div>
 
-        onValue(ref(db), (snap) => {
-            const data = snap.val() || {};
-            const vault = data.vault || {};
-            const curRound = data.race_data?.current_round || 1;
-            const limits = data.master_settings?.limits || { min: 0.1, max: 2.0 };
-            
-            document.getElementById('val-overflow').innerText = parseFloat(vault.overflow || 0).toFixed(3);
-            const grid = document.getElementById('sensorGrid');
-            grid.innerHTML = '';
+<script>
+    // DATA FROM MASTER & SPONSOR PAGES
+    let currentRound = 4;
+    let totalVault = 72000;
+    
+    // Limits pulled from sponsor.html settings
+    const limits = {
+        wk: { min: 1000, max: 5000 },
+        sea: { min: 5000, max: 20000 },
+        con: { min: 2000, max: 10000 }
+    };
 
-            for(let i=1; i<=12; i++) {
-                let r = vault.rounds?.[`r${i}`] || { normal: 0, boost: 0 };
-                if (typeof r === 'number') r = { normal: r, boost: 0 };
-                
-                const curN = parseFloat(r.normal || 0);
-                const curB = parseFloat(r.boost || 0);
-                const total = (curN + curB).toFixed(3);
-                
-                let extraClass = i < curRound ? 'past-round' : (i === curRound ? 'active-round' : '');
-                let stClass = curN >= limits.max ? 'st-full' : (curN >= limits.min ? 'st-mid' : 'st-low');
-                let stText = curN >= limits.max ? 'MAXED' : (curN >= limits.min ? 'MIN+' : 'LOW');
+    function addFunds() {
+        const val = parseFloat(document.getElementById('deposit_amt').value) || 0;
+        totalVault += val;
+        document.getElementById('deposit_amt').value = '';
+        runFundingWaterfall();
+    }
 
-                grid.innerHTML += `<div class="sensor-box ${extraClass}">
-                    <div style="font-size:0.7rem;color:#888;">RD ${i} ${i === curRound ? '⚡' : ''}</div>
-                    <div class="sub-values">N: ${curN.toFixed(2)} | B: ${curB.toFixed(2)}</div>
-                    <div class="total-amt">${total}</div>
-                    <div class="status-tag ${stClass}">${stText}</div>
-                </div>`;
-            }
-        });
+    function runFundingWaterfall() {
+        let remaining = totalVault;
+        let b = { rounds: Array(12).fill(0), sea: 0, con: 0, over: 0 };
 
-        async function processFund(type) {
-            let amt = parseFloat(document.getElementById(type + 'Amt').value);
-            if(!amt || amt <= 0) return alert("Enter amount");
-            
-            const snap = await get(ref(db));
-            const all = snap.val() || {};
-            const limits = all.master_settings?.limits || { min: 0.1, max: 2.0 };
-            const curRound = all.race_data?.current_round || 1;
-            let rounds = all.vault?.rounds || {};
-            let overflow = parseFloat(all.vault?.overflow || 0);
-
-            if(type === 'normal') {
-                // Tier 1: Fill Min
-                for(let i=1; i<=12; i++) {
-                    if(!rounds[`r${i}`] || typeof rounds[`r${i}`] === 'number') rounds[`r${i}`] = {normal:0, boost:0};
-                    let space = limits.min - rounds[`r${i}`].normal;
-                    if(space > 0 && amt > 0) { let fill = Math.min(amt, space); rounds[`r${i}`].normal += fill; amt -= fill; }
-                }
-                // Tier 2: Fill Max
-                if(amt > 0) {
-                    for(let i=1; i<=12; i++) {
-                        let space = limits.max - rounds[`r${i}`].normal;
-                        if(space > 0 && amt > 0) { let fill = Math.min(amt, space); rounds[`r${i}`].normal += fill; amt -= fill; }
-                    }
-                }
-                overflow += amt;
-            } else {
-                // Boost: Split among active and future rounds
-                let roundsLeft = (12 - curRound) + 1;
-                let share = amt / roundsLeft;
-                for(let i=curRound; i<=12; i++) {
-                    if(!rounds[`r${i}`] || typeof rounds[`r${i}`] === 'number') rounds[`r${i}`] = {normal:0, boost:0};
-                    rounds[`r${i}`].boost += share;
-                }
-            }
-            update(ref(db, 'vault'), { rounds, overflow: parseFloat(overflow.toFixed(3)) });
-            document.getElementById(type + 'Amt').value = '';
+        // 1. Lock Past Rounds (Assumed Maxed)
+        for (let i = 0; i < currentRound - 1; i++) {
+            b.rounds[i] = limits.wk.max;
+            remaining -= limits.wk.max;
         }
 
-        document.getElementById('btnNormal').onclick = () => processFund('normal');
-        document.getElementById('btnBoost').onclick = () => processFund('boost');
-    </script>
+        // 2. Weekly Min (Current & Future)
+        for (let i = currentRound - 1; i < 12; i++) {
+            let amt = Math.min(remaining, limits.wk.min);
+            b.rounds[i] += amt; remaining -= amt;
+        }
+
+        // 3. Season & Constructor Min
+        let sM = Math.min(remaining, limits.sea.min); b.sea += sM; remaining -= sM;
+        let cM = Math.min(remaining, limits.con.min); b.con += cM; remaining -= cM;
+
+        // 4. Weekly Max (Active Round Priority)
+        let aIdx = currentRound - 1;
+        let aTop = Math.min(remaining, limits.wk.max - b.rounds[aIdx]);
+        b.rounds[aIdx] += aTop; remaining -= aTop;
+
+        // 5. Weekly Max (Future Rounds)
+        for (let i = currentRound; i < 12; i++) {
+            let top = Math.min(remaining, limits.wk.max - b.rounds[i]);
+            b.rounds[i] += top; remaining -= top;
+        }
+
+        // 6. Season & Constructor Max
+        let sX = Math.min(remaining, limits.sea.max - b.sea); b.sea += sX; remaining -= sX;
+        let cX = Math.min(remaining, limits.con.max - b.con); b.con += cX; remaining -= cX;
+
+        b.over = remaining;
+        renderFundingUI(b);
+    }
+
+    function renderFundingUI(b) {
+        document.getElementById('total_display').innerText = `${totalVault.toLocaleString()} TBNB`;
+        
+        // Render 12 Rounds
+        const grid = document.getElementById('rounds_grid');
+        grid.innerHTML = '';
+        b.rounds.forEach((val, i) => {
+            let rNum = i + 1;
+            let state = rNum < currentRound ? 'past' : (rNum === currentRound ? 'active' : 'future');
+            grid.innerHTML += renderCard(`Round ${rNum}`, val, limits.wk.min, limits.wk.max, state);
+        });
+
+        // Render Totals
+        document.getElementById('weekly_bucket_ui').innerHTML = renderCard(`Active Sponsor (R${currentRound})`, b.rounds[currentRound-1], limits.wk.min, limits.wk.max, 'active');
+        document.getElementById('season_bucket_ui').innerHTML = renderCard('Season Pool', b.sea, limits.sea.min, limits.sea.max, 'special');
+        document.getElementById('constructor_bucket_ui').innerHTML = renderCard('Constructor Pool', b.con, limits.con.min, limits.con.max, 'special');
+        
+        document.getElementById('overflow_ui').innerHTML = `
+            <div class="card" style="border-color: #444; width: 300px;">
+                <span class="bucket-label">Overflow Reserve</span>
+                <div class="bucket-main"><span class="balance">${b.over.toFixed(2)}</span></div>
+                <span class="status status-max">Secured</span>
+            </div>
+        `;
+    }
+
+    function renderCard(label, val, min, max, state) {
+        let sCls = val >= max ? 'status-max' : (val >= min ? 'status-min' : 'status-below');
+        let sTxt = val >= max ? 'Maxed' : (val >= min ? 'At Min' : 'Below Min');
+        return `
+            <div class="card ${state}">
+                <span class="bucket-label">${label}</span>
+                <div class="bucket-main">
+                    <span class="target">${max}:</span><span class="balance">${val.toFixed(0)}</span>
+                </div>
+                <span class="status ${sCls}">${sTxt}</span>
+            </div>
+        `;
+    }
+
+    runFundingWaterfall();
+</script>
 </body>
 </html>
