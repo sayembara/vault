@@ -9,51 +9,36 @@
             --accent: #00ffcc; --bg: #0b0e14; --card: #161b22; --border: #30363d; 
             --danger: #ff4b2b; --warning: #ffcc00; --success: #00ffcc;
         }
-        body { background: var(--bg); color: white; font-family: 'Inter', sans-serif; padding: 20px; line-height: 1.6; }
+        body { background: var(--bg); color: white; font-family: 'Inter', sans-serif; padding: 20px; }
         .container { max-width: 1000px; margin: 0 auto; }
         
-        /* Header & Season Pulse */
+        /* Header */
         .header { display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 30px; border-bottom: 1px solid var(--border); padding-bottom: 20px; }
-        h1 { color: var(--accent); margin: 0; font-size: 1.6rem; }
+        h1 { color: var(--accent); margin: 0; font-size: 1.6rem; text-transform: uppercase; letter-spacing: 1px; }
         
-        .status-indicator { 
-            display: flex; align-items: center; gap: 10px; font-size: 0.8rem; color: var(--accent); 
-            background: rgba(0, 255, 204, 0.1); padding: 5px 12px; border-radius: 20px; border: 1px solid rgba(0, 255, 204, 0.2); margin-top: 10px; width: fit-content;
-        }
-        .pulse-dot { width: 8px; height: 8px; background-color: var(--accent); border-radius: 50%; animation: pulse-animation 2s infinite; }
-        @keyframes pulse-animation {
-            0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(0, 255, 204, 0.7); }
-            70% { transform: scale(1); box-shadow: 0 0 0 10px rgba(0, 255, 204, 0); }
-            100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(0, 255, 204, 0); }
-        }
+        /* Live Vault Display (Linked from Funding) */
+        .vault-stats { text-align: right; }
+        .vault-label { font-size: 0.7rem; color: #8b949e; text-transform: uppercase; font-weight: 900; }
+        .vault-value { font-size: 2rem; font-weight: 900; color: var(--accent); line-height: 1; }
 
-        .section-title { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 2px; color: #8b949e; margin: 30px 0 15px 0; display: flex; align-items: center; gap: 10px; }
+        .section-title { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 2px; color: #8b949e; margin: 35px 0 15px 0; display: flex; align-items: center; gap: 10px; }
         .section-title::after { content: ""; flex: 1; height: 1px; background: var(--border); }
 
+        /* Policy Inputs */
         .grid-3 { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; }
-        .card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 24px; position: relative; }
+        .card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 24px; }
         
-        /* Input Styling */
         .input-pair { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-top: 10px; }
-        label { display: block; font-size: 0.7rem; color: #8b949e; margin-bottom: 5px; }
-        input { width: 100%; background: #0d1117; border: 1px solid var(--border); color: var(--accent); padding: 12px; border-radius: 6px; font-weight: bold; outline: none; transition: 0.2s; }
+        label { display: block; font-size: 0.7rem; color: #8b949e; margin-bottom: 5px; font-weight: bold; }
+        input { width: 100%; background: #0d1117; border: 1px solid var(--border); color: var(--accent); padding: 12px; border-radius: 6px; font-weight: bold; outline: none; }
         input:focus { border-color: var(--accent); }
 
-        /* Bucket Display (N:B) */
-        .bucket-main { font-family: 'Courier New', monospace; font-size: 1.2rem; margin: 10px 0; }
-        .target { color: #8b949e; }
-        .balance { color: var(--accent); font-weight: bold; }
-        
-        .status { font-size: 0.65rem; text-transform: uppercase; font-weight: 900; padding: 3px 8px; border-radius: 4px; display: inline-block; }
-        .status-below { background: rgba(255, 75, 43, 0.1); color: var(--danger); }
-        .status-min { background: rgba(255, 204, 0, 0.1); color: var(--warning); }
-        .status-max { background: rgba(0, 255, 204, 0.1); color: var(--success); }
-
-        /* Action Buttons */
+        /* Buttons */
         .admin-actions { display: flex; gap: 15px; margin-top: 40px; }
-        .btn { flex: 1; padding: 18px; border-radius: 8px; font-weight: 900; cursor: pointer; border: none; transition: 0.2s; text-transform: uppercase; letter-spacing: 1px; }
+        .btn { flex: 1; padding: 18px; border-radius: 8px; font-weight: 900; cursor: pointer; border: none; text-transform: uppercase; transition: 0.2s; }
         .btn-save { background: var(--accent); color: #000; }
-        .btn-reallocate { background: transparent; border: 1px solid var(--accent); color: var(--accent); }
+        .btn-wipe { background: transparent; border: 2px solid var(--danger); color: var(--danger); }
+        .btn-wipe:hover { background: var(--danger); color: white; }
     </style>
 </head>
 <body>
@@ -61,147 +46,83 @@
 <div class="container">
     <div class="header">
         <div>
-            <h1>🤝 Sponsor Policy Center</h1>
-            <div class="status-indicator">
-                <span class="pulse-dot"></span>
-                <span id="active_round_text">SYNCING WITH MASTER...</span>
-            </div>
+            <h1>🤝 Sponsor Policy</h1>
+            <div id="round_indicator" style="font-size: 0.8rem; color: #8b949e; margin-top: 5px;">READING MASTER TIMELINE...</div>
         </div>
-        <div style="text-align: right;">
-            <label>Total Vault Balance</label>
-            <div id="total_vault_display" style="font-size: 1.8rem; font-weight: 900; color: var(--accent);">0.00 TBNB</div>
+        <div class="vault-stats">
+            <span class="vault-label">Vault Source (Funding Page)</span>
+            <div class="vault-value" id="sponsor_vault_display">0.00 TBNB</div>
         </div>
     </div>
 
-    <div class="section-title">Waterfall Limit Settings</div>
+    <div class="section-title">Global Waterfall Limits (N)</div>
     <div class="grid-3">
         <div class="card">
-            <h2>🗓️ Weekly Limits</h2>
+            <label>🗓️ Weekly (Rounds)</label>
             <div class="input-pair">
-                <div><label>MIN (PRIO 1)</label><input type="number" id="wk_min" value="1000"></div>
-                <div><label>MAX (PRIO 4)</label><input type="number" id="wk_max" value="5000"></div>
+                <div><label>MIN</label><input type="number" id="wk_min" value="1000"></div>
+                <div><label>MAX (N)</label><input type="number" id="wk_max" value="5000"></div>
             </div>
         </div>
         <div class="card">
-            <h2>🏆 Season Limits</h2>
+            <label>🏆 Season Pool</label>
             <div class="input-pair">
-                <div><label>MIN (PRIO 2)</label><input type="number" id="sea_min" value="5000"></div>
-                <div><label>MAX (PRIO 5)</label><input type="number" id="sea_max" value="20000"></div>
+                <div><label>MIN</label><input type="number" id="sea_min" value="5000"></div>
+                <div><label>MAX (N)</label><input type="number" id="sea_max" value="20000"></div>
             </div>
         </div>
         <div class="card">
-            <h2>🛠️ Constructor Limits</h2>
+            <label>🛠️ Constructor Pool</label>
             <div class="input-pair">
-                <div><label>MIN (PRIO 3)</label><input type="number" id="con_min" value="2000"></div>
-                <div><label>MAX (PRIO 6)</label><input type="number" id="con_max" value="10000"></div>
+                <div><label>MIN</label><input type="number" id="con_min" value="2000"></div>
+                <div><label>MAX (N)</label><input type="number" id="con_max" value="10000"></div>
             </div>
         </div>
-    </div>
-
-    <div class="section-title">Global Pool Allocations</div>
-    <div class="grid-3">
-        <div id="season_bucket_ui"></div>
-        <div id="constructor_bucket_ui"></div>
-        <div id="overflow_bucket_ui"></div>
     </div>
 
     <div class="admin-actions">
-        <button class="btn btn-save" onclick="savePolicy()">Save Policy</button>
-        <button class="btn btn-reallocate" onclick="runWaterfall()">Reallocate Waterfall</button>
+        <button class="btn btn-save" onclick="savePolicy()">Update Economic Policy</button>
+        <button class="btn btn-wipe" onclick="triggerWipe()">Wipe All Payouts</button>
     </div>
 </div>
 
 <script>
-    // These variables will eventually be read from the Master Admin Page
-    let currentRound = 4; 
-    let totalVault = 65000; 
-
-    function runWaterfall() {
-        // A. FETCH LIMITS
-        const wkMin = parseFloat(document.getElementById('wk_min').value) || 0;
-        const wkMax = parseFloat(document.getElementById('wk_max').value) || 0;
-        const seaMin = parseFloat(document.getElementById('sea_min').value) || 0;
-        const seaMax = parseFloat(document.getElementById('sea_max').value) || 0;
-        const conMin = parseFloat(document.getElementById('con_min').value) || 0;
-        const conMax = parseFloat(document.getElementById('con_max').value) || 0;
-
-        let remaining = totalVault;
-        let buckets = { rounds: Array(12).fill(0), season: 0, constructor: 0, overflow: 0 };
-
-        // B. TEMPORAL WATERFALL MATH
-        // 1. Lock Past Rounds
-        for (let i = 0; i < currentRound - 1; i++) {
-            buckets.rounds[i] = wkMax;
-            remaining -= wkMax;
-        }
-
-        // 2. Fill Current & Future Mins
-        for (let i = currentRound - 1; i < 12; i++) {
-            let amt = Math.min(remaining, wkMin);
-            buckets.rounds[i] += amt;
-            remaining -= amt;
-        }
-
-        // 3. Fill Season & Constructor Mins
-        let sMin = Math.min(remaining, seaMin); buckets.season += sMin; remaining -= sMin;
-        let cMin = Math.min(remaining, conMin); buckets.constructor += cMin; remaining -= cMin;
-
-        // 4. Fill Active Round to Max
-        let activeIdx = currentRound - 1;
-        let aTop = Math.min(remaining, wkMax - buckets.rounds[activeIdx]);
-        buckets.rounds[activeIdx] += aTop; remaining -= aTop;
-
-        // 5. Fill Future Rounds to Max
-        for (let i = currentRound; i < 12; i++) {
-            let top = Math.min(remaining, wkMax - buckets.rounds[i]);
-            buckets.rounds[i] += top; remaining -= top;
-        }
-
-        // 6. Fill Season & Constructor Max
-        let sMax = Math.min(remaining, seaMax - buckets.season); buckets.season += sMax; remaining -= sMax;
-        let cMax = Math.min(remaining, conMax - buckets.constructor); buckets.constructor += cMax; remaining -= cMax;
-
-        // 7. Overflow
-        buckets.overflow = remaining;
-
-        // C. RENDER DISPLAY
-        updateDisplay(buckets, seaMin, seaMax, conMin, conMax);
+    // These would normally be stored in localStorage or a Database
+    // The Funding page uses these to calculate the N : B ratio.
+    function savePolicy() {
+        const policy = {
+            wk_max: document.getElementById('wk_max').value,
+            sea_max: document.getElementById('sea_max').value,
+            con_max: document.getElementById('con_max').value
+        };
+        alert("Policy Updated! Funding page will now use " + policy.wk_max + " as the N value for rounds.");
     }
 
-    function updateDisplay(b, seaMin, seaMax, conMin, conMax) {
-        document.getElementById('total_vault_display').innerText = `${totalVault.toLocaleString()} TBNB`;
-        document.getElementById('active_round_text').innerText = `SEASON 1 | ROUND ${currentRound} IS LIVE`;
-
-        document.getElementById('season_bucket_ui').innerHTML = renderBucketUI('Season Payout Pool', b.season, seaMin, seaMax);
-        document.getElementById('constructor_bucket_ui').innerHTML = renderBucketUI('Constructor Payout Pool', b.constructor, conMin, conMax);
-        
-        document.getElementById('overflow_bucket_ui').innerHTML = `
-            <div class="card" style="border-color: #444;">
-                <span class="bucket-label">Vault Overflow</span>
-                <div class="bucket-main"><span class="balance">${b.overflow.toFixed(2)}</span></div>
-                <span class="status status-max">Secured</span>
-            </div>
-        `;
+    /** * LINK TO FUNDING: This function simulates pulling the total 
+     * from the Funding Page's 'totalNormal' and 'totalBoost' state.
+     */
+    function syncVaultValue() {
+        // In a live environment, you'd fetch this from your database.
+        // For this demo, we check if the funding state exists.
+        const liveTotal = 56000; // This value represents totalNormal + totalBoost
+        document.getElementById('sponsor_vault_display').innerText = liveTotal.toLocaleString() + " TBNB";
+        document.getElementById('round_indicator').innerText = "SEASON 1 | ROUND 4 ACTIVE";
     }
 
-    function renderBucketUI(label, current, min, max) {
-        let status = "status-below"; let text = "Below Min";
-        if (current >= max) { status = "status-max"; text = "Maxed"; }
-        else if (current >= min) { status = "status-min"; text = "At Min"; }
-
-        return `
-            <div class="card">
-                <span class="bucket-label">${label}</span>
-                <div class="bucket-main"><span class="target">${max}:</span><span class="balance">${current.toFixed(0)}</span></div>
-                <span class="status ${status}">${text}</span>
-            </div>
-        `;
+    /** * WIPE TRIGGER: This sends a message to the Funding Page 
+     * to reset its internal TBNB counters to zero.
+     */
+    function triggerWipe() {
+        if(confirm("CRITICAL: This will reset the Treasury to 0.00 TBNB on the Funding Page. Continue?")) {
+            // Send signal to funding.html
+            window.parent.postMessage('WIPE_TREASURY', '*'); 
+            document.getElementById('sponsor_vault_display').innerText = "0.00 TBNB";
+            alert("Treasury Zeroed.");
+        }
     }
 
-    function savePolicy() { alert("Policy Saved. Master Admin will now use these limits."); }
-
-    // On Load
-    runWaterfall();
+    // Initial Sync
+    syncVaultValue();
 </script>
 </body>
 </html>
