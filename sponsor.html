@@ -3,133 +3,249 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SANRAT | Sponsor Portal</title>
+    <title>SANRAT | Sponsor Policy Center</title>
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-database-compat.js"></script>
+    
     <style>
-        :root { --accent: #00ffcc; --bg: #0b0e14; --card: #161b22; --border: #30363d; --boost: #b300ff; --text: #8b949e; }
-        body { background: var(--bg); color: white; font-family: 'Inter', sans-serif; padding: 20px; margin: 0; }
+        :root { 
+            --accent: #00ffcc; --bg: #0b0e14; --card: #161b22; --border: #30363d; 
+            --danger: #ff4b2b; --boost: #b300ff;
+        }
+        body { background: var(--bg); color: white; font-family: 'Inter', sans-serif; padding: 20px; }
         .container { max-width: 1200px; margin: 0 auto; }
         
-        /* Split Treasury Header */
-        .portal-header { 
-            display: flex; justify-content: space-between; align-items: center; 
-            background: var(--card); padding: 15px 25px; border-radius: 12px; 
-            border: 1px solid var(--border); margin-bottom: 25px;
-        }
-        .header-left { display: flex; align-items: center; gap: 20px; }
-        .round-box { font-weight: 900; font-size: 1.4rem; color: var(--accent); letter-spacing: -1px; }
-        
-        .treasury-display { display: flex; gap: 30px; }
-        .t-stat { text-align: right; }
-        .t-label { font-size: 0.6rem; text-transform: uppercase; color: var(--text); font-weight: 800; display: block; }
-        .t-val { font-family: 'Courier New', monospace; font-weight: 900; font-size: 1.2rem; }
+        /* Header */
+        .header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border); padding-bottom: 20px; margin-bottom: 30px; }
+        h1 { color: var(--accent); font-size: 1.6rem; text-transform: uppercase; letter-spacing: 2px; margin: 0; }
+        .sync-indicator { font-size: 0.75rem; font-weight: bold; margin-top: 5px; color: #8b949e; transition: 0.3s; }
 
-        /* Car Grid from Reference */
-        .car-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 15px; }
-        .car-card { background: var(--card); border: 1px solid var(--border); padding: 20px; border-radius: 12px; transition: 0.2s; }
-        .car-card:hover { border-color: #444; }
-        
-        .car-header { display: flex; justify-content: space-between; margin-bottom: 15px; border-bottom: 1px solid #222; padding-bottom: 10px; }
-        .car-name { font-weight: 900; color: var(--accent); font-size: 1.1rem; }
-        .car-role { font-size: 0.65rem; color: var(--text); text-transform: uppercase; font-weight: 800; }
+        /* Updated Treasury Header */
+        .vault-stats { display: flex; gap: 20px; text-align: right; background: rgba(0, 255, 204, 0.05); padding: 12px 20px; border-radius: 10px; border: 1px solid var(--border); }
+        .stat-item { display: flex; flex-direction: column; }
+        .stat-label { font-size: 0.55rem; color: #8b949e; font-weight: 900; text-transform: uppercase; }
+        .vault-value { font-size: 1.4rem; font-weight: 900; font-family: 'Courier New', monospace; }
 
-        .trait-list { margin-bottom: 20px; }
-        .trait-item { display: flex; justify-content: space-between; font-size: 0.85rem; margin: 6px 0; color: var(--text); }
-        .trait-item b { color: white; }
+        /* Inputs */
+        .section-title { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 2px; color: #8b949e; margin: 40px 0 15px 0; display: flex; align-items: center; gap: 10px; }
+        .section-title::after { content: ""; flex: 1; height: 1px; background: var(--border); }
+        .grid-3 { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 15px; }
+        .card { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 20px; }
+        .input-pair { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 10px; }
+        label { display: block; font-size: 0.6rem; color: #8b949e; margin-bottom: 5px; font-weight: 800; text-transform: uppercase; }
+        input { width: 100%; background: #0d1117; border: 1px solid var(--border); color: var(--accent); padding: 10px; border-radius: 6px; font-weight: 900; outline: none; }
 
-        .btn-boost { 
-            width: 100%; padding: 12px; border-radius: 8px; border: none; 
-            background: var(--boost); color: white; font-weight: 900; 
-            cursor: pointer; text-transform: uppercase; font-size: 0.75rem;
-            transition: 0.2s;
-        }
-        .btn-boost:hover { opacity: 0.8; transform: translateY(-1px); }
+        /* 14 Buckets Grid */
+        .bucket-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 12px; }
+        .b-card { background: #0d1117; border: 1px solid var(--border); border-radius: 8px; padding: 15px; }
+        .b-card.active { border: 1px solid var(--accent); box-shadow: 0 0 15px rgba(0, 255, 204, 0.1); }
+        .b-card.special { border: 1px solid var(--boost); }
+        .b-card.past { opacity: 0.4; filter: grayscale(1); }
+        .b-main { font-family: 'Courier New', monospace; font-size: 1.3rem; margin: 8px 0; }
+        .val-total { color: var(--accent); font-weight: bold; }
+        .b-breakdown { font-size: 0.55rem; border-top: 1px solid #222; padding-top: 8px; color: #666; display: flex; justify-content: space-between; }
+
+        .btn { flex: 1; padding: 18px; border-radius: 8px; font-weight: 900; cursor: pointer; border: none; text-transform: uppercase; transition: 0.2s; font-size: 0.9rem; }
+        .btn-save { background: var(--accent); color: #0b0e14; }
+        .btn-wipe { background: transparent; border: 2px solid var(--danger); color: var(--danger); margin-left: 15px; }
+        .btn:hover { transform: translateY(-2px); filter: brightness(1.2); }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <div class="portal-header">
-        <div class="header-left">
-            <div class="round-box">R<span id="display_round">?</span></div>
-            <div style="height: 30px; width: 1px; background: #333;"></div>
-            <h2 style="margin:0; font-size: 1rem; text-transform: uppercase; letter-spacing: 2px;">Sponsor Portal</h2>
+    <div class="header">
+        <div>
+            <h1>🤝 Sponsor Policy</h1>
+            <div id="sync_status" class="sync-indicator">CONNECTING...</div>
         </div>
-        
-        <div class="treasury-display">
-            <div class="t-stat">
-                <span class="t-label">Normal Pool</span>
-                <span id="bal_n" class="t-val" style="color:var(--accent)">0</span>
+        <div class="vault-stats">
+            <div class="stat-item">
+                <span class="stat-label">Normal</span>
+                <div class="vault-value" id="val_n" style="color:var(--accent)">0</div>
             </div>
-            <div class="t-stat">
-                <span class="t-label">Boost Pool</span>
-                <span id="bal_b" class="t-val" style="color:var(--boost)">0</span>
+            <div class="stat-item">
+                <span class="stat-label">Boost</span>
+                <div class="vault-value" id="val_b" style="color:var(--boost)">0</div>
             </div>
-            <div class="t-stat" style="border-left: 1px solid #333; padding-left: 25px;">
-                <span class="t-label">Total Assets</span>
-                <span id="bal_total" class="t-val" style="color:white">0</span>
+            <div class="stat-item" style="border-left: 1px solid #333; padding-left: 15px;">
+                <span class="stat-label">Total Treasury</span>
+                <div class="vault-value" id="val_total">0</div>
             </div>
         </div>
     </div>
 
-    <div id="car_grid" class="car-grid"></div>
+    <div class="section-title">Waterfall Economic Limits (N)</div>
+    <div class="grid-3">
+        <div class="card">
+            <label>🗓️ Round Allocation</label>
+            <div class="input-pair">
+                <div><label>Min</label><input type="number" id="wk_min" value="1000"></div>
+                <div><label>Max (N)</label><input type="number" id="wk_max" value="5000"></div>
+            </div>
+        </div>
+        <div class="card">
+            <label>🏆 Season Payout</label>
+            <div class="input-pair">
+                <div><label>Min</label><input type="number" id="sea_min" value="5000"></div>
+                <div><label>Max (N)</label><input type="number" id="sea_max" value="20000"></div>
+            </div>
+        </div>
+        <div class="card">
+            <label>🛠️ Constructor Pool</label>
+            <div class="input-pair">
+                <div><label>Min</label><input type="number" id="con_min" value="2000"></div>
+                <div><label>Max (N)</label><input type="number" id="con_max" value="10000"></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="section-title">Live Preview (12 Rounds + 2 Special Pools)</div>
+    <div id="sponsor_grid_mirror" class="bucket-grid"></div>
+
+    <div style="display: flex; margin-top: 30px;">
+        <button class="btn btn-save" onclick="updatePolicy()">Sync Policy to Firebase</button>
+        <button class="btn btn-wipe" onclick="triggerWipe()">Wipe Treasury (Global)</button>
+    </div>
 </div>
 
 <script>
     const firebaseConfig = {
-        apiKey: "AlzaSyBYxLOGFzaHN6CS4ro_bjnKEblbQE6Vtx4",
+        apiKey: "YOUR_API_KEY",
+        authDomain: "nuclearf1-94a6b.firebaseapp.com",
         databaseURL: "https://nuclearf1-94a6b-default-rtdb.asia-southeast1.firebasedatabase.app",
-        projectId: "nuclearf1-94a6b"
+        projectId: "nuclearf1-94a6b",
+        storageBucket: "nuclearf1-94a6b.appspot.com",
+        appId: "YOUR_APP_ID"
     };
 
     firebase.initializeApp(firebaseConfig);
     const db = firebase.database();
 
-    // 1. Sync Round
-    db.ref('race_state/round').on('value', snap => {
-        document.getElementById('display_round').innerText = snap.val() || 1;
-    });
+    let currentRound = 1;
+    let treasury = { normal: 0, boost: 0 };
 
-    // 2. Sync Split Treasury
-    db.ref('treasury').on('value', snap => {
-        const t = snap.val() || { normal: 0, boost: 0 };
-        document.getElementById('bal_n').innerText = Math.floor(t.normal).toLocaleString();
-        document.getElementById('bal_b').innerText = Math.floor(t.boost).toLocaleString();
-        document.getElementById('bal_total').innerText = Math.floor(t.normal + t.boost).toLocaleString();
-    });
+    window.onload = () => {
+        // Sync Round from Master Engine path
+        db.ref('race_state/round').on('value', (snap) => {
+            currentRound = snap.val() || 1;
+            calculateAndRender();
+        });
 
-    // 3. Load Cars
-    db.ref('cars').on('value', snap => {
-        const grid = document.getElementById('car_grid');
+        // Listen for Treasury
+        db.ref('treasury').on('value', (snap) => {
+            treasury = snap.val() || { normal: 0, boost: 0 };
+            document.getElementById('sync_status').innerText = "● LIVE SYNC ACTIVE";
+            
+            // Update Header
+            document.getElementById('val_n').innerText = treasury.normal.toLocaleString();
+            document.getElementById('val_b').innerText = treasury.boost.toLocaleString();
+            document.getElementById('val_total').innerText = (treasury.normal + treasury.boost).toLocaleString();
+            
+            calculateAndRender();
+        });
+
+        // Listen for Policy
+        db.ref('policy').on('value', (snap) => {
+            const p = snap.val();
+            if (p) {
+                document.getElementById('wk_min').value = p.wk_min;
+                document.getElementById('wk_max').value = p.wk_max;
+                document.getElementById('sea_min').value = p.sea_min;
+                document.getElementById('sea_max').value = p.sea_max;
+                document.getElementById('con_min').value = p.con_min;
+                document.getElementById('con_max').value = p.con_max;
+                calculateAndRender();
+            }
+        });
+    };
+
+    function calculateAndRender() {
+        const total = treasury.normal + treasury.boost;
+        const wkMax = parseInt(document.getElementById('wk_max').value) || 0;
+        const wkMin = parseInt(document.getElementById('wk_min').value) || 0;
+        const seaMax = parseInt(document.getElementById('sea_max').value) || 0;
+        const conMax = parseInt(document.getElementById('con_max').value) || 0;
+
+        const grid = document.getElementById('sponsor_grid_mirror');
         grid.innerHTML = '';
-        const cars = snap.val();
-        
-        for(let id in cars) {
-            const car = cars[id];
-            if(!car.role) continue; // Only show cars with assigned roles
 
-            grid.innerHTML += `
-                <div class="car-card">
-                    <div class="car-header">
-                        <span class="car-name">${id}</span>
-                        <span class="car-role">${car.role}</span>
-                    </div>
-                    <div class="trait-list">
-                        <div class="trait-item"><span>Propulsion</span><b>${car.traits?.propulsion || 0}</b></div>
-                        <div class="trait-item"><span>Traction</span><b>${car.traits?.traction || 0}</b></div>
-                        <div class="trait-item"><span>Stability</span><b>${car.traits?.stability || 0}</b></div>
-                        <div class="trait-item"><span>Core</span><b>${car.traits?.core || 0}</b></div>
-                    </div>
-                    <button class="btn-boost" onclick="applyBoost('${id}')">Apply Boost</button>
-                </div>
-            `;
+        if (total <= 0) {
+            for(let i=1; i<=12; i++) renderBucket(grid, `Round ${i}`, 0, 0, wkMax, i < currentRound ? 'past' : (i === currentRound ? 'active' : ''));
+            renderBucket(grid, "Season Pool", 0, 0, seaMax, 'special');
+            renderBucket(grid, "Constructor", 0, 0, conMax, 'special');
+            return;
         }
-    });
 
-    function applyBoost(carId) {
-        // Logic to deduct from 'boost' pool and apply to car
-        console.log("Applying boost to:", carId);
+        let remNrm = treasury.normal;
+        const divisor = (12 - currentRound + 1) + 2;
+        const bShare = treasury.boost / divisor;
+
+        for (let i = 1; i <= 12; i++) {
+            let n = 0;
+            if (i < currentRound) {
+                n = wkMax;
+                remNrm -= wkMax;
+            } else {
+                n = Math.max(0, Math.min(remNrm, wkMin));
+                remNrm -= n;
+            }
+            renderBucket(grid, `Round ${i}`, n, (i >= currentRound ? bShare : 0), wkMax, i < currentRound ? 'past' : (i === currentRound ? 'active' : ''));
+        }
+
+        renderBucket(grid, "Season Pool", Math.max(0, Math.min(remNrm, seaMax)), bShare, seaMax, 'special');
+        renderBucket(grid, "Constructor", Math.max(0, Math.min(remNrm, conMax)), bShare, conMax, 'special');
+    }
+
+    function renderBucket(container, label, n, b, max, state) {
+        container.innerHTML += `
+            <div class="b-card ${state}">
+                <span style="font-size: 0.6rem; color: #8b949e; text-transform: uppercase; font-weight: 800;">${label}</span>
+                <div class="b-main">
+                    <span style="color:#555">${max}</span> : 
+                    <span class="val-total">${(n + b).toFixed(0)}</span>
+                </div>
+                <div class="b-breakdown">
+                    <span>N: ${n.toFixed(0)}</span>
+                    <span>B: +${b.toFixed(0)}</span>
+                </div>
+            </div>
+        `;
+    }
+
+    function updatePolicy() {
+        const status = document.getElementById('sync_status');
+        status.innerText = "⏳ SAVING...";
+        status.style.color = "#ffcc00";
+
+        const policyData = {
+            wk_min: parseInt(document.getElementById('wk_min').value) || 0,
+            wk_max: parseInt(document.getElementById('wk_max').value) || 0,
+            sea_min: parseInt(document.getElementById('sea_min').value) || 0,
+            sea_max: parseInt(document.getElementById('sea_max').value) || 0,
+            con_min: parseInt(document.getElementById('con_min').value) || 0,
+            con_max: parseInt(document.getElementById('con_max').value) || 0
+        };
+
+        db.ref('policy').set(policyData, (error) => {
+            if (error) {
+                status.innerText = "❌ FAILED: CHECK RULES";
+                status.style.color = "#ff4b2b";
+            } else {
+                status.innerText = "✅ SYNCED TO FIREBASE";
+                status.style.color = "#00ffcc";
+                setTimeout(() => {
+                    status.innerText = "● LIVE SYNC ACTIVE";
+                    status.style.color = "#8b949e";
+                }, 2000);
+            }
+        });
+    }
+
+    function triggerWipe() {
+        if(confirm("DANGER: This will wipe the treasury on ALL pages. Continue?")) {
+            db.ref('treasury').set({ normal: 0, boost: 0 });
+        }
     }
 </script>
 </body>
