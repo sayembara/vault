@@ -2,12 +2,12 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>SANRAT | Live Economy Dashboard</title>
+    <title>SANRAT | Live Economy & Distribution</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-database-compat.js"></script>
     <style>
-        :root { --accent: #00ffcc; --bg: #0b0e14; --card: #161b22; --border: #30363d; --dim: #8b949e; }
+        :root { --accent: #00ffcc; --bg: #0b0e14; --card: #161b22; --border: #30363d; --dim: #8b949e; --danger: #ff4b2b; }
         body { background: var(--bg); color: white; font-family: 'Inter', sans-serif; padding: 20px; }
         
         .mode-selector { display: flex; gap: 10px; margin-bottom: 20px; }
@@ -19,19 +19,25 @@
         .stat-card label { display: block; font-size: 0.6rem; color: var(--dim); text-transform: uppercase; margin-bottom: 5px; font-weight: 800; }
         .live-val { font-size: 1.4rem; font-weight: 900; color: white; }
         
-        .control-card { background: #1c2128; border: 1px solid var(--accent); padding: 20px; border-radius: 12px; margin-bottom: 20px; }
-        .control-card input { width: 100%; background: #0d1117; border: 1px solid var(--border); color: var(--accent); padding: 12px; border-radius: 8px; font-size: 1.5rem; text-align: center; font-family: monospace; }
+        .control-panel { background: #1c2128; border: 1px solid var(--border); padding: 20px; border-radius: 12px; margin-bottom: 20px; display: flex; align-items: center; gap: 20px; }
+        .beta-box { flex: 1; }
+        .beta-box input { width: 100%; background: #0d1117; border: 1px solid var(--border); color: var(--accent); padding: 12px; border-radius: 8px; font-size: 1.2rem; font-family: monospace; }
 
-        .chart-container { background: var(--card); border: 1px solid var(--border); padding: 20px; border-radius: 12px; height: 280px; margin-bottom: 20px; }
-        table { width: 100%; border-collapse: collapse; background: var(--card); border-radius: 12px; overflow: hidden; border: 1px solid var(--border); }
-        th { background: rgba(255,255,255,0.03); text-align: left; padding: 12px; font-size: 0.65rem; color: var(--dim); text-transform: uppercase; }
+        .btn-distribute { background: var(--accent); color: black; border: none; padding: 20px 40px; border-radius: 8px; font-weight: 900; cursor: pointer; text-transform: uppercase; letter-spacing: 1px; transition: 0.3s; }
+        .btn-distribute:hover { transform: scale(1.02); filter: brightness(1.1); box-shadow: 0 0 20px rgba(0,255,204,0.3); }
+        .btn-distribute:disabled { background: #333; color: #666; cursor: not-allowed; }
+
+        .chart-container { background: var(--card); border: 1px solid var(--border); padding: 20px; border-radius: 12px; height: 250px; margin-bottom: 20px; }
+        table { width: 100%; border-collapse: collapse; background: var(--card); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; }
+        th { background: rgba(255,255,255,0.03); text-align: left; padding: 12px; font-size: 0.6rem; color: var(--dim); text-transform: uppercase; }
         td { padding: 12px; border-bottom: 1px solid rgba(255,255,255,0.02); font-family: monospace; }
         
-        .tag { padding: 4px 8px; border-radius: 4px; font-size: 0.7rem; font-weight: 800; }
-        .opt-tag { color: var(--accent); border: 1px solid var(--accent); font-size: 0.6rem; margin-left: 10px; }
+        .status-overlay { position: fixed; top: 20px; right: 20px; padding: 15px 25px; border-radius: 8px; font-weight: bold; display: none; z-index: 100; }
     </style>
 </head>
 <body>
+
+<div id="toast" class="status-overlay"></div>
 
 <div class="mode-selector">
     <button class="mode-btn active" onclick="setMode('round')">Round Payout</button>
@@ -40,45 +46,35 @@
 </div>
 
 <div class="stats-grid">
-    <div class="stat-card">
-        <label id="n_label">Total Cars (N)</label>
-        <div id="display_n" class="live-val">--</div>
-    </div>
-    <div class="stat-card">
-        <label id="p_label">Treasury Pool (P)</label>
-        <div id="display_p" class="live-val">-- <small style="font-size:0.8rem; color:var(--dim)">TBNB</small></div>
-    </div>
-    <div class="stat-card">
-        <label>Active Formula</label>
-        <div id="display_status" class="live-val" style="font-size: 0.9rem; color: var(--dim);">Standard</div>
-    </div>
+    <div class="stat-card"><label id="n_label">N (Participants)</label><div id="display_n" class="live-val">--</div></div>
+    <div class="stat-card"><label>P (Total Pool)</label><div id="display_p" class="live-val">--</div></div>
+    <div class="stat-card"><label>Status</label><div id="display_status" class="live-val" style="font-size:0.9rem">Ready</div></div>
 </div>
 
-<div class="control-card">
-    <label>Adjust Base Beta (β) <span id="opt_msg"></span></label>
-    <input type="number" id="beta_input" value="4.0" step="0.1" oninput="runSimulation()">
+<div class="control-panel">
+    <div class="beta-box">
+        <label>Adjust Base Beta (β)</label>
+        <input type="number" id="beta_input" value="4.0" step="0.1" oninput="runSimulation()">
+    </div>
+    <button id="distribute_btn" class="btn-distribute" onclick="confirmAndDistribute()">Finalize & Distribute</button>
 </div>
 
-<div class="chart-container">
-    <canvas id="expChart"></canvas>
-</div>
+<div class="chart-container"><canvas id="expChart"></canvas></div>
 
-<table id="payout_table">
-    <thead>
-        <tr><th>Rank</th><th>Tier</th><th>Prize</th><th>%</th></tr>
-    </thead>
+<table>
+    <thead><tr><th>Rank</th><th>UID/Team</th><th>Prize (TBNB)</th><th>%</th></tr></thead>
     <tbody id="payout_list"></tbody>
 </table>
 
 <script>
-    // Firebase Config
     const firebaseConfig = { databaseURL: "https://nuclearf1-94a6b-default-rtdb.asia-southeast1.firebasedatabase.app" };
     firebase.initializeApp(firebaseConfig);
     const db = firebase.database();
 
     let chart;
     let currentMode = 'round';
-    let liveData = { n: 0, p: 0 };
+    let liveData = { n: 0, p: 0, participants: [] };
+    let currentCalculatedPayouts = [];
 
     function setMode(mode) {
         currentMode = mode;
@@ -88,31 +84,43 @@
     }
 
     async function fetchLiveData() {
-        let nPath, pPath;
+        showToast("Fetching live data...", "#333");
+        let nPath, pPath, listPath;
         
         if (currentMode === 'round') {
-            nPath = 'race_stats/day7/total_cars'; // Link to end of day 7
+            nPath = 'race_stats/day7/total_cars';
             pPath = 'funding/round_fund';
-            document.getElementById('n_label').innerText = "Round Cars (Day 7)";
+            listPath = 'race_results/day7_final_leaderboard'; // Assuming leaderboard is stored here
         } else if (currentMode === 'season') {
-            nPath = 'season_stats/cars_with_points'; // Link to cars with points
+            nPath = 'season_stats/cars_with_points';
             pPath = 'funding/season_fund';
-            document.getElementById('n_label').innerText = "Season Cars w/ Points";
+            listPath = 'season_results/leaderboard';
         } else {
-            nPath = 'constructor_stats/teams_with_points'; // Link to teams with points
+            nPath = 'constructor_stats/teams_with_points';
             pPath = 'funding/constructor_fund';
-            document.getElementById('n_label').innerText = "Constructor Teams";
+            listPath = 'constructor_results/leaderboard';
         }
 
-        const nSnap = await db.ref(nPath).once('value');
-        const pSnap = await db.ref(pPath).once('value');
+        const [nSnap, pSnap, listSnap] = await Promise.all([
+            db.ref(nPath).once('value'),
+            db.ref(pPath).once('value'),
+            db.ref(listPath).orderByChild('rank').once('value')
+        ]);
 
         liveData.n = nSnap.val() || 0;
         liveData.p = pSnap.val() || 0;
+        liveData.participants = [];
+        
+        listSnap.forEach(child => {
+            liveData.participants.push({ 
+                uid: child.key, 
+                rank: child.val().rank,
+                name: child.val().name || child.key 
+            });
+        });
 
         document.getElementById('display_n').innerText = liveData.n;
         document.getElementById('display_p').innerText = liveData.p.toLocaleString();
-        
         runSimulation();
     }
 
@@ -121,83 +129,96 @@
         const P = liveData.p;
         let beta = parseFloat(document.getElementById('beta_input').value) || 4.0;
         
-        // Always enable Small Race Optimization
-        const isSmallRace = N < 20;
-        if (isSmallRace) {
-            beta = 1.5;
-            document.getElementById('display_status').innerText = "Small Race (Auto-β)";
-            document.getElementById('opt_msg').innerHTML = '<span class="tag opt-tag">OPTIMIZED FOR N<20</span>';
-        } else {
-            document.getElementById('display_status').innerText = "Standard Exponential";
-            document.getElementById('opt_msg').innerHTML = '';
-        }
-
-        if (N === 0) return;
+        if (N < 20) beta = 1.5; // Locked Smart Beta
 
         const cutoff = Math.max(1, Math.floor(0.8 * N));
         const denomConst = 1 - Math.exp(-beta);
         
         let sumPart = 0;
-        for (let r = 1; r <= cutoff; r++) {
-            sumPart += Math.exp(-beta * (r - 1) / N) / denomConst;
-        }
+        for (let r = 1; r <= cutoff; r++) sumPart += Math.exp(-beta * (r - 1) / N) / denomConst;
         const alpha = N / sumPart;
 
-        let payouts = [];
+        currentCalculatedPayouts = [];
         for (let r = 1; r <= cutoff; r++) {
             const val = (P / N) * ((alpha * Math.exp(-beta * (r - 1) / N)) / denomConst);
-            payouts.push({ rank: r, val: val });
+            currentCalculatedPayouts.push(val);
         }
 
-        renderTable(payouts, N, P);
-        updateChart(payouts);
+        renderTable();
+        updateChart();
     }
 
-    function renderTable(payouts, N, P) {
+    function renderTable() {
         const list = document.getElementById('payout_list');
         list.innerHTML = '';
-        // Sorting is naturally rank-based from the loop
-        payouts.slice(0, 25).forEach(item => {
-            let tier = 'Silver';
-            if (item.rank <= N * 0.05) tier = 'Diamond';
-            else if (item.rank <= N * 0.20) tier = 'Platinum';
-            else if (item.rank <= N * 0.50) tier = 'Gold';
-
+        const N = liveData.n;
+        
+        liveData.participants.slice(0, 50).forEach((p, i) => {
+            const prize = currentCalculatedPayouts[i] || 0;
+            if (prize <= 0) return;
+            
             list.innerHTML += `
                 <tr>
-                    <td>#${item.rank}</td>
-                    <td><span class="tag">${tier}</span></td>
-                    <td>${item.val.toFixed(2)}</td>
-                    <td>${((item.val/P)*100).toFixed(1)}%</td>
+                    <td>#${p.rank}</td>
+                    <td>${p.name}</td>
+                    <td style="color:var(--accent); font-weight:bold">${prize.toFixed(4)}</td>
+                    <td style="color:var(--dim)">${((prize/liveData.p)*100).toFixed(2)}%</td>
                 </tr>`;
         });
     }
 
-    function updateChart(data) {
+    async function confirmAndDistribute() {
+        if (!confirm(`Are you sure? This will add prizes to ${currentCalculatedPayouts.length} players' pending claims.`)) return;
+        
+        const btn = document.getElementById('distribute_btn');
+        btn.disabled = true;
+        btn.innerText = "Processing...";
+
+        try {
+            const updates = {};
+            liveData.participants.forEach((p, i) => {
+                const prize = currentCalculatedPayouts[i];
+                if (prize > 0) {
+                    // Path to player's claimable balance
+                    // Using increment to add to existing "remaining claim"
+                    const path = `players/${p.uid}/pending_claim`;
+                    db.ref(path).transaction(currentValue => (currentValue || 0) + prize);
+                }
+            });
+
+            showToast("Success! Prizes distributed.", "var(--accent)");
+            btn.innerText = "Distribution Complete";
+        } catch (e) {
+            showToast("Error: " + e.message, "var(--danger)");
+            btn.disabled = false;
+        }
+    }
+
+    function showToast(msg, color) {
+        const t = document.getElementById('toast');
+        t.innerText = msg;
+        t.style.background = color;
+        t.style.display = 'block';
+        setTimeout(() => t.style.display = 'none', 3000);
+    }
+
+    function updateChart() {
         const ctx = document.getElementById('expChart').getContext('2d');
         if (chart) chart.destroy();
         chart = new Chart(ctx, {
             type: 'line',
             data: {
-                labels: data.map(d => d.rank),
+                labels: currentCalculatedPayouts.map((_, i) => i + 1),
                 datasets: [{
-                    data: data.map(d => d.val),
+                    data: currentCalculatedPayouts,
                     borderColor: '#00ffcc',
-                    backgroundColor: 'rgba(0, 255, 204, 0.1)',
                     fill: true,
+                    backgroundColor: 'rgba(0, 255, 204, 0.1)',
                     pointRadius: 0,
                     tension: 0.2
                 }]
             },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                scales: {
-                    x: { grid: { color: '#30363d' }, ticks: { display: false } },
-                    y: { grid: { color: '#30363d' }, ticks: { color: '#8b949e' } }
-                },
-                plugins: { legend: { display: false } }
-            }
+            options: { responsive: true, maintainAspectRatio: false, scales: { x: { display: false }, y: { grid: { color: '#333' } } }, plugins: { legend: { display: false } } }
         });
     }
 
