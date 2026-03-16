@@ -2,103 +2,94 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SANRAT | Sponsor Policy Center</title>
+    <title>Sponsor Policy | SANRAT</title>
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-database-compat.js"></script>
     <style>
-        :root { --accent: #00ffcc; --bg: #0b0e14; --card: #161b22; --border: #30363d; --danger: #ff4b2b; --boost: #b300ff; }
+        :root { --accent: #00ffcc; --bg: #0b0e14; --card: #161b22; --border: #30363d; --boost: #b300ff; }
         body { background: var(--bg); color: white; font-family: 'Inter', sans-serif; padding: 20px; }
-        .container { max-width: 1200px; margin: 0 auto; }
-        .header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border); padding-bottom: 20px; margin-bottom: 30px; }
-        h1 { color: var(--accent); font-size: 1.6rem; text-transform: uppercase; letter-spacing: 2px; margin: 0; }
-        .sync-indicator { font-size: 0.75rem; font-weight: bold; margin-top: 5px; color: #8b949e; transition: 0.3s; }
-        .vault-stats { display: flex; gap: 20px; text-align: right; background: rgba(0, 255, 204, 0.05); padding: 12px 20px; border-radius: 10px; border: 1px solid var(--border); }
-        .stat-item { display: flex; flex-direction: column; }
-        .stat-label { font-size: 0.55rem; color: #8b949e; font-weight: 900; text-transform: uppercase; }
-        .vault-value { font-size: 1.4rem; font-weight: 900; font-family: 'Courier New', monospace; }
-        .section-title { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 2px; color: #8b949e; margin: 40px 0 15px 0; display: flex; align-items: center; gap: 10px; }
-        .section-title::after { content: ""; flex: 1; height: 1px; background: var(--border); }
-        .grid-3 { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 15px; }
-        .card { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 20px; }
+        .header { display: flex; justify-content: space-between; border-bottom: 1px solid var(--border); padding-bottom: 20px; margin-bottom: 30px; }
+        .vault-stats { display: flex; gap: 20px; background: rgba(0, 255, 204, 0.05); padding: 10px 20px; border-radius: 10px; border: 1px solid var(--border); }
+        .policy-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 20px; margin-bottom: 40px; }
+        .p-card { background: var(--card); padding: 20px; border-radius: 12px; border: 1px solid var(--border); }
         .input-pair { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 10px; }
-        label { display: block; font-size: 0.6rem; color: #8b949e; margin-bottom: 5px; font-weight: 800; text-transform: uppercase; }
-        input { width: 100%; background: #0d1117; border: 1px solid var(--border); color: var(--accent); padding: 10px; border-radius: 6px; font-weight: 900; outline: none; }
-        .bucket-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 12px; }
-        .b-card { background: #0d1117; border: 1px solid var(--border); border-radius: 8px; padding: 15px; position: relative; }
-        .b-card.active { border: 1px solid var(--accent); box-shadow: 0 0 15px rgba(0, 255, 204, 0.1); }
-        .b-card.special { border: 1px solid var(--boost); }
-        .b-card.past { opacity: 0.4; filter: grayscale(1); }
-        .b-main { font-family: 'Courier New', monospace; font-size: 1.3rem; margin: 8px 0; }
-        .val-total { color: var(--accent); font-weight: bold; }
-        .b-breakdown { font-size: 0.55rem; border-top: 1px solid #222; padding-top: 8px; color: #666; display: flex; justify-content: space-between; }
-        .btn { flex: 1; padding: 18px; border-radius: 8px; font-weight: 900; cursor: pointer; border: none; text-transform: uppercase; transition: 0.2s; font-size: 0.9rem; }
-        .btn-save { background: var(--accent); color: #0b0e14; }
-        .btn-wipe { background: transparent; border: 2px solid var(--danger); color: var(--danger); margin-left: 15px; }
+        input { background: #0d1117; border: 1px solid var(--border); color: var(--accent); padding: 10px; border-radius: 6px; width: 100%; box-sizing: border-box; font-weight: bold; }
+        .bucket-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 12px; }
+        .b-card { background: var(--card); border: 1px solid var(--border); padding: 15px; border-radius: 8px; }
+        .b-val { font-size: 1.4rem; font-family: monospace; font-weight: 900; margin: 5px 0; }
+        .b-sub { font-size: 0.6rem; color: #555; display: flex; justify-content: space-between; border-top: 1px solid #222; padding-top: 5px; }
     </style>
 </head>
 <body>
-<div class="container">
-    <div class="header">
-        <div><h1>🤝 Sponsor Center</h1><div id="sync_status" class="sync-indicator">CONNECTING...</div></div>
-        <div class="vault-stats">
-            <div class="stat-item"><span class="stat-label">Normal</span><div class="vault-value" id="val_n" style="color:var(--accent)">0</div></div>
-            <div class="stat-item"><span class="stat-label">Boost</span><div class="vault-value" id="val_b" style="color:var(--boost)">0</div></div>
-            <div class="stat-item" style="border-left: 1px solid #333; padding-left: 15px;"><span class="stat-label">Total</span><div class="vault-value" id="val_total">0</div></div>
-        </div>
+
+<div class="header">
+    <h1>🤝 SPONSOR POLICY</h1>
+    <div class="vault-stats">
+        <div style="text-align:right">NORMAL<br><span id="h_n" style="color:var(--accent); font-weight:900">0</span></div>
+        <div style="text-align:right">BOOST<br><span id="h_b" style="color:var(--boost); font-weight:900">0</span></div>
+        <div style="text-align:right">TOTAL<br><span id="h_t" style="font-weight:900">0</span></div>
     </div>
-    <div class="section-title">Waterfall Economic Limits</div>
-    <div class="grid-3">
-        <div class="card"><label>🗓️ Round Allocation</label><div class="input-pair"><div><label>Min</label><input type="number" id="wk_min" value="1000"></div><div><label>Max</label><input type="number" id="wk_max" value="5000"></div></div></div>
-        <div class="card"><label>🏆 Season Pool</label><div class="input-pair"><div><label>Min</label><input type="number" id="sea_min" value="5000"></div><div><label>Max</label><input type="number" id="sea_max" value="20000"></div></div></div>
-        <div class="card"><label>🛠️ Constructor Pool</label><div class="input-pair"><div><label>Min</label><input type="number" id="con_min" value="2000"></div><div><label>Max</label><input type="number" id="con_max" value="10000"></div></div></div>
-    </div>
-    <div class="section-title">Funding Page Mirror</div>
-    <div id="sponsor_grid_mirror" class="bucket-grid"></div>
-    <div style="display: flex; margin-top: 30px;"><button class="btn btn-save" onclick="updatePolicy()">Sync Policy to Firebase</button><button class="btn btn-wipe" onclick="triggerWipe()">Wipe Treasury</button></div>
 </div>
+
+<div class="policy-grid">
+    <div class="p-card">ROUND ALLOCATION<div class="input-pair">
+        <div>MIN<input type="number" id="wk_min" onchange="up()"></div>
+        <div>MAX<input type="number" id="wk_max" onchange="up()"></div>
+    </div></div>
+    <div class="p-card">SEASON PAYOUT<div class="input-pair">
+        <div>MIN<input type="number" id="sea_min" onchange="up()"></div>
+        <div>MAX<input type="number" id="sea_max" onchange="up()"></div>
+    </div></div>
+    <div class="p-card">CONSTRUCTOR POOL<div class="input-pair">
+        <div>MIN<input type="number" id="con_min" onchange="up()"></div>
+        <div>MAX<input type="number" id="con_max" onchange="up()"></div>
+    </div></div>
+</div>
+
+<div id="sponsor_grid" class="bucket-grid"></div>
+
 <script>
     const firebaseConfig = { databaseURL: "https://nuclearf1-94a6b-default-rtdb.asia-southeast1.firebasedatabase.app" };
     firebase.initializeApp(firebaseConfig);
     const db = firebase.database();
-    let currentRound = 1;
 
-    window.onload = () => {
-        db.ref('race_state/round').on('value', snap => { currentRound = snap.val() || 1; });
-        db.ref('treasury').on('value', snap => {
-            const t = snap.val() || { normal: 0, boost: 0 };
-            document.getElementById('val_n').innerText = Math.floor(t.normal).toLocaleString();
-            document.getElementById('val_b').innerText = Math.floor(t.boost).toLocaleString();
-            document.getElementById('val_total').innerText = Math.floor(t.normal + t.boost).toLocaleString();
-        });
-        db.ref('policy').on('value', snap => {
-            const p = snap.val();
-            if (p) {
-                document.getElementById('wk_min').value = p.wk_min; document.getElementById('wk_max').value = p.wk_max;
-                document.getElementById('sea_min').value = p.sea_min; document.getElementById('sea_max').value = p.sea_max;
-                document.getElementById('con_min').value = p.con_min; document.getElementById('con_max').value = p.con_max;
-            }
-        });
-        db.ref('funding').on('value', snap => {
-            const data = snap.val() || {};
-            const grid = document.getElementById('sponsor_grid_mirror'); grid.innerHTML = '';
-            const wkMax = document.getElementById('wk_max').value, seaMax = document.getElementById('sea_max').value, conMax = document.getElementById('con_max').value;
-            for(let i=1; i<=12; i++) renderB(grid, `Round ${i}`, data[`round${i}`], wkMax, i < currentRound ? 'past' : (i === currentRound ? 'active' : ''));
-            renderB(grid, "Season Pool", data['season_pool'], seaMax, 'special');
-            renderB(grid, "Constructor", data['constructor_pool'], conMax, 'special');
-            if (data.overflow?.n > 0) renderB(grid, "Overflow", data.overflow, "∞", "special");
-            document.getElementById('sync_status').innerText = "● MIRROR ACTIVE";
-        });
-    };
-    function renderB(c, l, d, m, s) {
+    db.ref('treasury').on('value', snap => {
+        const t = snap.val() || {normal:0, boost:0};
+        document.getElementById('h_n').innerText = t.normal.toFixed(0);
+        document.getElementById('h_b').innerText = t.boost.toFixed(0);
+        document.getElementById('h_t').innerText = (t.normal + t.boost).toFixed(0);
+    });
+
+    db.ref('policy').on('value', snap => {
+        const p = snap.val(); if(!p) return;
+        document.getElementById('wk_min').value = p.wk_min; document.getElementById('wk_max').value = p.wk_max;
+        document.getElementById('sea_min').value = p.sea_min; document.getElementById('sea_max').value = p.sea_max;
+        document.getElementById('con_min').value = p.con_min; document.getElementById('con_max').value = p.con_max;
+    });
+
+    db.ref('funding').on('value', snap => {
+        const data = snap.val() || {};
+        const g = document.getElementById('sponsor_grid'); g.innerHTML = '';
+        const p = { wk_max: document.getElementById('wk_max').value, sea_max: document.getElementById('sea_max').value, con_max: document.getElementById('con_max').value };
+        
+        for(let i=1; i<=12; i++) renderBucket(g, `ROUND ${i}`, data[`round${i}`], p.wk_max);
+        renderBucket(g, "SEASON POOL", data.season_pool, p.sea_max);
+        renderBucket(g, "CONSTRUCTOR", data.constructor_pool, p.con_max);
+    });
+
+    function renderBucket(c, l, d, m) {
         const n = d?.n || 0, b = d?.b || 0;
-        c.innerHTML += `<div class="b-card ${s} ${n >= m && m > 0 ? 'active' : ''}"><span style="font-size: 0.6rem; color: #8b949e;">${l}</span><div class="b-main"><span style="color:#555">${m}</span> : <span class="val-total">${(n+b).toFixed(0)}</span></div><div class="b-breakdown"><span>N: ${n.toFixed(0)}</span><span>B: +${b.toFixed(0)}</span></div></div>`;
+        c.innerHTML += `<div class="b-card"><div style="font-size:0.6rem; color:#8b949e">${l}</div><div class="b-val">${m} : <span style="color:var(--accent)">${(n+b).toFixed(0)}</span></div><div class="b-sub"><span>N: ${n.toFixed(0)}</span><span>B: +${b.toFixed(0)}</span></div></div>`;
     }
-    function updatePolicy() {
-        const p = { wk_min: parseInt(document.getElementById('wk_min').value), wk_max: parseInt(document.getElementById('wk_max').value), sea_min: parseInt(document.getElementById('sea_min').value), sea_max: parseInt(document.getElementById('sea_max').value), con_min: parseInt(document.getElementById('con_min').value), con_max: parseInt(document.getElementById('con_max').value) };
+
+    function up() {
+        const p = {
+            wk_min: parseInt(document.getElementById('wk_min').value), wk_max: parseInt(document.getElementById('wk_max').value),
+            sea_min: parseInt(document.getElementById('sea_min').value), sea_max: parseInt(document.getElementById('sea_max').value),
+            con_min: parseInt(document.getElementById('con_min').value), con_max: parseInt(document.getElementById('con_max').value)
+        };
         db.ref('policy').set(p);
     }
-    function triggerWipe() { if(confirm("Wipe Treasury?")) { db.ref('treasury').set({ normal: 0, boost: 0 }); db.ref('funding').set({}); } }
 </script>
 </body>
 </html>
