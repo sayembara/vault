@@ -8,18 +8,31 @@
     <style>
         :root { --accent: #00ffcc; --bg: #0b0e14; --card: #161b22; --border: #30363d; --boost: #b300ff; --danger: #ff4b2b; }
         body { background: var(--bg); color: white; font-family: 'Inter', sans-serif; padding: 20px; }
+        
+        /* Header */
         .header { display: flex; justify-content: space-between; border-bottom: 1px solid var(--border); padding-bottom: 20px; margin-bottom: 30px; }
         .vault-stats { display: flex; gap: 20px; background: rgba(0, 255, 204, 0.05); padding: 10px 20px; border-radius: 10px; border: 1px solid var(--border); }
-        .policy-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 20px; margin-bottom: 40px; }
-        .p-card { background: var(--card); padding: 20px; border-radius: 12px; border: 1px solid var(--border); }
+        
+        /* Policy Controls */
+        .policy-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 20px; margin-bottom: 20px; }
+        .p-card { background: var(--card); padding: 20px; border-radius: 12px; border: 1px solid var(--border); font-size: 0.75rem; font-weight: 800; color: #8b949e; letter-spacing: 1px; }
         .input-pair { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 10px; }
-        input { background: #0d1117; border: 1px solid var(--border); color: var(--accent); padding: 10px; border-radius: 6px; width: 100%; box-sizing: border-box; font-weight: bold; }
+        label { display: block; font-size: 0.6rem; color: #555; margin-bottom: 4px; text-transform: uppercase; }
+        input { background: #0d1117; border: 1px solid var(--border); color: var(--accent); padding: 12px; border-radius: 6px; width: 100%; box-sizing: border-box; font-weight: bold; outline: none; font-family: monospace; }
+        
+        /* Buttons */
+        .action-bar { display: flex; gap: 15px; margin-bottom: 40px; }
+        .btn { padding: 15px 30px; border-radius: 8px; font-weight: 900; cursor: pointer; border: none; text-transform: uppercase; transition: 0.2s; flex: 1; }
+        .btn-set { background: var(--accent); color: black; }
+        .btn-set:hover { filter: brightness(1.1); transform: translateY(-1px); }
+        .btn-wipe { background: transparent; border: 1px solid var(--danger); color: var(--danger); }
+        .btn-wipe:hover { background: var(--danger); color: white; }
+
+        /* Bucket Grid */
         .bucket-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 12px; }
         .b-card { background: var(--card); border: 1px solid var(--border); padding: 15px; border-radius: 8px; position: relative; }
         .b-val { font-size: 1.4rem; font-family: monospace; font-weight: 900; margin: 5px 0; }
         .b-sub { font-size: 0.6rem; color: #555; display: flex; justify-content: space-between; border-top: 1px solid #222; padding-top: 5px; }
-        .btn-wipe { background: transparent; border: 1px solid var(--danger); color: var(--danger); padding: 10px 20px; border-radius: 6px; font-weight: 900; cursor: pointer; margin-top: 30px; transition: 0.2s; }
-        .btn-wipe:hover { background: var(--danger); color: white; }
     </style>
 </head>
 <body>
@@ -27,30 +40,39 @@
 <div class="header">
     <h1>🤝 SPONSOR POLICY</h1>
     <div class="vault-stats">
-        <div style="text-align:right">NORMAL<br><span id="h_n" style="color:var(--accent); font-weight:900">0</span></div>
-        <div style="text-align:right">BOOST<br><span id="h_b" style="color:var(--boost); font-weight:900">0</span></div>
-        <div style="text-align:right">TOTAL<br><span id="h_t" style="font-weight:900">0</span></div>
+        <div style="text-align:right; font-size: 0.7rem;">NORMAL<br><span id="h_n" style="color:var(--accent); font-size: 1.2rem; font-weight:900">0</span></div>
+        <div style="text-align:right; font-size: 0.7rem;">BOOST<br><span id="h_b" style="color:var(--boost); font-size: 1.2rem; font-weight:900">0</span></div>
+        <div style="text-align:right; font-size: 0.7rem;">TOTAL<br><span id="h_t" style="font-size: 1.2rem; font-weight:900">0</span></div>
     </div>
 </div>
 
 <div class="policy-grid">
-    <div class="p-card">ROUND ALLOCATION<div class="input-pair">
-        <div>MIN<input type="number" id="wk_min" onchange="up()"></div>
-        <div>MAX<input type="number" id="wk_max" onchange="up()"></div>
-    </div></div>
-    <div class="p-card">SEASON PAYOUT<div class="input-pair">
-        <div>MIN<input type="number" id="sea_min" onchange="up()"></div>
-        <div>MAX<input type="number" id="sea_max" onchange="up()"></div>
-    </div></div>
-    <div class="p-card">CONSTRUCTOR POOL<div class="input-pair">
-        <div>MIN<input type="number" id="con_min" onchange="up()"></div>
-        <div>MAX<input type="number" id="con_max" onchange="up()"></div>
-    </div></div>
+    <div class="p-card">ROUND ALLOCATION
+        <div class="input-pair">
+            <div><label>Min</label><input type="number" id="wk_min"></div>
+            <div><label>Max</label><input type="number" id="wk_max"></div>
+        </div>
+    </div>
+    <div class="p-card">SEASON PAYOUT
+        <div class="input-pair">
+            <div><label>Min</label><input type="number" id="sea_min"></div>
+            <div><label>Max</label><input type="number" id="sea_max"></div>
+        </div>
+    </div>
+    <div class="p-card">CONSTRUCTOR POOL
+        <div class="input-pair">
+            <div><label>Min</label><input type="number" id="con_min"></div>
+            <div><label>Max</label><input type="number" id="con_max"></div>
+        </div>
+    </div>
+</div>
+
+<div class="action-bar">
+    <button class="btn btn-set" onclick="setPolicy()">Update Policy Limits</button>
+    <button class="btn btn-wipe" onclick="wipeAll()">Emergency Wipe Treasury</button>
 </div>
 
 <div id="sponsor_grid" class="bucket-grid"></div>
-
-<button class="btn-wipe" onclick="wipeAll()">WIPE ALL TREASURY</button>
 
 <script>
     const firebaseConfig = { databaseURL: "https://nuclearf1-94a6b-default-rtdb.asia-southeast1.firebasedatabase.app" };
@@ -59,8 +81,10 @@
 
     let round = 1;
 
+    // Listen to Race State
     db.ref('race_state/round').on('value', snap => { round = snap.val() || 1; });
 
+    // Listen to Treasury
     db.ref('treasury').on('value', snap => {
         const t = snap.val() || {normal:0, boost:0};
         document.getElementById('h_n').innerText = t.normal.toLocaleString();
@@ -68,6 +92,7 @@
         document.getElementById('h_t').innerText = (t.normal + t.boost).toLocaleString();
     });
 
+    // Load Initial Policy
     db.ref('policy').on('value', snap => {
         const p = snap.val(); if(!p) return;
         document.getElementById('wk_min').value = p.wk_min; document.getElementById('wk_max').value = p.wk_max;
@@ -75,12 +100,15 @@
         document.getElementById('con_min').value = p.con_min; document.getElementById('con_max').value = p.con_max;
     });
 
+    // Listen to Funding Mirror (from Funding Page)
     db.ref('funding').on('value', snap => {
         const data = snap.val() || {};
         const g = document.getElementById('sponsor_grid'); g.innerHTML = '';
-        const wk_m = document.getElementById('wk_max').value;
-        const sea_m = document.getElementById('sea_max').value;
-        const con_m = document.getElementById('con_max').value;
+        
+        // Use current input values as labels for Max
+        const wk_m = document.getElementById('wk_max').value || 0;
+        const sea_m = document.getElementById('sea_max').value || 0;
+        const con_m = document.getElementById('con_max').value || 0;
         
         for(let i=1; i<=12; i++) {
             let opacity = i < round ? 'opacity:0.3; filter:grayscale(1)' : '';
@@ -93,22 +121,30 @@
 
     function renderBucket(c, l, d, m, style) {
         const n = d?.n || 0, b = d?.b || 0;
-        c.innerHTML += `<div class="b-card" style="${style}"><div style="font-size:0.6rem; color:#8b949e">${l}</div><div class="b-val">${m} : <span style="color:var(--accent)">${(n+b).toFixed(0)}</span></div><div class="b-sub"><span>N: ${n.toFixed(0)}</span><span>B: +${b.toFixed(0)}</span></div></div>`;
+        c.innerHTML += `
+            <div class="b-card" style="${style}">
+                <div style="font-size:0.6rem; color:#8b949e; text-transform: uppercase; font-weight:800">${l}</div>
+                <div class="b-val">${m} : <span style="color:var(--accent)">${(n+b).toFixed(0)}</span></div>
+                <div class="b-sub"><span>N: ${n.toFixed(0)}</span><span>B: +${b.toFixed(0)}</span></div>
+            </div>`;
     }
 
-    function up() {
-        db.ref('policy').set({
+    function setPolicy() {
+        const p = {
             wk_min: parseInt(document.getElementById('wk_min').value) || 0,
             wk_max: parseInt(document.getElementById('wk_max').value) || 0,
             sea_min: parseInt(document.getElementById('sea_min').value) || 0,
             sea_max: parseInt(document.getElementById('sea_max').value) || 0,
             con_min: parseInt(document.getElementById('con_min').value) || 0,
             con_max: parseInt(document.getElementById('con_max').value) || 0
+        };
+        db.ref('policy').set(p).then(() => {
+            alert("Policy Updated! Funding page will recalculate now.");
         });
     }
 
     function wipeAll() {
-        if(confirm("DANGER: This will wipe the treasury to 0. Continue?")) {
+        if(confirm("DANGER: This will wipe the treasury and mirror data. Continue?")) {
             db.ref('treasury').set({ normal: 0, boost: 0 });
             db.ref('funding').set({});
         }
