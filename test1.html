@@ -2,171 +2,237 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>SANRAT | Logic Test Bench</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SANRAT | Sponsor Policy Center</title>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-database-compat.js"></script>
+    
     <style>
-        :root { --accent: #00ffcc; --gold: #ffcc00; --bg: #0b0e14; }
-        body { margin: 0; font-family: 'Inter', sans-serif; background: var(--bg); color: white; display: flex; flex-direction: column; height: 100vh; }
+        :root { 
+            --accent: #00ffcc; --bg: #0b0e14; --card: #161b22; --border: #30363d; 
+            --danger: #ff4b2b; --boost: #b300ff;
+        }
+        body { background: var(--bg); color: white; font-family: 'Inter', sans-serif; padding: 20px; }
+        .container { max-width: 1200px; margin: 0 auto; }
         
-        header { padding: 20px; border-bottom: 1px solid #333; display: flex; justify-content: space-between; align-items: center; }
-        .main-container { display: flex; flex: 1; overflow: hidden; }
-        
-        /* Left Side: Inputs */
-        .input-panel { width: 40%; padding: 20px; border-right: 1px solid #333; overflow-y: auto; display: flex; flex-direction: column; gap: 20px; }
-        textarea { background: #000; color: var(--accent); border: 1px solid #444; padding: 15px; font-family: monospace; border-radius: 8px; flex: 1; min-height: 300px; resize: none; }
-        
-        /* Right Side: Results */
-        .output-panel { width: 60%; padding: 20px; overflow-y: auto; background: rgba(255,255,255,0.02); }
-        
-        /* UI Elements */
-        .config-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 15px; }
-        .input-group { display: flex; flex-direction: column; gap: 5px; }
-        label { font-size: 0.7rem; color: #888; text-transform: uppercase; }
-        input { background: #111; border: 1px solid #444; color: white; padding: 8px; border-radius: 4px; }
-        
-        .btn-run { background: var(--accent); color: black; border: none; padding: 15px; border-radius: 8px; font-weight: 900; cursor: pointer; text-transform: uppercase; }
-        
-        table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 0.9rem; }
-        th { text-align: left; color: #888; padding: 10px; border-bottom: 2px solid #333; }
-        td { padding: 10px; border-bottom: 1px solid #222; }
-        .tier-tag { font-size: 0.7rem; padding: 2px 6px; border-radius: 3px; background: #333; }
-        .win { color: var(--gold); font-weight: bold; }
+        /* Header */
+        .header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border); padding-bottom: 20px; margin-bottom: 30px; }
+        h1 { color: var(--accent); font-size: 1.6rem; text-transform: uppercase; letter-spacing: 2px; margin: 0; }
+        .sync-indicator { font-size: 0.75rem; font-weight: bold; margin-top: 5px; color: #8b949e; transition: 0.3s; }
+
+        .vault-stats { text-align: right; background: rgba(0, 255, 204, 0.05); padding: 12px 20px; border-radius: 10px; border: 1px solid var(--border); }
+        .vault-value { font-size: 2.2rem; font-weight: 900; color: var(--accent); font-family: 'Courier New', monospace; }
+
+        /* Inputs */
+        .section-title { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 2px; color: #8b949e; margin: 40px 0 15px 0; display: flex; align-items: center; gap: 10px; }
+        .section-title::after { content: ""; flex: 1; height: 1px; background: var(--border); }
+        .grid-3 { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 15px; }
+        .card { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 20px; }
+        .input-pair { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 10px; }
+        label { display: block; font-size: 0.6rem; color: #8b949e; margin-bottom: 5px; font-weight: 800; text-transform: uppercase; }
+        input { width: 100%; background: #0d1117; border: 1px solid var(--border); color: var(--accent); padding: 10px; border-radius: 6px; font-weight: 900; outline: none; }
+
+        /* 14 Buckets Grid */
+        .bucket-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 12px; }
+        .b-card { background: #0d1117; border: 1px solid var(--border); border-radius: 8px; padding: 15px; }
+        .b-card.active { border: 1px solid var(--accent); box-shadow: 0 0 15px rgba(0, 255, 204, 0.1); }
+        .b-card.special { border: 1px solid var(--boost); }
+        .b-card.past { opacity: 0.4; filter: grayscale(1); }
+        .b-main { font-family: 'Courier New', monospace; font-size: 1.3rem; margin: 8px 0; }
+        .val-total { color: var(--accent); font-weight: bold; }
+        .b-breakdown { font-size: 0.55rem; border-top: 1px solid #222; padding-top: 8px; color: #666; display: flex; justify-content: space-between; }
+
+        .btn { flex: 1; padding: 18px; border-radius: 8px; font-weight: 900; cursor: pointer; border: none; text-transform: uppercase; transition: 0.2s; font-size: 0.9rem; }
+        .btn-save { background: var(--accent); color: #0b0e14; }
+        .btn-wipe { background: transparent; border: 2px solid var(--danger); color: var(--danger); margin-left: 15px; }
+        .btn:hover { transform: translateY(-2px); filter: brightness(1.2); }
     </style>
 </head>
 <body>
 
-    <header>
-        <h2 style="margin:0;">🧪 SANRAT LOGIC TEST BENCH</h2>
-        <div id="multiplierDisplay" style="color:var(--accent); font-weight:bold;">Multiplier: 0.5x</div>
-    </header>
-
-    <div class="main-container">
-        <div class="input-panel">
-            <div class="config-row">
-                <div class="input-group">
-                    <label>Base Points</label>
-                    <input type="number" id="basePts" value="1000">
-                </div>
-                <div class="input-group">
-                    <label>Decay Factor</label>
-                    <input type="number" id="decay" value="0.95" step="0.01">
-                </div>
-            </div>
-            
-            <label>Mock Participant Data (JSON)</label>
-            <textarea id="jsonInput">[
-  {"carId": "NFT-001", "teamId": "RED_BULL", "rank": 1},
-  {"carId": "NFT-002", "teamId": "FERRARI", "rank": 2},
-  {"carId": "NFT-003", "teamId": "RED_BULL", "rank": 3},
-  {"carId": "NFT-004", "teamId": "MERCEDES", "rank": 4},
-  {"carId": "NFT-005", "teamId": "FERRARI", "rank": 5}
-]</textarea>
-            
-            <button class="btn-run" onclick="runTest()">⚡ RUN CALCULATION</button>
+<div class="container">
+    <div class="header">
+        <div>
+            <h1>🤝 Sponsor Policy</h1>
+            <div id="sync_status" class="sync-indicator">CONNECTING...</div>
         </div>
-
-        <div class="output-panel">
-            <h3>Individual Results</h3>
-            <table id="indTable">
-                <thead>
-                    <tr><th>Rank</th><th>Car ID</th><th>Team</th><th>Points</th><th>Zone</th></tr>
-                </thead>
-                <tbody></tbody>
-            </table>
-
-            <h3 style="margin-top:40px;">Constructor Standings (Top 2 Counting)</h3>
-            <table id="conTable">
-                <thead>
-                    <tr><th>Pos</th><th>Team ID</th><th>Total Points</th><th>Counting Cars</th></tr>
-                </thead>
-                <tbody></tbody>
-            </table>
+        <div class="vault-stats">
+            <span style="font-size: 0.6rem; color: #8b949e; font-weight: 900;">TREASURY BALANCE</span>
+            <div class="vault-value" id="sponsor_vault_display">0 TBNB</div>
         </div>
     </div>
 
-    <script>
-        function calculateRaceResults(participants, config = {}) {
-            const { basePoints, decayFactor, minPoints = 1, topCarsPerTeam = 2 } = config;
-            const multiplierThresholds = [
-                { min: 3001, multiplier: 2.0 },
-                { min: 201, max: 3000, multiplier: 1.5 },
-                { min: 61, max: 200, multiplier: 1.0 },
-                { min: 1, max: 60, multiplier: 0.5 }
-            ];
+    <div class="section-title">Waterfall Economic Limits (N)</div>
+    <div class="grid-3">
+        <div class="card">
+            <label>🗓️ Round Allocation</label>
+            <div class="input-pair">
+                <div><label>Min</label><input type="number" id="wk_min" value="1000"></div>
+                <div><label>Max (N)</label><input type="number" id="wk_max" value="5000"></div>
+            </div>
+        </div>
+        <div class="card">
+            <label>🏆 Season Payout</label>
+            <div class="input-pair">
+                <div><label>Min</label><input type="number" id="sea_min" value="5000"></div>
+                <div><label>Max (N)</label><input type="number" id="sea_max" value="20000"></div>
+            </div>
+        </div>
+        <div class="card">
+            <label>🛠️ Constructor Pool</label>
+            <div class="input-pair">
+                <div><label>Min</label><input type="number" id="con_min" value="2000"></div>
+                <div><label>Max (N)</label><input type="number" id="con_max" value="10000"></div>
+            </div>
+        </div>
+    </div>
 
-            const totalCars = participants.length;
-            let multiplier = 0.5;
-            for (const t of multiplierThresholds) {
-                if (totalCars >= t.min && (!t.max || totalCars <= t.max)) {
-                    multiplier = t.multiplier;
-                    break;
-                }
+    <div class="section-title">Live Preview (12 Rounds + 2 Special Pools)</div>
+    <div id="sponsor_grid_mirror" class="bucket-grid"></div>
+
+    <div style="display: flex; margin-top: 30px;">
+        <button class="btn btn-save" onclick="updatePolicy()">Sync Policy to Firebase</button>
+        <button class="btn btn-wipe" onclick="triggerWipe()">Wipe Treasury (Global)</button>
+    </div>
+</div>
+
+<script>
+    // 1. CONFIG (Adjust regional URL if needed)
+    const firebaseConfig = {
+        apiKey: "YOUR_API_KEY",
+        authDomain: "nuclearf1-94a6b.firebaseapp.com",
+        databaseURL: "https://nuclearf1-94a6b-default-rtdb.asia-southeast1.firebasedatabase.app",
+        projectId: "nuclearf1-94a6b",
+        storageBucket: "nuclearf1-94a6b.appspot.com",
+        appId: "YOUR_APP_ID"
+    };
+
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+
+    let currentRound = 4;
+    let treasury = { normal: 0, boost: 0 };
+
+    // Initialize UI immediately
+    window.onload = () => {
+        calculateAndRender();
+        
+        // Listen for Treasury
+        db.ref('treasury').on('value', (snap) => {
+            treasury = snap.val() || { normal: 0, boost: 0 };
+            document.getElementById('sync_status').innerText = "● LIVE SYNC ACTIVE";
+            calculateAndRender();
+        });
+
+        // Listen for Policy
+        db.ref('policy').on('value', (snap) => {
+            const p = snap.val();
+            if (p) {
+                document.getElementById('wk_min').value = p.wk_min;
+                document.getElementById('wk_max').value = p.wk_max;
+                document.getElementById('sea_min').value = p.sea_min;
+                document.getElementById('sea_max').value = p.sea_max;
+                document.getElementById('con_min').value = p.con_min;
+                document.getElementById('con_max').value = p.con_max;
+                calculateAndRender();
             }
+        });
+    };
 
-            const pointsZoneLimit = Math.ceil(totalCars / 2);
+    function calculateAndRender() {
+        const total = treasury.normal + treasury.boost;
+        document.getElementById('sponsor_vault_display').innerText = total.toLocaleString() + " TBNB";
 
-            const processedCars = participants.map(car => {
-                let pts = (car.rank > pointsZoneLimit) ? minPoints : Math.max(minPoints, Math.round(basePoints * Math.pow(decayFactor, car.rank - 1) * multiplier));
-                return { ...car, pts, inZone: car.rank <= pointsZoneLimit };
-            }).sort((a,b) => a.rank - b.rank);
+        const wkMax = parseInt(document.getElementById('wk_max').value) || 0;
+        const wkMin = parseInt(document.getElementById('wk_min').value) || 0;
+        const seaMax = parseInt(document.getElementById('sea_max').value) || 0;
+        const conMax = parseInt(document.getElementById('con_max').value) || 0;
 
-            const teamGroups = {};
-            processedCars.forEach(c => {
-                if (!teamGroups[c.teamId]) teamGroups[c.teamId] = [];
-                teamGroups[c.teamId].push(c);
-            });
+        const grid = document.getElementById('sponsor_grid_mirror');
+        grid.innerHTML = '';
 
-            const constructorResults = Object.entries(teamGroups).map(([teamId, cars]) => {
-                const counting = [...cars].sort((a,b) => b.pts - a.pts).slice(0, topCarsPerTeam);
-                const total = counting.reduce((sum, c) => sum + c.pts, 0);
-                return { teamId, total, counting };
-            }).sort((a,b) => b.total - a.total);
-
-            return { multiplier, processedCars, constructorResults };
+        // ZERO GUARD: If treasury is empty, render 14 empty boxes
+        if (total <= 0) {
+            for(let i=1; i<=12; i++) renderBucket(grid, `Round ${i}`, 0, 0, wkMax, i < currentRound ? 'past' : '');
+            renderBucket(grid, "Season Pool", 0, 0, seaMax, 'special');
+            renderBucket(grid, "Constructor", 0, 0, conMax, 'special');
+            return;
         }
 
-        function runTest() {
-            try {
-                const data = JSON.parse(document.getElementById('jsonInput').value);
-                const config = {
-                    basePoints: Number(document.getElementById('basePts').value),
-                    decayFactor: Number(document.getElementById('decay').value)
-                };
+        // Waterfall Math
+        let remNrm = treasury.normal;
+        const divisor = (12 - currentRound + 1) + 2;
+        const bShare = treasury.boost / divisor;
 
-                const res = calculateRaceResults(data, config);
-                
-                // Update UI
-                document.getElementById('multiplierDisplay').innerText = `Multiplier: ${res.multiplier}x`;
-                
-                // Render Individual
-                const indTbody = document.querySelector('#indTable tbody');
-                indTbody.innerHTML = res.processedCars.map(c => `
-                    <tr>
-                        <td>${c.rank}</td>
-                        <td class="${c.rank === 1 ? 'win' : ''}">${c.carId}</td>
-                        <td>${c.teamId}</td>
-                        <td style="color:var(--accent)">${c.pts}</td>
-                        <td><span class="tier-tag">${c.inZone ? 'Points' : 'Participation'}</span></td>
-                    </tr>
-                `).join('');
-
-                // Render Constructor
-                const conTbody = document.querySelector('#conTable tbody');
-                conTbody.innerHTML = res.constructorResults.map((t, i) => `
-                    <tr>
-                        <td>${i+1}</td>
-                        <td class="${i === 0 ? 'win' : ''}">${t.teamId}</td>
-                        <td>${t.total}</td>
-                        <td style="font-size:0.7rem; color:#888;">${t.counting.map(c => c.carId).join(', ')}</td>
-                    </tr>
-                `).join('');
-
-            } catch (e) {
-                alert("Invalid JSON data: " + e.message);
+        // 12 Rounds
+        for (let i = 1; i <= 12; i++) {
+            let n = 0;
+            if (i < currentRound) {
+                n = wkMax;
+                remNrm -= wkMax;
+            } else {
+                n = Math.max(0, Math.min(remNrm, wkMin));
+                remNrm -= n;
             }
+            renderBucket(grid, `Round ${i}`, n, (i >= currentRound ? bShare : 0), wkMax, i < currentRound ? 'past' : (i === currentRound ? 'active' : ''));
         }
 
-        // Run once on load
-        runTest();
-    </script>
+        // 2 Special Pools
+        renderBucket(grid, "Season Pool", Math.max(0, Math.min(remNrm, seaMax)), bShare, seaMax, 'special');
+        renderBucket(grid, "Constructor", Math.max(0, Math.min(remNrm, conMax)), bShare, conMax, 'special');
+    }
+
+    function renderBucket(container, label, n, b, max, state) {
+        container.innerHTML += `
+            <div class="b-card ${state}">
+                <span style="font-size: 0.6rem; color: #8b949e; text-transform: uppercase; font-weight: 800;">${label}</span>
+                <div class="b-main">
+                    <span style="color:#555">${max}</span> : 
+                    <span class="val-total">${(n + b).toFixed(0)}</span>
+                </div>
+                <div class="b-breakdown">
+                    <span>N: ${n.toFixed(0)}</span>
+                    <span>B: +${b.toFixed(0)}</span>
+                </div>
+            </div>
+        `;
+    }
+
+    function updatePolicy() {
+        const status = document.getElementById('sync_status');
+        status.innerText = "⏳ SAVING...";
+        status.style.color = "#ffcc00";
+
+        const policyData = {
+            wk_min: parseInt(document.getElementById('wk_min').value) || 0,
+            wk_max: parseInt(document.getElementById('wk_max').value) || 0,
+            sea_min: parseInt(document.getElementById('sea_min').value) || 0,
+            sea_max: parseInt(document.getElementById('sea_max').value) || 0,
+            con_min: parseInt(document.getElementById('con_min').value) || 0,
+            con_max: parseInt(document.getElementById('con_max').value) || 0
+        };
+
+        db.ref('policy').set(policyData, (error) => {
+            if (error) {
+                status.innerText = "❌ FAILED: CHECK RULES";
+                status.style.color = "#ff4b2b";
+                alert("Firebase rejected the save. Check your Rules tab!");
+            } else {
+                status.innerText = "✅ SYNCED TO FIREBASE";
+                status.style.color = "#00ffcc";
+                setTimeout(() => {
+                    status.innerText = "● LIVE SYNC ACTIVE";
+                    status.style.color = "#8b949e";
+                }, 2000);
+            }
+        });
+    }
+
+    function triggerWipe() {
+        if(confirm("DANGER: This will wipe the treasury on ALL pages. Continue?")) {
+            db.ref('treasury').set({ normal: 0, boost: 0 });
+        }
+    }
+</script>
 </body>
 </html>
