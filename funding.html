@@ -80,31 +80,7 @@
 </div>
 
 <script>
-    const firebaseConfig = {
-        apiKey: "YOUR_API_KEY",
-        authDomain: "nuclearf1-94a6b.firebaseapp.com",
-        databaseURL: "https://nuclearf1-94a6b-default-rtdb.asia-southeast1.firebasedatabase.app",
-        projectId: "nuclearf1-94a6b",
-        storageBucket: "nuclearf1-94a6b.appspot.com",
-        appId: "YOUR_APP_ID"
-    };
-
-    firebase.initializeApp(firebaseConfig);
-    const db = firebase.database();
-
-    let currentRound = 4;
-    let treasury = { normal: 0, boost: 0 };
-    let policy = { wk_min: 1000, wk_max: 5000, sea_min: 5000, sea_max: 20000, con_min: 2000, con_max: 10000 };
-
-    window.onload = () => {
-        db.ref('treasury').on('value', (snap) => {
-            treasury = snap.val() || { normal: 0, boost: 0 };
-            render();
-        });
-        db.ref('policy').on('value', (snap) => {
-            if (snap.val()) { policy = snap.val(); render(); }
-        });
-    };
+    // ... Keep Firebase Config ...
 
     function render() {
         const total = treasury.normal + treasury.boost;
@@ -119,7 +95,7 @@
         const divisor = (12 - currentRound + 1) + 2;
         const bShare = treasury.boost / divisor;
 
-        // Render 12 Rounds
+        // 1 - 12 Rounds
         for (let i = 1; i <= 12; i++) {
             let n = 0;
             if (i < currentRound) {
@@ -132,18 +108,34 @@
             renderBucket(grid, `Round ${i}`, n, (i >= currentRound ? bShare : 0), policy.wk_max, policy.wk_min, i < currentRound ? 'past' : (i === currentRound ? 'active' : ''));
         }
 
-        // Render 2 Specials
-        renderBucket(grid, "Season Pool", Math.max(0, Math.min(remNrm, policy.sea_max)), bShare, policy.sea_max, policy.sea_min, 'special');
-        renderBucket(grid, "Constructor", Math.max(0, Math.min(remNrm, policy.con_max)), bShare, policy.con_max, policy.con_min, 'special');
+        // 13-14 Specials
+        const sVal = Math.max(0, Math.min(remNrm, policy.sea_max));
+        renderBucket(grid, "Season Pool", sVal, bShare, policy.sea_max, policy.sea_min, 'special');
+        remNrm -= sVal;
+
+        const cVal = Math.max(0, Math.min(remNrm, policy.con_max));
+        renderBucket(grid, "Constructor", cVal, bShare, policy.con_max, policy.con_min, 'special');
+        remNrm -= cVal;
+
+        // 15: THE OVERFLOW BUCKET (Calculates remaining N)
+        if (remNrm > 0) {
+            renderBucket(grid, "Overflow Vault", remNrm, 0, "∞", 0, 'overflow');
+        }
     }
 
     function renderBucket(container, label, n, b, max, min, state) {
         let statusClass = 'status-empty';
         let statusText = 'Empty';
 
-        if (n >= max) { statusClass = 'status-max'; statusText = 'Maxed'; }
-        else if (n >= min) { statusClass = 'status-min'; statusText = 'At Min'; }
-        else if (n > 0) { statusClass = 'status-below'; statusText = 'Below Min'; }
+        // Overflow Logic
+        if (state === 'overflow') {
+            statusClass = 'status-max';
+            statusText = 'Overflow';
+        } else {
+            if (n >= max) { statusClass = 'status-max'; statusText = 'Maxed'; }
+            else if (n >= min) { statusClass = 'status-min'; statusText = 'At Min'; }
+            else if (n > 0) { statusClass = 'status-below'; statusText = 'Below Min'; }
+        }
 
         container.innerHTML += `
             <div class="b-card ${state}">
@@ -159,18 +151,6 @@
                 </div>
             </div>
         `;
-    }
-
-    function processInjection(type) {
-        const amt = parseInt(document.getElementById('inject_amt').value);
-        if (!amt || amt <= 0) return alert("Enter a valid amount");
-
-        if (type === 'normal') treasury.normal += amt;
-        else treasury.boost += amt;
-        
-        db.ref('treasury').set(treasury).then(() => {
-            document.getElementById('inject_amt').value = '';
-        });
     }
 </script>
 </body>
