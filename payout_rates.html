@@ -2,40 +2,56 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Range Payout Editor | SANRAT</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Payout Economy Manager | SANRAT</title>
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-database-compat.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap" rel="stylesheet">
     <style>
-        :root { --accent: #00ffcc; --bg: #0b0e14; --card: #161b22; --border: #30363d; --boost: #b300ff; }
-        body { background: var(--bg); color: white; font-family: 'Inter', sans-serif; padding: 20px; }
+        :root { --accent: #00ffcc; --bg: #0b0e14; --card: #161b22; --border: #30363d; --text: #c9d1d9; --dim: #8b949e; --danger: #ff4b2b; }
+        body { background: var(--bg); color: var(--text); font-family: 'Inter', sans-serif; padding: 30px; margin: 0; }
         
-        /* Range Tabs */
-        .tabs { display: flex; gap: 10px; margin-bottom: 20px; border-bottom: 1px solid var(--border); padding-bottom: 15px; }
-        .tab { background: transparent; border: 1px solid var(--border); color: #8b949e; padding: 12px 20px; border-radius: 6px; cursor: pointer; font-weight: 800; text-transform: uppercase; font-size: 0.7rem; transition: 0.2s; }
-        .tab.active { border-color: var(--accent); color: var(--accent); background: rgba(0,255,204,0.05); }
-        .tab:hover { border-color: white; color: white; }
+        h1 { font-weight: 900; letter-spacing: -1px; margin-bottom: 5px; }
+        .subtitle { color: var(--dim); font-size: 0.8rem; margin-bottom: 30px; text-transform: uppercase; letter-spacing: 1px; }
 
-        /* Setup Area */
-        .setup-bar { background: var(--card); border: 1px solid var(--border); padding: 20px; border-radius: 12px; margin-bottom: 25px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }
-        .setup-item label { display: block; font-size: 0.6rem; color: #8b949e; margin-bottom: 8px; text-transform: uppercase; font-weight: 800; }
-        .setup-item input { width: 100%; background: #0d1117; border: 1px solid var(--border); color: var(--accent); padding: 12px; border-radius: 6px; box-sizing: border-box; font-family: monospace; }
+        /* Tabs */
+        .tabs { display: flex; gap: 8px; margin-bottom: 25px; background: var(--card); padding: 5px; border-radius: 10px; border: 1px solid var(--border); width: fit-content; }
+        .tab { background: transparent; border: none; color: var(--dim); padding: 10px 18px; border-radius: 6px; cursor: pointer; font-weight: 800; font-size: 0.65rem; text-transform: uppercase; transition: 0.2s; }
+        .tab.active { background: var(--accent); color: black; }
+        .tab:hover:not(.active) { color: white; background: rgba(255,255,255,0.05); }
 
-        /* Table */
-        table { width: 100%; border-collapse: collapse; background: var(--card); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; }
-        th { background: rgba(255,255,255,0.02); text-align: left; padding: 15px; font-size: 0.65rem; color: #555; text-transform: uppercase; }
-        td { padding: 15px; border-bottom: 1px solid rgba(255,255,255,0.02); }
+        /* Simulation Controls */
+        .setup-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 25px; }
+        .control-card { background: var(--card); border: 1px solid var(--border); padding: 15px; border-radius: 12px; }
+        .control-card label { display: block; font-size: 0.6rem; color: var(--dim); margin-bottom: 8px; font-weight: 800; text-transform: uppercase; }
+        .control-card input { width: 100%; background: #0d1117; border: 1px solid var(--border); color: var(--accent); padding: 10px; border-radius: 6px; box-sizing: border-box; font-family: monospace; font-size: 1rem; outline: none; }
+
+        /* Table Style */
+        .table-container { background: var(--card); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; margin-bottom: 25px; }
+        table { width: 100%; border-collapse: collapse; }
+        th { background: rgba(255,255,255,0.02); text-align: left; padding: 15px; font-size: 0.6rem; color: var(--dim); text-transform: uppercase; border-bottom: 1px solid var(--border); }
+        td { padding: 15px; border-bottom: 1px solid rgba(255,255,255,0.02); vertical-align: middle; }
         
-        .tier-input { background: #0d1117; border: 1px solid var(--border); color: white; padding: 8px; border-radius: 4px; width: 60px; text-align: center; font-weight: bold; }
-        .val-main { font-family: monospace; font-weight: 900; color: var(--accent); font-size: 1.1rem; }
-        .gap-tag { font-size: 0.6rem; padding: 4px 8px; border-radius: 4px; font-weight: 900; }
+        .tier-name { font-weight: 900; color: white; font-size: 0.9rem; }
+        .tier-input { background: #0d1117; border: 1px solid var(--border); color: white; padding: 6px; border-radius: 4px; width: 60px; text-align: center; font-family: monospace; }
+        .val-bnb { font-family: monospace; font-weight: 900; color: var(--accent); font-size: 1.1rem; }
+        
+        .gap-tag { font-size: 0.6rem; padding: 4px 8px; border-radius: 4px; font-weight: 900; display: inline-block; }
         .tag-ok { background: rgba(0, 255, 204, 0.1); color: var(--accent); }
-        .tag-fail { background: rgba(255, 75, 43, 0.1); color: #ff4b2b; }
+        .tag-fail { background: rgba(255, 75, 43, 0.1); color: var(--danger); }
 
-        .save-footer { margin-top: 30px; display: flex; justify-content: space-between; align-items: center; }
-        .btn-save { background: var(--accent); color: black; border: none; padding: 15px 40px; border-radius: 8px; font-weight: 900; cursor: pointer; text-transform: uppercase; }
+        /* Visualization */
+        .chart-container { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 20px; }
+        canvas { width: 100%; height: 180px; }
+
+        .btn-save { background: var(--accent); color: black; border: none; padding: 18px 40px; border-radius: 8px; font-weight: 900; cursor: pointer; text-transform: uppercase; transition: 0.2s; margin-top: 20px; }
+        .btn-save:hover { filter: brightness(1.1); transform: translateY(-2px); }
     </style>
 </head>
 <body>
+
+<h1>Payout Economy Manager</h1>
+<div class="subtitle">Multi-Range Tier Configuration & Ladder Logic</div>
 
 <div class="tabs" id="range_tabs">
     <button class="tab active" onclick="switchRange('micro')">1-20 (Micro)</button>
@@ -45,40 +61,44 @@
     <button class="tab" onclick="switchRange('global')">2501+ (Global)</button>
 </div>
 
-<div class="setup-bar">
-    <div class="setup-item">
-        <label>Simulation: Total Pool</label>
+<div class="setup-grid">
+    <div class="control-card">
+        <label>Total Pool Simulation (TBNB)</label>
         <input type="number" id="sim_pool" value="10000" oninput="render()">
     </div>
-    <div class="setup-item">
-        <label>Simulation: Car Count</label>
+    <div class="control-card">
+        <label>Current Car Count</label>
         <input type="number" id="sim_cars" value="15" oninput="render()">
     </div>
-    <div class="setup-item">
-        <label>Decay (k Factor)</label>
-        <input type="number" id="sim_k" value="0.8" step="0.05" oninput="render()">
+    <div class="control-card">
+        <label>Decay Factor (k)</label>
+        <input type="number" id="sim_k" value="0.85" step="0.05" oninput="render()">
     </div>
 </div>
 
-<table id="payout_table">
-    <thead>
-        <tr>
-            <th>Tier</th>
-            <th>Field %</th>
-            <th>Multiplier</th>
-            <th>Payout Depth %</th>
-            <th>P1 Winner</th>
-            <th>P-Last (Floor)</th>
-            <th>Status</th>
-        </tr>
-    </thead>
-    <tbody id="tier_rows"></tbody>
-</table>
-
-<div class="save-footer">
-    <div id="status_msg" style="color: #555; font-size: 0.7rem;">MODES LOADED</div>
-    <button class="btn-save" onclick="saveAll()">Save All Range Rules</button>
+<div class="table-container">
+    <table>
+        <thead>
+            <tr>
+                <th>Tier</th>
+                <th>Field %</th>
+                <th>Multiplier</th>
+                <th>Pay Depth %</th>
+                <th>P1 Winner</th>
+                <th>P-Last (Floor)</th>
+                <th>Ladder Check</th>
+            </tr>
+        </thead>
+        <tbody id="tier_rows"></tbody>
+    </table>
 </div>
+
+<div class="chart-container">
+    <label style="font-size: 0.6rem; color: var(--dim); font-weight: 800; text-transform: uppercase; margin-bottom: 10px; display: block;">Prize Distribution Curve</label>
+    <canvas id="curveChart"></canvas>
+</div>
+
+<button class="btn-save" onclick="saveAll()">Save Global Economy Rules</button>
 
 <script>
     const firebaseConfig = { databaseURL: "https://nuclearf1-94a6b-default-rtdb.asia-southeast1.firebasedatabase.app" };
@@ -88,67 +108,112 @@
     let currentRange = 'micro';
     let ranges = {
         micro: { k: 1.1, tiers: [{id:'t1', name:'Lobby', split:100, mult:1, depth:20}] },
-        club: { k: 0.9, tiers: [{id:'t1', name:'Pro', split:40, mult:2.5, depth:30}, {id:'t2', name:'Am', split:60, mult:0.8, depth:10}] },
-        regional: { k: 0.8, tiers: [{id:'t1', name:'Elite', split:20, mult:4, depth:40}, {id:'t2', name:'Pro', split:30, mult:1.5, depth:20}, {id:'t3', name:'Club', split:50, mult:0.5, depth:10}] },
-        national: { k: 0.75, tiers: [{id:'t1', name:'Diamond', split:10, mult:8, depth:50}, {id:'t2', name:'Gold', split:40, mult:2, depth:20}, {id:'t3', name:'Silver', split:50, mult:0.5, depth:10}] },
-        global: { k: 0.7, tiers: [{id:'t1', name:'Diamond', split:5, mult:15, depth:50}, {id:'t2', name:'Plat', split:15, mult:5, depth:30}, {id:'t3', name:'Gold', split:30, mult:2, depth:20}, {id:'t4', name:'Silver', split:50, mult:0.5, depth:10}] }
+        club: { k: 0.95, tiers: [{id:'t1', name:'Pro', split:30, mult:3.5, depth:30}, {id:'t2', name:'Am', split:70, mult:0.7, depth:10}] },
+        regional: { k: 0.85, tiers: [{id:'t1', name:'Elite', split:15, mult:5, depth:40}, {id:'t2', name:'Pro', split:35, mult:1.8, depth:20}, {id:'t3', name:'Club', split:50, mult:0.5, depth:10}] },
+        national: { k: 0.8, tiers: [{id:'t1', name:'Diamond', split:10, mult:8, depth:50}, {id:'t2', name:'Gold', split:30, mult:2.5, depth:20}, {id:'t3', name:'Silver', split:60, mult:0.4, depth:10}] },
+        global: { k: 0.75, tiers: [{id:'t1', name:'Diamond', split:5, mult:12, depth:50}, {id:'t2', name:'Plat', split:15, mult:4.5, depth:30}, {id:'t3', name:'Gold', split:30, mult:1.8, depth:20}, {id:'t4', name:'Silver', split:50, mult:0.3, depth:10}] }
     };
 
     function switchRange(r) {
         currentRange = r;
         document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-        event.target.classList.add('active');
+        if(event) event.target.classList.add('active');
+        
+        // Auto-set reasonable car counts for simulation
+        const presets = { micro: 15, club: 60, regional: 250, national: 1500, global: 8000 };
+        document.getElementById('sim_cars').value = presets[r];
         document.getElementById('sim_k').value = ranges[r].k;
         render();
     }
 
     function render() {
-        const pool = parseFloat(document.getElementById('sim_pool').value);
-        const cars = parseFloat(document.getElementById('sim_cars').value);
-        const k = parseFloat(document.getElementById('sim_k').value);
+        const pool = parseFloat(document.getElementById('sim_pool').value) || 0;
+        const totalCars = parseFloat(document.getElementById('sim_cars').value) || 1;
+        const k = parseFloat(document.getElementById('sim_k').value) || 0.85;
         ranges[currentRange].k = k;
         
         const body = document.getElementById('tier_rows');
         body.innerHTML = '';
 
-        let results = [];
+        let calculatedPrizes = [];
+        let chartData = [];
 
         ranges[currentRange].tiers.forEach((tier, idx) => {
-            const carsInTier = Math.floor(cars * (tier.split / 100));
+            const carsInTier = Math.max(1, Math.floor(totalCars * (tier.split / 100)));
             const paidDepth = Math.max(1, Math.floor(carsInTier * (tier.depth / 100)));
-            const tierPot = (pool * (tier.split / 100) * tier.mult) / (ranges[currentRange].tiers.length * 0.8);
+            
+            // Tier Pot Calculation (Weighted by Multiplier)
+            const tierPot = (pool * (tier.split / 100) * tier.mult);
 
             let harmonicSum = 0;
             for(let i=1; i<=paidDepth; i++) harmonicSum += Math.pow(i, -k);
             
             const p1 = (Math.pow(1, -k) / harmonicSum) * tierPot;
             const pLast = (Math.pow(paidDepth, -k) / harmonicSum) * tierPot;
+            
+            calculatedPrizes.push({ p1, pLast });
 
-            results.push({p1, pLast});
+            // Generate Chart Data
+            for(let r=1; r<=paidDepth; r++){
+                chartData.push({ val: (Math.pow(r, -k) / harmonicSum) * tierPot, isBreak: r===1 });
+            }
 
             body.innerHTML += `
                 <tr>
-                    <td style="font-weight:900">${tier.name}</td>
+                    <td class="tier-name">${tier.name}</td>
                     <td><input type="number" class="tier-input" value="${tier.split}" oninput="updateTier(${idx}, 'split', this.value)"> %</td>
                     <td><input type="number" class="tier-input" value="${tier.mult}" oninput="updateTier(${idx}, 'mult', this.value)"> x</td>
                     <td><input type="number" class="tier-input" value="${tier.depth}" oninput="updateTier(${idx}, 'depth', this.value)"> %</td>
-                    <td class="val-main">${p1.toFixed(0)}</td>
-                    <td class="val-main">${pLast.toFixed(0)}</td>
+                    <td class="val-bnb">${p1.toFixed(0)}</td>
+                    <td class="val-bnb">${pLast.toFixed(0)}</td>
                     <td id="status_${idx}">-</td>
                 </tr>`;
         });
 
-        // Validate Gaps
-        results.forEach((res, i) => {
-            if(i < results.length - 1) {
+        // Ladder Validation
+        calculatedPrizes.forEach((res, i) => {
+            if(i < calculatedPrizes.length - 1) {
                 const status = document.getElementById(`status_${i}`);
-                if(res.pLast > results[i+1].p1) {
-                    status.innerHTML = '<span class="gap-tag tag-ok">✓ LADDER OK</span>';
+                if(res.pLast > calculatedPrizes[i+1].p1) {
+                    status.innerHTML = '<span class="gap-tag tag-ok">LADDER OK</span>';
                 } else {
-                    status.innerHTML = '<span class="gap-tag tag-fail">⚠ INCREASE MULTI</span>';
+                    status.innerHTML = '<span class="gap-tag tag-fail">FIX MULTI</span>';
                 }
             }
         });
+
+        drawChart(chartData);
+    }
+
+    function drawChart(points) {
+        const canvas = document.getElementById('curveChart');
+        const ctx = canvas.getContext('2d');
+        canvas.width = canvas.offsetWidth;
+        canvas.height = canvas.offsetHeight;
+        
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        if(points.length < 2) return;
+
+        const maxVal = Math.max(...points.map(p => p.val));
+        const padding = 20;
+
+        ctx.strokeStyle = '#00ffcc';
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+
+        points.forEach((p, i) => {
+            const x = padding + (i / (points.length - 1)) * (canvas.width - padding*2);
+            const y = (canvas.height - padding) - (p.val / maxVal) * (canvas.height - padding*2);
+            if(i === 0) ctx.moveTo(x, y);
+            else ctx.lineTo(x, y);
+
+            if(p.isBreak) {
+                ctx.fillStyle = '#b300ff';
+                ctx.beginPath(); ctx.arc(x, y, 4, 0, 7); ctx.fill();
+                ctx.beginPath(); ctx.moveTo(x, y);
+            }
+        });
+        ctx.stroke();
     }
 
     function updateTier(idx, field, val) {
@@ -157,17 +222,15 @@
     }
 
     function saveAll() {
-        db.ref('payout_config/ranges').set(ranges).then(() => {
-            alert("All 5 Range Rulebooks Saved!");
+        db.ref('payout_config/v2_ranges').set(ranges).then(() => {
+            alert("ALL RANGES SAVED TO BLOCKCHAIN-READY CONFIG");
         });
     }
 
     window.onload = () => {
-        db.ref('payout_config/ranges').once('value', snap => {
-            if(snap.val()) {
-                ranges = snap.val();
-                render();
-            }
+        db.ref('payout_config/v2_ranges').once('value', snap => {
+            if(snap.val()) ranges = snap.val();
+            render();
         });
     };
 </script>
