@@ -1,60 +1,149 @@
 <!DOCTYPE html>
 <html lang="en">
-<head><title>Brain | Funding Page</title></head>
-<body style="background:#0b0e14; color:white; font-family:sans-serif; padding:40px;">
-    <h1>🧠 Funding Brain</h1>
-    <p>This page handles the waterfall math and mirrors it to the Sponsor Center.</p>
-    <div id="status" style="color:#00ffcc">Syncing...</div>
-
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SANRAT | Funding Master</title>
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-database-compat.js"></script>
-    <script>
-        const firebaseConfig = { databaseURL: "https://nuclearf1-94a6b-default-rtdb.asia-southeast1.firebasedatabase.app" };
-        firebase.initializeApp(firebaseConfig);
-        const db = firebase.database();
+    <style>
+        :root { --accent: #00ffcc; --bg: #0b0e14; --card: #161b22; --border: #30363d; --danger: #ff4b2b; }
+        body { background: var(--bg); color: white; font-family: 'Inter', sans-serif; padding: 20px; }
+        .container { max-width: 900px; margin: 0 auto; }
+        .card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 25px; margin-bottom: 20px; }
+        h1 { color: var(--accent); font-size: 1.2rem; text-transform: uppercase; margin: 0 0 20px 0; letter-spacing: 2px; }
+        
+        .input-group { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 20px; }
+        label { display: block; font-size: 0.7rem; color: #8b949e; text-transform: uppercase; margin-bottom: 8px; font-weight: 800; }
+        input { width: 100%; background: #0d1117; border: 1px solid var(--border); color: var(--accent); padding: 12px; border-radius: 8px; font-weight: 900; outline: none; box-sizing: border-box; }
+        
+        .btn { width: 100%; padding: 15px; border-radius: 8px; font-weight: 900; cursor: pointer; border: none; text-transform: uppercase; transition: 0.2s; }
+        .btn-inject { background: var(--accent); color: #0b0e14; }
+        .btn-inject:hover { transform: translateY(-2px); filter: brightness(1.1); }
+        
+        .status-box { font-family: monospace; font-size: 0.8rem; padding: 10px; background: #000; border-radius: 5px; border: 1px solid #333; margin-top: 10px; }
+        #log { color: #8b949e; max-height: 100px; overflow-y: auto; }
+    </style>
+</head>
+<body>
 
-        let treasury = { normal: 0, boost: 0 };
-        let policy = { wk_min: 1000, wk_max: 5000, sea_min: 5000, sea_max: 20000, con_min: 2000, con_max: 10000 };
-        let currentRound = 1;
+<div class="container">
+    <div class="card">
+        <h1>💰 Treasury Injection</h1>
+        <div class="input-group">
+            <div>
+                <label>Add to Normal (N)</label>
+                <input type="number" id="inject_n" placeholder="0">
+            </div>
+            <div>
+                <label>Add to Boost (B)</label>
+                <input type="number" id="inject_b" placeholder="0">
+            </div>
+        </div>
+        <button class="btn btn-inject" onclick="injectFunds()">Process Injection</button>
+        
+        <div class="status-box">
+            <div style="color: var(--accent)" id="sync_status">SYSTEM IDLE</div>
+            <div id="log">Waiting for input...</div>
+        </div>
+    </div>
+</div>
 
-        // Auto-recalculate whenever anything changes
-        function runWaterfall() {
-            let remNrm = treasury.normal;
-            let exportData = {};
+<script>
+    const firebaseConfig = { databaseURL: "https://nuclearf1-94a6b-default-rtdb.asia-southeast1.firebasedatabase.app" };
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
 
-            // 1. Fill MIN Rounds
-            for (let i = 1; i <= 12; i++) {
-                exportData[`round${i}`] = { n: 0, b: 0 };
-                if (i >= currentRound) {
-                    let take = Math.min(remNrm, policy.wk_min);
-                    exportData[`round${i}`].n = take; remNrm -= take;
-                }
+    let treasury = { normal: 0, boost: 0 };
+    let policy = { wk_min: 0, wk_max: 0, sea_min: 0, sea_max: 0, con_min: 0, con_max: 0 };
+    let currentRound = 1;
+
+    // --- 1. DATA SYNC ---
+    db.ref('treasury').on('value', snap => {
+        treasury = snap.val() || { normal: 0, boost: 0 };
+        runWaterfall();
+    });
+
+    db.ref('policy').on('value', snap => {
+        if (snap.val()) {
+            policy = snap.val();
+            runWaterfall();
+        }
+    });
+
+    db.ref('race_state/round').on('value', snap => {
+        currentRound = snap.val() || 1;
+        runWaterfall();
+    });
+
+    // --- 2. WATERFALL ENGINE ---
+    function runWaterfall() {
+        let remNrm = treasury.normal;
+        let fundingExport = {};
+
+        // PASS 1: Fill Active Rounds to MIN
+        for (let i = 1; i <= 12; i++) {
+            fundingExport[`round${i}`] = { n: 0, b: 0 };
+            if (i >= currentRound) {
+                let take = Math.min(remNrm, policy.wk_min || 0);
+                fundingExport[`round${i}`].n = take;
+                remNrm -= take;
             }
-            // 2. Fill Specials to MAX
-            let sN = Math.min(remNrm, policy.sea_max); exportData['season_pool'] = { n: sN, b: 0 }; remNrm -= sN;
-            let cN = Math.min(remNrm, policy.con_max); exportData['constructor_pool'] = { n: cN, b: 0 }; remNrm -= cN;
-
-            // 3. Top up Rounds to MAX
-            for (let i = currentRound; i <= 12; i++) {
-                let space = policy.wk_max - exportData[`round${i}`].n;
-                let take = Math.min(remNrm, space); exportData[`round${i}`].n += take; remNrm -= take;
-            }
-
-            // 4. Distribute Boost
-            const divisor = Math.max(0, 12 - currentRound + 1) + 2;
-            const bShare = treasury.boost / divisor;
-            for (let i = currentRound; i <= 12; i++) exportData[`round${i}`].b = bShare;
-            exportData['season_pool'].b = bShare; exportData['constructor_pool'].b = bShare;
-
-            if (remNrm > 0) exportData['overflow'] = { n: remNrm, b: 0 };
-
-            db.ref('funding').set(exportData);
-            document.getElementById('status').innerText = "Last Math Run: " + new Date().toLocaleTimeString();
         }
 
-        db.ref('treasury').on('value', snap => { treasury = snap.val() || {normal:0, boost:0}; runWaterfall(); });
-        db.ref('policy').on('value', snap => { if(snap.val()) policy = snap.val(); runWaterfall(); });
-        db.ref('race_state/round').on('value', snap => { currentRound = snap.val() || 1; runWaterfall(); });
-    </script>
+        // PASS 2: Fill Special Pools to MAX (As requested in your logic)
+        let sN = Math.min(remNrm, policy.sea_max || 0);
+        fundingExport['season_pool'] = { n: sN, b: 0 };
+        remNrm -= sN;
+
+        let cN = Math.min(remNrm, policy.con_max || 0);
+        fundingExport['constructor_pool'] = { n: cN, b: 0 };
+        remNrm -= cN;
+
+        // PASS 3: Top up Active Rounds to MAX
+        for (let i = currentRound; i <= 12; i++) {
+            let currentN = fundingExport[`round${i}`].n;
+            let space = (policy.wk_max || 0) - currentN;
+            let take = Math.max(0, Math.min(remNrm, space));
+            fundingExport[`round${i}`].n += take;
+            remNrm -= take;
+        }
+
+        // BOOST SPLIT: Divide among active rounds + 2 pools
+        const activeCount = Math.max(0, 12 - currentRound + 1) + 2;
+        const bShare = treasury.boost / activeCount;
+
+        for (let i = currentRound; i <= 12; i++) { fundingExport[`round${i}`].b = bShare; }
+        fundingExport['season_pool'].b = bShare;
+        fundingExport['constructor_pool'].b = bShare;
+
+        // OVERFLOW
+        fundingExport['overflow'] = { n: Math.max(0, remNrm), b: 0 };
+
+        // PUSH TO MIRROR
+        db.ref('funding').set(fundingExport);
+        document.getElementById('sync_status').innerText = "● MIRROR SYNCED: " + new Date().toLocaleTimeString();
+    }
+
+    // --- 3. INJECTION LOGIC ---
+    function injectFunds() {
+        const nAdd = parseInt(document.getElementById('inject_n').value) || 0;
+        const bAdd = parseInt(document.getElementById('inject_b').value) || 0;
+
+        if (nAdd === 0 && bAdd === 0) return;
+
+        const newTreasury = {
+            normal: treasury.normal + nAdd,
+            boost: treasury.boost + bAdd
+        };
+
+        db.ref('treasury').set(newTreasury).then(() => {
+            const log = document.getElementById('log');
+            log.innerHTML = `<div>[${new Date().toLocaleTimeString()}] Injected: N+${nAdd}, B+${bAdd}</div>` + log.innerHTML;
+            document.getElementById('inject_n').value = '';
+            document.getElementById('inject_b').value = '';
+        });
+    }
+</script>
 </body>
 </html>
