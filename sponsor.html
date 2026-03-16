@@ -6,7 +6,7 @@
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-database-compat.js"></script>
     <style>
-        :root { --accent: #00ffcc; --bg: #0b0e14; --card: #161b22; --border: #30363d; --boost: #b300ff; }
+        :root { --accent: #00ffcc; --bg: #0b0e14; --card: #161b22; --border: #30363d; --boost: #b300ff; --danger: #ff4b2b; }
         body { background: var(--bg); color: white; font-family: 'Inter', sans-serif; padding: 20px; }
         .header { display: flex; justify-content: space-between; border-bottom: 1px solid var(--border); padding-bottom: 20px; margin-bottom: 30px; }
         .vault-stats { display: flex; gap: 20px; background: rgba(0, 255, 204, 0.05); padding: 10px 20px; border-radius: 10px; border: 1px solid var(--border); }
@@ -14,10 +14,12 @@
         .p-card { background: var(--card); padding: 20px; border-radius: 12px; border: 1px solid var(--border); }
         .input-pair { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 10px; }
         input { background: #0d1117; border: 1px solid var(--border); color: var(--accent); padding: 10px; border-radius: 6px; width: 100%; box-sizing: border-box; font-weight: bold; }
-        .bucket-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 12px; }
-        .b-card { background: var(--card); border: 1px solid var(--border); padding: 15px; border-radius: 8px; }
+        .bucket-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 12px; }
+        .b-card { background: var(--card); border: 1px solid var(--border); padding: 15px; border-radius: 8px; position: relative; }
         .b-val { font-size: 1.4rem; font-family: monospace; font-weight: 900; margin: 5px 0; }
         .b-sub { font-size: 0.6rem; color: #555; display: flex; justify-content: space-between; border-top: 1px solid #222; padding-top: 5px; }
+        .btn-wipe { background: transparent; border: 1px solid var(--danger); color: var(--danger); padding: 10px 20px; border-radius: 6px; font-weight: 900; cursor: pointer; margin-top: 30px; transition: 0.2s; }
+        .btn-wipe:hover { background: var(--danger); color: white; }
     </style>
 </head>
 <body>
@@ -48,16 +50,22 @@
 
 <div id="sponsor_grid" class="bucket-grid"></div>
 
+<button class="btn-wipe" onclick="wipeAll()">WIPE ALL TREASURY</button>
+
 <script>
     const firebaseConfig = { databaseURL: "https://nuclearf1-94a6b-default-rtdb.asia-southeast1.firebasedatabase.app" };
     firebase.initializeApp(firebaseConfig);
     const db = firebase.database();
 
+    let round = 1;
+
+    db.ref('race_state/round').on('value', snap => { round = snap.val() || 1; });
+
     db.ref('treasury').on('value', snap => {
         const t = snap.val() || {normal:0, boost:0};
-        document.getElementById('h_n').innerText = t.normal.toFixed(0);
-        document.getElementById('h_b').innerText = t.boost.toFixed(0);
-        document.getElementById('h_t').innerText = (t.normal + t.boost).toFixed(0);
+        document.getElementById('h_n').innerText = t.normal.toLocaleString();
+        document.getElementById('h_b').innerText = t.boost.toLocaleString();
+        document.getElementById('h_t').innerText = (t.normal + t.boost).toLocaleString();
     });
 
     db.ref('policy').on('value', snap => {
@@ -70,25 +78,40 @@
     db.ref('funding').on('value', snap => {
         const data = snap.val() || {};
         const g = document.getElementById('sponsor_grid'); g.innerHTML = '';
-        const p = { wk_max: document.getElementById('wk_max').value, sea_max: document.getElementById('sea_max').value, con_max: document.getElementById('con_max').value };
+        const wk_m = document.getElementById('wk_max').value;
+        const sea_m = document.getElementById('sea_max').value;
+        const con_m = document.getElementById('con_max').value;
         
-        for(let i=1; i<=12; i++) renderBucket(g, `ROUND ${i}`, data[`round${i}`], p.wk_max);
-        renderBucket(g, "SEASON POOL", data.season_pool, p.sea_max);
-        renderBucket(g, "CONSTRUCTOR", data.constructor_pool, p.con_max);
+        for(let i=1; i<=12; i++) {
+            let opacity = i < round ? 'opacity:0.3; filter:grayscale(1)' : '';
+            renderBucket(g, `ROUND ${i}`, data[`round${i}`], wk_m, opacity);
+        }
+        renderBucket(g, "SEASON POOL", data.season_pool, sea_m, 'border-color:var(--boost)');
+        renderBucket(g, "CONSTRUCTOR", data.constructor_pool, con_m, 'border-color:var(--boost)');
+        if(data.overflow?.n > 0) renderBucket(g, "OVERFLOW", data.overflow, "∞", "");
     });
 
-    function renderBucket(c, l, d, m) {
+    function renderBucket(c, l, d, m, style) {
         const n = d?.n || 0, b = d?.b || 0;
-        c.innerHTML += `<div class="b-card"><div style="font-size:0.6rem; color:#8b949e">${l}</div><div class="b-val">${m} : <span style="color:var(--accent)">${(n+b).toFixed(0)}</span></div><div class="b-sub"><span>N: ${n.toFixed(0)}</span><span>B: +${b.toFixed(0)}</span></div></div>`;
+        c.innerHTML += `<div class="b-card" style="${style}"><div style="font-size:0.6rem; color:#8b949e">${l}</div><div class="b-val">${m} : <span style="color:var(--accent)">${(n+b).toFixed(0)}</span></div><div class="b-sub"><span>N: ${n.toFixed(0)}</span><span>B: +${b.toFixed(0)}</span></div></div>`;
     }
 
     function up() {
-        const p = {
-            wk_min: parseInt(document.getElementById('wk_min').value), wk_max: parseInt(document.getElementById('wk_max').value),
-            sea_min: parseInt(document.getElementById('sea_min').value), sea_max: parseInt(document.getElementById('sea_max').value),
-            con_min: parseInt(document.getElementById('con_min').value), con_max: parseInt(document.getElementById('con_max').value)
-        };
-        db.ref('policy').set(p);
+        db.ref('policy').set({
+            wk_min: parseInt(document.getElementById('wk_min').value) || 0,
+            wk_max: parseInt(document.getElementById('wk_max').value) || 0,
+            sea_min: parseInt(document.getElementById('sea_min').value) || 0,
+            sea_max: parseInt(document.getElementById('sea_max').value) || 0,
+            con_min: parseInt(document.getElementById('con_min').value) || 0,
+            con_max: parseInt(document.getElementById('con_max').value) || 0
+        });
+    }
+
+    function wipeAll() {
+        if(confirm("DANGER: This will wipe the treasury to 0. Continue?")) {
+            db.ref('treasury').set({ normal: 0, boost: 0 });
+            db.ref('funding').set({});
+        }
     }
 </script>
 </body>
