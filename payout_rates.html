@@ -2,162 +2,163 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Payout Policy | SANRAT</title>
+    <title>Payout Economy Simulator | SANRAT</title>
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-database-compat.js"></script>
     <style>
-        :root { --accent: #00ffcc; --bg: #0b0e14; --card: #161b22; --border: #30363d; --warning: #f1c40f; }
+        :root { --accent: #00ffcc; --bg: #0b0e14; --card: #161b22; --border: #30363d; --boost: #b300ff; --danger: #ff4b2b; }
         body { background: var(--bg); color: white; font-family: 'Inter', sans-serif; padding: 20px; }
-        .container { max-width: 1000px; margin: 0 auto; }
         
-        .header { border-bottom: 1px solid var(--border); padding-bottom: 20px; margin-bottom: 30px; display: flex; justify-content: space-between; align-items: center; }
-        h1 { color: var(--accent); font-size: 1.4rem; text-transform: uppercase; letter-spacing: 2px; }
+        .setup-bar { background: var(--card); border: 1px solid var(--border); padding: 20px; border-radius: 12px; margin-bottom: 25px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }
+        .setup-item label { display: block; font-size: 0.6rem; color: #8b949e; margin-bottom: 8px; text-transform: uppercase; font-weight: 800; }
+        .setup-item input { width: 100%; background: #0d1117; border: 1px solid var(--border); color: var(--accent); padding: 12px; border-radius: 6px; box-sizing: border-box; font-family: monospace; font-size: 1.1rem; }
 
-        .tier-section { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 20px; margin-bottom: 30px; }
-        .tier-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; border-bottom: 1px solid #222; padding-bottom: 10px; }
-        .tier-title { color: var(--accent); font-weight: 900; text-transform: uppercase; font-size: 0.9rem; }
+        table { width: 100%; border-collapse: collapse; background: var(--card); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; margin-bottom: 30px; }
+        th { background: rgba(0,255,204,0.05); text-align: left; padding: 15px; font-size: 0.7rem; color: #8b949e; text-transform: uppercase; border-bottom: 1px solid var(--border); }
+        td { padding: 15px; border-bottom: 1px solid rgba(255,255,255,0.02); }
         
-        table { width: 100%; border-collapse: collapse; margin-top: 10px; }
-        th { text-align: left; font-size: 0.6rem; color: #8b949e; text-transform: uppercase; padding: 10px; border-bottom: 1px solid var(--border); }
-        td { padding: 8px; border-bottom: 1px solid rgba(255,255,255,0.02); }
+        .tier-name { font-weight: 900; letter-spacing: 1px; }
+        .tier-input { background: #0d1117; border: 1px solid var(--border); color: white; padding: 8px; border-radius: 4px; width: 80px; text-align: center; }
+        .gap-status { font-size: 0.65rem; font-weight: 800; padding: 4px 8px; border-radius: 4px; }
+        .gap-ok { background: rgba(0, 255, 204, 0.1); color: var(--accent); }
+        .gap-fail { background: rgba(255, 75, 43, 0.1); color: var(--danger); }
         
-        .rank-label { font-family: monospace; font-weight: bold; color: #8b949e; width: 100px; }
-        input { background: #0d1117; border: 1px solid var(--border); color: var(--accent); padding: 8px; border-radius: 4px; width: 80px; font-weight: bold; text-align: center; outline: none; }
-        input:focus { border-color: var(--accent); }
-
-        .checksum { font-size: 0.7rem; font-weight: 800; }
-        .valid { color: var(--accent); }
-        .invalid { color: #ff4b2b; }
-
-        .btn-save { background: var(--accent); color: black; border: none; padding: 15px 40px; border-radius: 8px; font-weight: 900; cursor: pointer; text-transform: uppercase; width: 100%; transition: 0.2s; }
-        .btn-save:hover { filter: brightness(1.1); transform: translateY(-2px); }
+        .val-large { font-family: monospace; font-weight: bold; color: var(--accent); }
+        .val-sub { font-size: 0.7rem; color: #555; }
+        
+        .btn-save { background: var(--accent); color: black; border: none; padding: 20px; border-radius: 8px; font-weight: 900; cursor: pointer; width: 100%; text-transform: uppercase; }
     </style>
 </head>
 <body>
 
-<div class="container">
-    <div class="header">
-        <h1>📊 Payout Percentage Editor</h1>
-        <div id="status" style="font-size: 0.7rem; color: #555;">READY</div>
-    </div>
+<h1>📈 Payout Economy Simulator</h1>
 
-    <div class="tier-section" id="section_tier1">
-        <div class="tier-header">
-            <div class="tier-title">Tier A: Small Grid (Top 5 Payout)</div>
-            <div class="checksum" id="check_tier1">Total: 0%</div>
-        </div>
-        <table id="table_tier1">
-            <thead><tr><th>Ranking</th><th>% of Prize Pool</th></tr></thead>
-            <tbody id="body_tier1"></tbody>
-        </table>
+<div class="setup-bar">
+    <div class="setup-item">
+        <label>Total Round Pool (TBNB)</label>
+        <input type="number" id="sim_pool" value="100000" oninput="simulate()">
     </div>
-
-    <div class="tier-section" id="section_tier2">
-        <div class="tier-header">
-            <div class="tier-title">Tier B: Mid Grid (Top 10 Payout)</div>
-            <div class="checksum" id="check_tier2">Total: 0%</div>
-        </div>
-        <table id="table_tier2">
-            <thead><tr><th>Ranking</th><th>% of Prize Pool</th></tr></thead>
-            <tbody id="body_tier2"></tbody>
-        </table>
+    <div class="setup-item">
+        <label>Total Cars in Round</label>
+        <input type="number" id="sim_cars" value="10000" oninput="simulate()">
     </div>
-
-    <div class="tier-section" id="section_tier3">
-        <div class="tier-header">
-            <div class="tier-title">Tier C: Full Grid (Top 15 Payout)</div>
-            <div class="checksum" id="check_tier3">Total: 0%</div>
-        </div>
-        <table id="table_tier3">
-            <thead><tr><th>Ranking</th><th>% of Prize Pool</th></tr></thead>
-            <tbody id="body_tier3"></tbody>
-        </table>
+    <div class="setup-item">
+        <label>Decay Factor (k)</label>
+        <input type="number" id="sim_k" value="0.75" step="0.05" oninput="simulate()">
     </div>
-
-    <button class="btn-save" onclick="savePolicies()">Save Payout Structures</button>
 </div>
+
+<table>
+    <thead>
+        <tr>
+            <th>Tier Name</th>
+            <th>Field Split (%)</th>
+            <th>Pot Multiplier</th>
+            <th>Payout Depth (%)</th>
+            <th>P1 Winner (TBNB)</th>
+            <th>P-Last Floor (TBNB)</th>
+            <th>Ladder Status</th>
+        </tr>
+    </thead>
+    <tbody id="tier_body">
+        </tbody>
+</table>
+
+<button class="btn-save" onclick="saveEconomy()">Save Economy Structure</button>
 
 <script>
     const firebaseConfig = { databaseURL: "https://nuclearf1-94a6b-default-rtdb.asia-southeast1.firebasedatabase.app" };
     firebase.initializeApp(firebaseConfig);
     const db = firebase.database();
 
-    const config = [
-        { id: 'tier1', label: 'Small', ranks: 5 },
-        { id: 'tier2', label: 'Mid', ranks: 10 },
-        { id: 'tier3', label: 'Full', ranks: 15 }
+    // The Tier Structure
+    let tiers = [
+        { id: 'diamond', name: 'Diamond', split: 5, mult: 12.0, depth: 50 },
+        { id: 'platinum', name: 'Platinum', split: 15, mult: 5.0, depth: 30 },
+        { id: 'gold', name: 'Gold', split: 30, mult: 2.2, depth: 20 },
+        { id: 'silver', name: 'Silver', split: 40, mult: 1.0, depth: 10 },
+        { id: 'bronze', name: 'Bronze', split: 10, mult: 0.5, depth: 5 }
     ];
 
-    window.onload = () => {
-        // Initialize tables
-        config.forEach(tier => {
-            const container = document.getElementById(`body_${tier.id}`);
-            for(let i=1; i<=tier.ranks; i++) {
-                container.innerHTML += `
-                    <tr>
-                        <td class="rank-label">P${i}</td>
-                        <td><input type="number" step="0.1" class="in-${tier.id}" data-rank="${i}" oninput="validate('${tier.id}')" value="0"> %</td>
-                    </tr>`;
+    function simulate() {
+        const pool = parseFloat(document.getElementById('sim_pool').value) || 0;
+        const totalCars = parseFloat(document.getElementById('sim_cars').value) || 0;
+        const k = parseFloat(document.getElementById('sim_k').value) || 0.75;
+        
+        const container = document.getElementById('tier_body');
+        container.innerHTML = '';
+
+        let lastCeiling = 0;
+
+        tiers.forEach((tier, idx) => {
+            const carsInTier = Math.floor(totalCars * (tier.split / 100));
+            const paidDepth = Math.max(1, Math.floor(carsInTier * (tier.depth / 100)));
+            
+            // Calculate Tier Pot based on Multiplier weight
+            // This is a simplified version for simulation preview
+            const tierPot = (pool * (tier.split / 100) * tier.mult) / 2.5; // Normalized weight
+
+            // Exponential Decay Math
+            let harmonicSum = 0;
+            for(let i=1; i<=paidDepth; i++) harmonicSum += Math.pow(i, -k);
+            
+            const p1 = (Math.pow(1, -k) / harmonicSum) * tierPot;
+            const pLast = (Math.pow(paidDepth, -k) / harmonicSum) * tierPot;
+
+            // Check Ladder Gap (Current Floor vs Next Tier Ceiling)
+            let statusHtml = '';
+            if (idx > 0) {
+                // We compare THIS P1 vs PREVIOUS P-Last
+                // (Logic: Previous Higher Tier Last Place > Current Winner)
+            }
+
+            container.innerHTML += `
+                <tr id="row_${tier.id}">
+                    <td class="tier-name">${tier.name}</td>
+                    <td><input type="number" class="tier-input" value="${tier.split}" onchange="updateTier('${tier.id}', 'split', this.value)"> %</td>
+                    <td><input type="number" class="tier-input" value="${tier.mult}" onchange="updateTier('${tier.id}', 'mult', this.value)"> x</td>
+                    <td><input type="number" class="tier-input" value="${tier.depth}" onchange="updateTier('${tier.id}', 'depth', this.value)"> %</td>
+                    <td class="val-large">${p1.toFixed(0)} <div class="val-sub">TBNB</div></td>
+                    <td class="val-large" id="floor_${tier.id}">${pLast.toFixed(0)} <div class="val-sub">TBNB</div></td>
+                    <td id="status_${tier.id}">-</td>
+                </tr>
+            `;
+            
+            tier.p1 = p1;
+            tier.pLast = pLast;
+        });
+
+        // Update Gap Statuses
+        tiers.forEach((tier, idx) => {
+            if (idx < tiers.length - 1) {
+                const currentFloor = tier.pLast;
+                const nextWinner = tiers[idx+1].p1;
+                const statusBox = document.getElementById(`status_${tier.id}`);
+                
+                if (currentFloor > nextWinner) {
+                    statusBox.innerHTML = `<span class="gap-status gap-ok">✓ FLOOR > NEXT P1</span>`;
+                } else {
+                    statusBox.innerHTML = `<span class="gap-status gap-fail">⚠ INCREASE MULTIPLIER</span>`;
+                }
             }
         });
-
-        // Load existing data
-        db.ref('payout_rates').once('value', snap => {
-            const val = snap.val();
-            if(val) {
-                config.forEach(tier => {
-                    if(val[tier.id]) {
-                        Object.keys(val[tier.id]).forEach(rank => {
-                            const input = document.querySelector(`.in-${tier.id}[data-rank="${rank}"]`);
-                            if(input) input.value = val[tier.id][rank];
-                        });
-                        validate(tier.id);
-                    }
-                });
-            }
-        });
-    };
-
-    function validate(tierId) {
-        const inputs = document.querySelectorAll(`.in-${tierId}`);
-        let total = 0;
-        inputs.forEach(i => total += parseFloat(i.value || 0));
-        
-        const display = document.getElementById(`check_${tierId}`);
-        display.innerText = `Total: ${total.toFixed(1)}%`;
-        
-        if(total === 100) {
-            display.className = "checksum valid";
-        } else {
-            display.className = "checksum invalid";
-        }
-        return total;
     }
 
-    function savePolicies() {
-        const data = {};
-        let allValid = true;
-
-        config.forEach(tier => {
-            const tierTotal = validate(tier.id);
-            if(tierTotal !== 100) allValid = false;
-
-            data[tier.id] = {};
-            const inputs = document.querySelectorAll(`.in-${tier.id}`);
-            inputs.forEach(i => {
-                data[tier.id][i.getAttribute('data-rank')] = parseFloat(i.value || 0);
-            });
-        });
-
-        if(!allValid) {
-            if(!confirm("One or more tiers do not equal 100%. Save anyway?")) return;
-        }
-
-        db.ref('payout_rates').set(data).then(() => {
-            document.getElementById('status').innerText = "LAST SAVED: " + new Date().toLocaleTimeString();
-            alert("Payout Policies Synchronized.");
-        });
+    function updateTier(id, field, value) {
+        const tier = tiers.find(t => t.id === id);
+        tier[field] = parseFloat(value);
+        simulate();
     }
+
+    function saveEconomy() {
+        db.ref('payout_rates/v2_structure').set({
+            tiers: tiers,
+            decay_k: parseFloat(document.getElementById('sim_k').value),
+            last_updated: Date.now()
+        }).then(() => alert("Economy Structure Saved & Synchronized!"));
+    }
+
+    window.onload = simulate;
 </script>
 </body>
 </html>
