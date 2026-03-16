@@ -2,136 +2,175 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>SANRAT | Exponential Economy v3</title>
+    <title>SANRAT | Live Economy Dashboard</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-database-compat.js"></script>
     <style>
         :root { --accent: #00ffcc; --bg: #0b0e14; --card: #161b22; --border: #30363d; --dim: #8b949e; }
-        body { background: var(--bg); color: white; font-family: 'Inter', sans-serif; padding: 30px; margin: 0; }
+        body { background: var(--bg); color: white; font-family: 'Inter', sans-serif; padding: 20px; }
         
-        .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 20px; }
-        .card { background: var(--card); border: 1px solid var(--border); padding: 15px; border-radius: 12px; }
-        label { display: block; font-size: 0.6rem; color: var(--dim); text-transform: uppercase; margin-bottom: 8px; font-weight: 800; }
-        input { width: 100%; background: #0d1117; border: 1px solid var(--border); color: var(--accent); padding: 10px; border-radius: 6px; box-sizing: border-box; font-family: monospace; font-size: 1.1rem; outline: none; }
-        
-        /* Toggle Switch */
-        .switch-group { display: flex; align-items: center; gap: 10px; margin-bottom: 20px; background: var(--card); padding: 15px; border-radius: 12px; border: 1px solid var(--border); }
-        .switch { position: relative; display: inline-block; width: 40px; height: 20px; }
-        .switch input { opacity: 0; width: 0; height: 0; }
-        .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #333; transition: .4s; border-radius: 20px; }
-        .slider:before { position: absolute; content: ""; height: 14px; width: 14px; left: 3px; bottom: 3px; background-color: white; transition: .4s; border-radius: 50%; }
-        input:checked + .slider { background-color: var(--accent); }
-        input:checked + .slider:before { transform: translateX(20px); }
+        .mode-selector { display: flex; gap: 10px; margin-bottom: 20px; }
+        .mode-btn { background: var(--card); border: 1px solid var(--border); color: var(--dim); padding: 10px 20px; border-radius: 8px; cursor: pointer; font-weight: 800; }
+        .mode-btn.active { border-color: var(--accent); color: var(--accent); background: rgba(0,255,204,0.05); }
 
-        .chart-container { background: var(--card); border: 1px solid var(--border); padding: 20px; border-radius: 12px; height: 300px; margin-bottom: 20px; }
+        .stats-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; margin-bottom: 20px; }
+        .stat-card { background: var(--card); border: 1px solid var(--border); padding: 15px; border-radius: 12px; }
+        .stat-card label { display: block; font-size: 0.6rem; color: var(--dim); text-transform: uppercase; margin-bottom: 5px; font-weight: 800; }
+        .live-val { font-size: 1.4rem; font-weight: 900; color: white; }
         
+        .control-card { background: #1c2128; border: 1px solid var(--accent); padding: 20px; border-radius: 12px; margin-bottom: 20px; }
+        .control-card input { width: 100%; background: #0d1117; border: 1px solid var(--border); color: var(--accent); padding: 12px; border-radius: 8px; font-size: 1.5rem; text-align: center; font-family: monospace; }
+
+        .chart-container { background: var(--card); border: 1px solid var(--border); padding: 20px; border-radius: 12px; height: 280px; margin-bottom: 20px; }
         table { width: 100%; border-collapse: collapse; background: var(--card); border-radius: 12px; overflow: hidden; border: 1px solid var(--border); }
         th { background: rgba(255,255,255,0.03); text-align: left; padding: 12px; font-size: 0.65rem; color: var(--dim); text-transform: uppercase; }
         td { padding: 12px; border-bottom: 1px solid rgba(255,255,255,0.02); font-family: monospace; }
         
-        .tier-tag { padding: 4px 8px; border-radius: 4px; font-size: 0.7rem; font-weight: 800; text-transform: uppercase; }
-        .diamond { background: rgba(0, 255, 204, 0.1); color: var(--accent); }
-        .plat { background: rgba(179, 0, 255, 0.1); color: #b300ff; }
-        .gold { background: rgba(255, 215, 0, 0.1); color: #ffd700; }
-        .silver { background: rgba(255, 255, 255, 0.05); color: #fff; }
+        .tag { padding: 4px 8px; border-radius: 4px; font-size: 0.7rem; font-weight: 800; }
+        .opt-tag { color: var(--accent); border: 1px solid var(--accent); font-size: 0.6rem; margin-left: 10px; }
     </style>
 </head>
 <body>
 
-<div class="grid">
-    <div class="card">
-        <label>Total Cars (N)</label>
-        <input type="number" id="N" value="20" oninput="run()">
+<div class="mode-selector">
+    <button class="mode-btn active" onclick="setMode('round')">Round Payout</button>
+    <button class="mode-btn" onclick="setMode('season')">Season Payout</button>
+    <button class="mode-btn" onclick="setMode('constructor')">Constructor Payout</button>
+</div>
+
+<div class="stats-grid">
+    <div class="stat-card">
+        <label id="n_label">Total Cars (N)</label>
+        <div id="display_n" class="live-val">--</div>
     </div>
-    <div class="card">
-        <label>Total Pool (P)</label>
-        <input type="number" id="P" value="10000" oninput="run()">
+    <div class="stat-card">
+        <label id="p_label">Treasury Pool (P)</label>
+        <div id="display_p" class="live-val">-- <small style="font-size:0.8rem; color:var(--dim)">TBNB</small></div>
     </div>
-    <div class="card">
-        <label>Base Beta (β)</label>
-        <input type="number" id="beta" value="4.0" step="0.1" oninput="run()">
+    <div class="stat-card">
+        <label>Active Formula</label>
+        <div id="display_status" class="live-val" style="font-size: 0.9rem; color: var(--dim);">Standard</div>
     </div>
 </div>
 
-<div class="switch-group">
-    <label class="switch">
-        <input type="checkbox" id="small_race_toggle" onchange="run()" checked>
-        <span class="slider"></span>
-    </label>
-    <div style="font-size: 0.8rem; font-weight: bold;">Enable Small Race Optimization (Auto-Beta 1.5 if N < 20)</div>
+<div class="control-card">
+    <label>Adjust Base Beta (β) <span id="opt_msg"></span></label>
+    <input type="number" id="beta_input" value="4.0" step="0.1" oninput="runSimulation()">
 </div>
 
 <div class="chart-container">
     <canvas id="expChart"></canvas>
 </div>
 
-<table>
+<table id="payout_table">
     <thead>
-        <tr>
-            <th>Rank</th>
-            <th>Tier</th>
-            <th>Payout (TBNB)</th>
-            <th>% of Pot</th>
-        </tr>
+        <tr><th>Rank</th><th>Tier</th><th>Prize</th><th>%</th></tr>
     </thead>
     <tbody id="payout_list"></tbody>
 </table>
 
 <script>
+    // Firebase Config
+    const firebaseConfig = { databaseURL: "https://nuclearf1-94a6b-default-rtdb.asia-southeast1.firebasedatabase.app" };
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+
     let chart;
+    let currentMode = 'round';
+    let liveData = { n: 0, p: 0 };
 
-    function run() {
-        const N = parseInt(document.getElementById('N').value) || 1;
-        const P = parseFloat(document.getElementById('P').value) || 0;
-        let beta = parseFloat(document.getElementById('beta').value) || 0.1;
-        const useSmartBeta = document.getElementById('small_race_toggle').checked;
+    function setMode(mode) {
+        currentMode = mode;
+        document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('active'));
+        event.target.classList.add('active');
+        fetchLiveData();
+    }
 
-        // Apply Toggle Logic
-        if (N < 20 && useSmartBeta) {
-            beta = 1.5; 
+    async function fetchLiveData() {
+        let nPath, pPath;
+        
+        if (currentMode === 'round') {
+            nPath = 'race_stats/day7/total_cars'; // Link to end of day 7
+            pPath = 'funding/round_fund';
+            document.getElementById('n_label').innerText = "Round Cars (Day 7)";
+        } else if (currentMode === 'season') {
+            nPath = 'season_stats/cars_with_points'; // Link to cars with points
+            pPath = 'funding/season_fund';
+            document.getElementById('n_label').innerText = "Season Cars w/ Points";
+        } else {
+            nPath = 'constructor_stats/teams_with_points'; // Link to teams with points
+            pPath = 'funding/constructor_fund';
+            document.getElementById('n_label').innerText = "Constructor Teams";
         }
+
+        const nSnap = await db.ref(nPath).once('value');
+        const pSnap = await db.ref(pPath).once('value');
+
+        liveData.n = nSnap.val() || 0;
+        liveData.p = pSnap.val() || 0;
+
+        document.getElementById('display_n').innerText = liveData.n;
+        document.getElementById('display_p').innerText = liveData.p.toLocaleString();
+        
+        runSimulation();
+    }
+
+    function runSimulation() {
+        const N = liveData.n;
+        const P = liveData.p;
+        let beta = parseFloat(document.getElementById('beta_input').value) || 4.0;
+        
+        // Always enable Small Race Optimization
+        const isSmallRace = N < 20;
+        if (isSmallRace) {
+            beta = 1.5;
+            document.getElementById('display_status').innerText = "Small Race (Auto-β)";
+            document.getElementById('opt_msg').innerHTML = '<span class="tag opt-tag">OPTIMIZED FOR N<20</span>';
+        } else {
+            document.getElementById('display_status').innerText = "Standard Exponential";
+            document.getElementById('opt_msg').innerHTML = '';
+        }
+
+        if (N === 0) return;
 
         const cutoff = Math.max(1, Math.floor(0.8 * N));
         const denomConst = 1 - Math.exp(-beta);
         
-        // 1. Calculate Alpha (Summing the exponential sequence)
         let sumPart = 0;
         for (let r = 1; r <= cutoff; r++) {
             sumPart += Math.exp(-beta * (r - 1) / N) / denomConst;
         }
         const alpha = N / sumPart;
 
-        // 2. Generate and Sort Payouts
         let payouts = [];
         for (let r = 1; r <= cutoff; r++) {
             const val = (P / N) * ((alpha * Math.exp(-beta * (r - 1) / N)) / denomConst);
             payouts.push({ rank: r, val: val });
         }
 
-        // 3. Render Table (Corrected Sorting)
+        renderTable(payouts, N, P);
+        updateChart(payouts);
+    }
+
+    function renderTable(payouts, N, P) {
         const list = document.getElementById('payout_list');
         list.innerHTML = '';
-        
-        // Show Top 20 or all if less than 20
-        const displayRows = payouts.slice(0, 20);
-        displayRows.forEach(item => {
-            let tierClass = 'silver';
-            let tierName = 'Silver';
-            const r = item.rank;
-
-            if (r <= N * 0.05) { tierClass = 'diamond'; tierName = 'Diamond'; }
-            else if (r <= N * 0.20) { tierClass = 'plat'; tierName = 'Platinum'; }
-            else if (r <= N * 0.50) { tierClass = 'gold'; tierName = 'Gold'; }
+        // Sorting is naturally rank-based from the loop
+        payouts.slice(0, 25).forEach(item => {
+            let tier = 'Silver';
+            if (item.rank <= N * 0.05) tier = 'Diamond';
+            else if (item.rank <= N * 0.20) tier = 'Platinum';
+            else if (item.rank <= N * 0.50) tier = 'Gold';
 
             list.innerHTML += `
                 <tr>
-                    <td>#${r}</td>
-                    <td><span class="tier-tag ${tierClass}">${tierName}</span></td>
-                    <td>${item.val.toFixed(4)}</td>
-                    <td>${((item.val / P) * 100).toFixed(2)}%</td>
+                    <td>#${item.rank}</td>
+                    <td><span class="tag">${tier}</span></td>
+                    <td>${item.val.toFixed(2)}</td>
+                    <td>${((item.val/P)*100).toFixed(1)}%</td>
                 </tr>`;
         });
-
-        updateChart(payouts);
     }
 
     function updateChart(data) {
@@ -142,12 +181,11 @@
             data: {
                 labels: data.map(d => d.rank),
                 datasets: [{
-                    label: 'Payout',
                     data: data.map(d => d.val),
                     borderColor: '#00ffcc',
                     backgroundColor: 'rgba(0, 255, 204, 0.1)',
                     fill: true,
-                    pointRadius: data.length < 50 ? 3 : 0,
+                    pointRadius: 0,
                     tension: 0.2
                 }]
             },
@@ -155,7 +193,7 @@
                 responsive: true,
                 maintainAspectRatio: false,
                 scales: {
-                    x: { grid: { color: '#30363d' }, ticks: { color: '#8b949e' } },
+                    x: { grid: { color: '#30363d' }, ticks: { display: false } },
                     y: { grid: { color: '#30363d' }, ticks: { color: '#8b949e' } }
                 },
                 plugins: { legend: { display: false } }
@@ -163,7 +201,7 @@
         });
     }
 
-    window.onload = run;
+    window.onload = fetchLiveData;
 </script>
 </body>
 </html>
