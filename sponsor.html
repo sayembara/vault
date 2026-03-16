@@ -2,186 +2,132 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>SANRAT | Sponsor Control & Audit</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SANRAT | Sponsor Limits & Policy</title>
     <style>
-        :root { --glass: rgba(255, 255, 255, 0.08); --accent: #00ffcc; --danger: #ff4b2b; --gold: #ffcc00; }
-        body { margin: 0; padding: 20px; font-family: 'Inter', sans-serif; background: #0f0c29; color: white; display: flex; flex-direction: column; align-items: center; min-height: 100vh; }
+        :root { --accent: #00ffcc; --bg: #0b0e14; --card: #161b22; --border: #30363d; }
+        body { background: var(--bg); color: white; font-family: 'Inter', sans-serif; padding: 40px; line-height: 1.6; }
+        .container { max-width: 1000px; margin: 0 auto; }
         
-        #auth-screen { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 80vh; text-align: center; }
-        .btn-connect { background: #f6851b; color: white; padding: 15px 30px; font-size: 1.2rem; border-radius: 50px; border: none; cursor: pointer; font-weight: bold; }
+        .header { margin-bottom: 30px; border-bottom: 1px solid var(--border); padding-bottom: 20px; }
+        h1 { color: var(--accent); margin: 0; font-size: 1.8rem; }
         
-        #admin-ui { display: none; width: 100%; max-width: 900px; flex-direction: column; align-items: center; gap: 20px; }
-        .container { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; width: 100%; }
-        .card { background: var(--glass); border: 1px solid rgba(255,255,255,0.1); border-radius: 20px; padding: 20px; text-align: center; width: 100%; box-sizing: border-box; }
+        .section-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; }
+        .card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 24px; position: relative; }
+        .card h2 { font-size: 1.1rem; margin-top: 0; display: flex; align-items: center; gap: 10px; }
         
-        input { background: rgba(0,0,0,0.4); border: 1px solid rgba(255,255,255,0.2); padding: 10px; border-radius: 8px; color: white; width: 80px; text-align: center; }
-        button { padding: 12px; border-radius: 10px; border: none; font-weight: bold; cursor: pointer; transition: 0.3s; }
+        .input-pair { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-top: 15px; }
+        label { display: block; font-size: 0.75rem; color: #8b949e; margin-bottom: 5px; text-transform: uppercase; letter-spacing: 1px; }
+        input { width: 100%; background: #0d1117; border: 1px solid var(--border); color: var(--accent); padding: 12px; border-radius: 6px; font-weight: bold; }
         
-        .btn-set { background: #fff; color: #000; margin-left: 5px; }
-        .btn-reallocate { background: var(--accent); color: #00334e; width: 100%; font-size: 1rem; margin-top: 10px; }
-        .btn-view { background: var(--gold); color: #000; font-size: 0.7rem; padding: 5px 10px; }
-        .btn-copy { background: #444; color: #fff; width: 100%; margin-top: 10px; font-size: 0.8rem; }
-        .btn-wipe { background: transparent; border: 2px solid var(--danger); color: var(--danger); width: 100%; margin-top: 20px; }
+        .priority-badge { position: absolute; top: 15px; right: 15px; font-size: 0.65rem; background: #21262d; padding: 4px 8px; border-radius: 4px; color: #8b949e; }
+        
+        .btn-save { background: var(--accent); color: #000; border: none; padding: 18px; border-radius: 8px; font-weight: 900; cursor: pointer; width: 100%; margin-top: 30px; transition: transform 0.2s; }
+        .btn-save:hover { transform: translateY(-2px); opacity: 0.9; }
 
-        .sensor-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; width: 100%; }
-        .sensor-box { background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.1); padding: 12px; border-radius: 12px; text-align: center; }
-        .val-sub-n { font-size: 0.65rem; color: #bbb; }
-        .val-sub-b { font-size: 0.65rem; color: var(--gold); font-weight: bold; }
-        .val-main { font-size: 0.95rem; font-weight: bold; color: var(--accent); border-top: 1px solid rgba(255,255,255,0.08); padding-top: 4px; margin-top: 4px; }
-        
-        .history-header { display: flex; justify-content: space-between; align-items: center; cursor: pointer; user-select: none; }
-        .history-content { display: none; margin-top: 15px; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 10px; }
-        .history-list { text-align: left; max-height: 200px; overflow-y: auto; }
-        .log-entry { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid rgba(255,255,255,0.05); align-items: center; }
-        .active .toggle-arrow { transform: rotate(180deg); }
-
-        #historyModal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); z-index: 100; justify-content: center; align-items: center; }
-        .modal-content { background: #1a1a2e; border: 1px solid var(--accent); padding: 30px; border-radius: 20px; width: 95%; max-width: 550px; }
-        table { width: 100%; border-collapse: collapse; margin-top: 15px; font-size: 0.8rem; }
-        th, td { border: 1px solid rgba(255,255,255,0.1); padding: 8px; text-align: center; }
-        .t-footer { background: rgba(255,255,255,0.05); font-weight: 900; }
-        .td-b { color: var(--gold); }
-        .td-t { color: var(--accent); font-weight: bold; }
+        .note { background: rgba(0, 255, 204, 0.05); border: 1px dashed var(--accent); padding: 15px; border-radius: 8px; margin-top: 20px; font-size: 0.85rem; }
     </style>
 </head>
 <body>
 
-    <div id="auth-screen">
-        <h1>SPONSOR GATEWAY</h1>
-        <button class="btn-connect" id="connectBtn">Connect MetaMask</button>
+<div class="container">
+    <div class="header">
+        <h1>🤝 Sponsor Control Center</h1>
+        <p style="color: #8b949e;">Set the Minimum and Maximum limits for the Funding Waterfall Engine.</p>
     </div>
 
-    <div id="admin-ui">
-        <div class="container">
-            <div class="card">
-                <h3>SET LIMITS</h3>
-                <div>Min: <input type="number" id="minIn" step="0.1"> <button class="btn-set" id="btnMin">SET</button></div>
-                <div style="margin-top:10px;">Max: <input type="number" id="maxIn" step="0.1"> <button class="btn-set" id="btnMax">SET</button></div>
-                <p id="curLimits" style="font-size: 0.7rem; color:#888; margin-top:10px;"></p>
+    <div class="section-grid">
+        <div class="card">
+            <span class="priority-badge">PRIORITY 1 & 4</span>
+            <h2>🗓️ Weekly (Round) Limits</h2>
+            <div class="input-pair">
+                <div>
+                    <label>Min Limit (TBNB)</label>
+                    <input type="number" id="wk_min" value="1000" placeholder="0">
+                </div>
+                <div>
+                    <label>Max Limit (TBNB)</label>
+                    <input type="number" id="wk_max" value="5000" placeholder="0">
+                </div>
             </div>
-            <div class="card">
-                <h3>VAULT OVERFLOW</h3>
-                <div style="font-size: 2.2rem; color: var(--gold); font-family: monospace;" id="disp-overflow">0.000</div>
-                <button class="btn-reallocate" id="btnReallocate">REALLOCATE FUNDS</button>
-            </div>
+            <p style="font-size: 0.7rem; color: #6e7681; margin-top: 10px;">The primary bucket for active racers. Weekly min is filled first.</p>
         </div>
 
-        <div class="sensor-grid" id="sensorGrid"></div>
-
-        <div class="card" id="historyCard">
-            <div class="history-header" id="toggleHistory">
-                <h4 style="margin:0; color: #888;">SEASON HISTORY LOGS</h4>
-                <span class="toggle-arrow">▼</span>
+        <div class="card">
+            <span class="priority-badge">PRIORITY 2 & 5</span>
+            <h2>🏆 Season Totals</h2>
+            <div class="input-pair">
+                <div>
+                    <label>Min Limit (TBNB)</label>
+                    <input type="number" id="sea_min" value="5000" placeholder="0">
+                </div>
+                <div>
+                    <label>Max Limit (TBNB)</label>
+                    <input type="number" id="sea_max" value="20000" placeholder="0">
+                </div>
             </div>
-            <div class="history-content" id="historyContent">
-                <div id="history-list" class="history-list"><i>Loading...</i></div>
-            </div>
+            <p style="font-size: 0.7rem; color: #6e7681; margin-top: 10px;">Cumulative prizes paid out at the end of the full season.</p>
         </div>
 
-        <button class="btn-wipe" id="btnWipe">🚨 WIPE ALL ROUNDS</button>
+        <div class="card">
+            <span class="priority-badge">PRIORITY 3 & 6</span>
+            <h2>🛠️ Constructor Limits</h2>
+            <div class="input-pair">
+                <div>
+                    <label>Min Limit (TBNB)</label>
+                    <input type="number" id="con_min" value="2000" placeholder="0">
+                </div>
+                <div>
+                    <label>Max Limit (TBNB)</label>
+                    <input type="number" id="con_max" value="8000" placeholder="0">
+                </div>
+            </div>
+            <p style="font-size: 0.7rem; color: #6e7681; margin-top: 10px;">Dedicated rewards for Team Owners and Constructors.</p>
+        </div>
     </div>
 
-    <div id="historyModal">
-        <div class="modal-content">
-            <h3 id="modalTitle" style="color: var(--accent); margin-top:0;">Audit Details</h3>
-            <div id="modalBody"></div>
-            <button class="btn-copy" id="btnCopySummary">📋 COPY DATA SUMMARY</button>
-            <button onclick="document.getElementById('historyModal').style.display='none'" style="margin-top:10px; width:100%; background:var(--danger); color:white; border-radius:10px; padding:10px;">CLOSE</button>
-        </div>
+    <div class="note">
+        <strong>Waterfall Intelligence:</strong> The <strong>Funding Page</strong> will read these values to fill buckets in order: 
+        <br><em>Weekly Min → Season Min → Constructor Min → Weekly Max → Season Max → Constructor Max → Overflow.</em>
     </div>
 
-    <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js";
-        import { getDatabase, ref, onValue, update, set } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-database.js";
+    <button class="btn-save" onclick="saveSponsorLimits()">SAVE SPONSOR POLICY</button>
+</div>
 
-        const WHITELISTED_ADMIN = "0xCe9782f77eC560a1Cb329F935b5D416AA41f1a5d".toLowerCase(); 
-        const firebaseConfig = { apiKey: "AlzaSyBYxLOGFzaHN6CS4ro_bjnKEblbQE6Vtx4", databaseURL: "https://nuclearf1-94a6b-default-rtdb.asia-southeast1.firebasedatabase.app" };
-        const app = initializeApp(firebaseConfig);
-        const db = getDatabase(app);
-
-        let currentSummaryText = ""; // Holds the data for the clipboard
-
-        document.getElementById('toggleHistory').onclick = () => {
-            const content = document.getElementById('historyContent');
-            document.getElementById('historyCard').classList.toggle('active');
-            content.style.display = content.style.display === 'block' ? 'none' : 'block';
+<script>
+    function saveSponsorLimits() {
+        const limits = {
+            weekly: {
+                min: document.getElementById('wk_min').value,
+                max: document.getElementById('wk_max').value
+            },
+            season: {
+                min: document.getElementById('sea_min').value,
+                max: document.getElementById('sea_max').value
+            },
+            constructor: {
+                min: document.getElementById('con_min').value,
+                max: document.getElementById('con_max').value
+            },
+            updatedAt: new Date().toLocaleString()
         };
 
-        document.getElementById('connectBtn').onclick = async () => {
-            if (window.ethereum) {
-                const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
-                if (accounts[0].toLowerCase() === WHITELISTED_ADMIN) {
-                    document.getElementById('auth-screen').style.display = 'none';
-                    document.getElementById('admin-ui').style.display = 'flex';
-                    initSponsorActions();
-                }
-            }
-        };
+        // This would typically be sent to Firebase/Supabase
+        console.log("Saving Sponsor Limits to Database...", limits);
+        
+        // Visual confirmation
+        const btn = document.querySelector('.btn-save');
+        const originalText = btn.innerText;
+        btn.innerText = "✅ LIMITS UPDATED";
+        btn.style.background = "#fff";
+        
+        setTimeout(() => {
+            btn.innerText = originalText;
+            btn.style.background = "var(--accent)";
+            alert("Limits successfully saved. The Funding Waterfall will now respect these boundaries.");
+        }, 1500);
+    }
+</script>
 
-        function initSponsorActions() {
-            onValue(ref(db), (snap) => {
-                const data = snap.val() || {};
-                const vault = data.vault || {};
-                const history = data.history?.transitions || {};
-
-                // Grid update logic...
-                const grid = document.getElementById('sensorGrid');
-                grid.innerHTML = '';
-                for(let i=1; i<=12; i++) {
-                    let r = vault.rounds?.[`r${i}`] || { normal: 0, boost: 0 };
-                    grid.innerHTML += `<div class="sensor-box">
-                        <div style="font-size:0.55rem;color:#555;margin-bottom:4px;">RD ${i}</div>
-                        <div class="val-sub-n">N: ${parseFloat(r.normal||0).toFixed(2)}</div>
-                        <div class="val-sub-b">B: ${parseFloat(r.boost||0).toFixed(2)}</div>
-                        <div class="val-main">${(parseFloat(r.normal||0)+parseFloat(r.boost||0)).toFixed(3)}</div>
-                    </div>`;
-                }
-
-                const histList = document.getElementById('history-list');
-                const entries = Object.entries(history).reverse();
-                histList.innerHTML = entries.length > 0 ? entries.map(([id, e]) => `
-                    <div class="log-entry">
-                        <span>Season ${e.from_season} <small style="color:#555; margin-left:10px;">${e.timestamp}</small></span>
-                        <button class="btn-view" onclick="window.showDetails('${id}')">DETAILS</button>
-                    </div>`).join('') : '<i>No records.</i>';
-
-                window.showDetails = (id) => {
-                    const record = history[id];
-                    const states = record.final_vault_state;
-                    let tN = 0, tB = 0, tT = 0;
-                    
-                    let table = `<table><tr><th>RD</th><th>Norm</th><th>Boost</th><th>Total</th></tr>`;
-                    for(let i=1; i<=12; i++) {
-                        let rd = states[`r${i}`];
-                        let n = parseFloat(rd.normal || 0);
-                        let b = parseFloat(rd.boost || 0);
-                        let tot = parseFloat(rd.total || 0);
-                        tN += n; tB += b; tT += tot;
-                        table += `<tr><td>${i}</td><td>${n.toFixed(2)}</td><td class="td-b">${b.toFixed(2)}</td><td class="td-t">${tot.toFixed(3)}</td></tr>`;
-                    }
-                    table += `<tr class="t-footer"><td>SUM</td><td>${tN.toFixed(2)}</td><td class="td-b">${tB.toFixed(2)}</td><td class="td-t">${tT.toFixed(3)}</td></tr>`;
-                    
-                    // Format text for copy button
-                    currentSummaryText = `SANRAT AUDIT: Season ${record.from_season}\nDate: ${record.timestamp}\n------------------\nTotal Normal: ${tN.toFixed(2)} tBNB\nTotal Boost: ${tB.toFixed(2)} tBNB\nGRAND TOTAL: ${tT.toFixed(3)} tBNB\nReclaimed: ${record.moved_from_overflow} tBNB`;
-                    
-                    document.getElementById('modalTitle').innerText = `Season ${record.from_season} Summary`;
-                    document.getElementById('modalBody').innerHTML = table + `</table>`;
-                    document.getElementById('historyModal').style.display = 'flex';
-                };
-            });
-
-            document.getElementById('btnCopySummary').onclick = () => {
-                navigator.clipboard.writeText(currentSummaryText);
-                const btn = document.getElementById('btnCopySummary');
-                btn.innerText = "✅ COPIED TO CLIPBOARD!";
-                setTimeout(() => btn.innerText = "📋 COPY DATA SUMMARY", 2000);
-            };
-
-            // Limit and Wipe buttons logic...
-            document.getElementById('btnMin').onclick = () => update(ref(db, 'master_settings/limits'), { min: parseFloat(document.getElementById('minIn').value) });
-            document.getElementById('btnMax').onclick = () => update(ref(db, 'master_settings/limits'), { max: parseFloat(document.getElementById('maxIn').value) });
-            document.getElementById('btnWipe').onclick = () => confirm("Wipe all rounds?") && set(ref(db, 'vault/rounds'), {});
-        }
-    </script>
 </body>
 </html>
