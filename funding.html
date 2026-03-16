@@ -22,19 +22,21 @@
         .stat-value { font-size: 2rem; font-weight: 900; color: var(--accent); font-family: 'Courier New', monospace; margin-top: 5px; }
         .stat-value.boost { color: var(--boost); }
 
-        /* Custom Injection Box */
-        .injection-panel { background: var(--card); border: 1px solid var(--border); padding: 20px; border-radius: 12px; margin-bottom: 30px; display: flex; gap: 20px; align-items: flex-end; }
+        /* Injection Panel */
+        .injection-panel { background: var(--card); border: 1px solid var(--border); padding: 20px; border-radius: 12px; margin-bottom: 30px; display: flex; gap: 15px; align-items: flex-end; }
         .input-group { flex: 1; }
         .input-group label { display: block; font-size: 0.65rem; font-weight: 800; color: var(--text); margin-bottom: 8px; text-transform: uppercase; }
         .input-group input { width: 100%; background: #0d1117; border: 1px solid var(--border); padding: 12px; border-radius: 6px; color: var(--accent); font-weight: 900; outline: none; }
-        .btn-inject { padding: 12px 25px; border-radius: 6px; border: none; font-weight: 900; cursor: pointer; text-transform: uppercase; transition: 0.2s; height: 45px; }
+        .btn-inject { padding: 12px 20px; border-radius: 6px; border: none; font-weight: 900; cursor: pointer; text-transform: uppercase; transition: 0.2s; height: 45px; font-size: 0.75rem; }
         .btn-n { background: var(--accent); color: #000; }
         .btn-b { background: var(--boost); color: #fff; }
 
-        /* Grid & Buckets */
+        /* Buckets */
         .bucket-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 12px; }
         .b-card { background: #0d1117; border: 1px solid var(--border); padding: 15px; border-radius: 10px; position: relative; }
-        .b-card.active { border-color: var(--accent); }
+        .b-card.active { border-color: var(--accent); background: rgba(0, 255, 204, 0.02); }
+        .b-card.special { border-color: var(--boost); }
+        .b-card.overflow { border-style: dashed; border-color: #444; }
         .b-card.past { opacity: 0.4; filter: grayscale(1); }
         
         .status-tag { position: absolute; top: 10px; right: 10px; font-size: 0.5rem; font-weight: 900; padding: 2px 6px; border-radius: 4px; text-transform: uppercase; }
@@ -47,6 +49,8 @@
         .b-main { font-size: 1.4rem; font-family: 'Courier New', monospace; margin: 10px 0; }
         .total-val { font-weight: 900; color: var(--accent); }
         .b-breakdown { font-size: 0.55rem; color: #555; display: flex; justify-content: space-between; border-top: 1px solid #222; padding-top: 8px; }
+
+        .timestamp { text-align: center; margin-top: 30px; font-size: 0.65rem; color: #444; font-weight: 800; text-transform: uppercase; letter-spacing: 1px; }
     </style>
 </head>
 <body>
@@ -69,18 +73,54 @@
 
     <div class="injection-panel">
         <div class="input-group">
-            <label>Injection Amount (TBNB)</label>
-            <input type="number" id="inject_amt" placeholder="Enter amount...">
+            <label>TBNB Injection Amount</label>
+            <input type="number" id="inject_amt" placeholder="0.00">
         </div>
-        <button class="btn-inject btn-n" onclick="processInjection('normal')">Inject Normal</button>
-        <button class="btn-inject btn-b" onclick="processInjection('boost')">Inject Boost</button>
+        <button class="btn-inject btn-n" onclick="processInjection('normal')">Inject N</button>
+        <button class="btn-inject btn-b" onclick="processInjection('boost')">Inject B</button>
     </div>
 
     <div id="main_grid" class="bucket-grid"></div>
+    <div id="last_update" class="timestamp">Awaiting Data...</div>
 </div>
 
 <script>
-    // ... Keep Firebase Config ...
+    // --- REPLACE WITH YOUR KEYS ---
+    const firebaseConfig = {
+        apiKey: "YOUR_API_KEY",
+        authDomain: "nuclearf1-94a6b.firebaseapp.com",
+        databaseURL: "https://nuclearf1-94a6b-default-rtdb.asia-southeast1.firebasedatabase.app",
+        projectId: "nuclearf1-94a6b",
+        storageBucket: "nuclearf1-94a6b.appspot.com",
+        appId: "YOUR_APP_ID"
+    };
+
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+
+    let currentRound = 4;
+    let treasury = { normal: 0, boost: 0 };
+    let policy = { wk_min: 10, wk_max: 50, sea_min: 100, sea_max: 500, con_min: 50, con_max: 200 };
+
+    window.onload = () => {
+        db.ref('treasury').on('value', (snap) => {
+            treasury = snap.val() || { normal: 0, boost: 0 };
+            updateTimestamp();
+            render();
+        });
+        db.ref('policy').on('value', (snap) => {
+            if (snap.val()) { 
+                policy = snap.val(); 
+                updateTimestamp();
+                render(); 
+            }
+        });
+    };
+
+    function updateTimestamp() {
+        const now = new Date();
+        document.getElementById('last_update').innerText = `Last Sync: ${now.toLocaleDateString()} ${now.toLocaleTimeString()}`;
+    }
 
     function render() {
         const total = treasury.normal + treasury.boost;
@@ -92,48 +132,71 @@
         grid.innerHTML = '';
 
         let remNrm = treasury.normal;
-        const divisor = (12 - currentRound + 1) + 2;
-        const bShare = treasury.boost / divisor;
+        const activeCount = (12 - currentRound + 1);
+        const divisor = activeCount + 2;
+        const bShare = total > 0 ? (treasury.boost / divisor) : 0;
 
-        // 1 - 12 Rounds
+        let bucketN = {};
+
+        // --- PASS 1: MINIMUMS (Active + Future + Season + Con) ---
+        // Past rounds take full max from N pool first
+        for (let i = 1; i < currentRound; i++) {
+            let n = Math.min(remNrm, policy.wk_max);
+            bucketN[`r${i}`] = n;
+            remNrm -= n;
+        }
+        // Active/Future Mins
+        for (let i = currentRound; i <= 12; i++) {
+            let n = Math.min(remNrm, policy.wk_min);
+            bucketN[`r${i}`] = n;
+            remNrm -= n;
+        }
+        // Season Min
+        let sMin = Math.min(remNrm, policy.sea_min);
+        bucketN['sea'] = sMin;
+        remNrm -= sMin;
+        // Con Min
+        let cMin = Math.min(remNrm, policy.con_min);
+        bucketN['con'] = cMin;
+        remNrm -= cMin;
+
+        // --- PASS 2: MAXIMUMS (Sequential) ---
+        for (let i = currentRound; i <= 12; i++) {
+            let space = policy.wk_max - bucketN[`r${i}`];
+            let n = Math.min(remNrm, space);
+            bucketN[`r${i}`] += n;
+            remNrm -= n;
+        }
+        // Season Max
+        let sSpace = policy.sea_max - bucketN['sea'];
+        let sExtra = Math.min(remNrm, sSpace);
+        bucketN['sea'] += sExtra;
+        remNrm -= sExtra;
+        // Con Max
+        let cSpace = policy.con_max - bucketN['con'];
+        let cExtra = Math.min(remNrm, cSpace);
+        bucketN['con'] += cExtra;
+        remNrm -= cExtra;
+
+        // --- RENDERING ---
         for (let i = 1; i <= 12; i++) {
-            let n = 0;
-            if (i < currentRound) {
-                n = policy.wk_max;
-                remNrm -= n;
-            } else {
-                n = Math.max(0, Math.min(remNrm, policy.wk_min));
-                remNrm -= n;
-            }
-            renderBucket(grid, `Round ${i}`, n, (i >= currentRound ? bShare : 0), policy.wk_max, policy.wk_min, i < currentRound ? 'past' : (i === currentRound ? 'active' : ''));
+            renderBucket(grid, `Round ${i}`, bucketN[`r${i}`], (i >= currentRound ? bShare : 0), policy.wk_max, policy.wk_min, i < currentRound ? 'past' : (i === currentRound ? 'active' : ''));
         }
-
-        // 13-14 Specials
-        const sVal = Math.max(0, Math.min(remNrm, policy.sea_max));
-        renderBucket(grid, "Season Pool", sVal, bShare, policy.sea_max, policy.sea_min, 'special');
-        remNrm -= sVal;
-
-        const cVal = Math.max(0, Math.min(remNrm, policy.con_max));
-        renderBucket(grid, "Constructor", cVal, bShare, policy.con_max, policy.con_min, 'special');
-        remNrm -= cVal;
-
-        // 15: THE OVERFLOW BUCKET (Calculates remaining N)
-        if (remNrm > 0) {
-            renderBucket(grid, "Overflow Vault", remNrm, 0, "∞", 0, 'overflow');
-        }
+        renderBucket(grid, "Season Pool", bucketN['sea'], bShare, policy.sea_max, policy.sea_min, 'special');
+        renderBucket(grid, "Constructor", bucketN['con'], bShare, policy.con_max, policy.con_min, 'special');
+        renderBucket(grid, "Overflow Vault", Math.max(0, remNrm), 0, "∞", 0, 'overflow');
     }
 
     function renderBucket(container, label, n, b, max, min, state) {
         let statusClass = 'status-empty';
         let statusText = 'Empty';
 
-        // Overflow Logic
         if (state === 'overflow') {
-            statusClass = 'status-max';
-            statusText = 'Overflow';
+            statusClass = n > 0 ? 'status-max' : 'status-empty';
+            statusText = n > 0 ? 'Overflow' : 'Idle';
         } else {
-            if (n >= max) { statusClass = 'status-max'; statusText = 'Maxed'; }
-            else if (n >= min) { statusClass = 'status-min'; statusText = 'At Min'; }
+            if (n >= max && max > 0) { statusClass = 'status-max'; statusText = 'Maxed'; }
+            else if (n >= min && min > 0) { statusClass = 'status-min'; statusText = 'At Min'; }
             else if (n > 0) { statusClass = 'status-below'; statusText = 'Below Min'; }
         }
 
@@ -151,6 +214,16 @@
                 </div>
             </div>
         `;
+    }
+
+    function processInjection(type) {
+        const amt = parseInt(document.getElementById('inject_amt').value);
+        if (!amt || amt <= 0) return alert("Enter amount");
+        if (type === 'normal') treasury.normal += amt;
+        else treasury.boost += amt;
+        db.ref('treasury').set(treasury).then(() => {
+            document.getElementById('inject_amt').value = '';
+        });
     }
 </script>
 </body>
