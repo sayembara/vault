@@ -2,163 +2,174 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Payout Economy Simulator | SANRAT</title>
+    <title>Range Payout Editor | SANRAT</title>
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-database-compat.js"></script>
     <style>
-        :root { --accent: #00ffcc; --bg: #0b0e14; --card: #161b22; --border: #30363d; --boost: #b300ff; --danger: #ff4b2b; }
+        :root { --accent: #00ffcc; --bg: #0b0e14; --card: #161b22; --border: #30363d; --boost: #b300ff; }
         body { background: var(--bg); color: white; font-family: 'Inter', sans-serif; padding: 20px; }
         
+        /* Range Tabs */
+        .tabs { display: flex; gap: 10px; margin-bottom: 20px; border-bottom: 1px solid var(--border); padding-bottom: 15px; }
+        .tab { background: transparent; border: 1px solid var(--border); color: #8b949e; padding: 12px 20px; border-radius: 6px; cursor: pointer; font-weight: 800; text-transform: uppercase; font-size: 0.7rem; transition: 0.2s; }
+        .tab.active { border-color: var(--accent); color: var(--accent); background: rgba(0,255,204,0.05); }
+        .tab:hover { border-color: white; color: white; }
+
+        /* Setup Area */
         .setup-bar { background: var(--card); border: 1px solid var(--border); padding: 20px; border-radius: 12px; margin-bottom: 25px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }
         .setup-item label { display: block; font-size: 0.6rem; color: #8b949e; margin-bottom: 8px; text-transform: uppercase; font-weight: 800; }
-        .setup-item input { width: 100%; background: #0d1117; border: 1px solid var(--border); color: var(--accent); padding: 12px; border-radius: 6px; box-sizing: border-box; font-family: monospace; font-size: 1.1rem; }
+        .setup-item input { width: 100%; background: #0d1117; border: 1px solid var(--border); color: var(--accent); padding: 12px; border-radius: 6px; box-sizing: border-box; font-family: monospace; }
 
-        table { width: 100%; border-collapse: collapse; background: var(--card); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; margin-bottom: 30px; }
-        th { background: rgba(0,255,204,0.05); text-align: left; padding: 15px; font-size: 0.7rem; color: #8b949e; text-transform: uppercase; border-bottom: 1px solid var(--border); }
+        /* Table */
+        table { width: 100%; border-collapse: collapse; background: var(--card); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; }
+        th { background: rgba(255,255,255,0.02); text-align: left; padding: 15px; font-size: 0.65rem; color: #555; text-transform: uppercase; }
         td { padding: 15px; border-bottom: 1px solid rgba(255,255,255,0.02); }
         
-        .tier-name { font-weight: 900; letter-spacing: 1px; }
-        .tier-input { background: #0d1117; border: 1px solid var(--border); color: white; padding: 8px; border-radius: 4px; width: 80px; text-align: center; }
-        .gap-status { font-size: 0.65rem; font-weight: 800; padding: 4px 8px; border-radius: 4px; }
-        .gap-ok { background: rgba(0, 255, 204, 0.1); color: var(--accent); }
-        .gap-fail { background: rgba(255, 75, 43, 0.1); color: var(--danger); }
-        
-        .val-large { font-family: monospace; font-weight: bold; color: var(--accent); }
-        .val-sub { font-size: 0.7rem; color: #555; }
-        
-        .btn-save { background: var(--accent); color: black; border: none; padding: 20px; border-radius: 8px; font-weight: 900; cursor: pointer; width: 100%; text-transform: uppercase; }
+        .tier-input { background: #0d1117; border: 1px solid var(--border); color: white; padding: 8px; border-radius: 4px; width: 60px; text-align: center; font-weight: bold; }
+        .val-main { font-family: monospace; font-weight: 900; color: var(--accent); font-size: 1.1rem; }
+        .gap-tag { font-size: 0.6rem; padding: 4px 8px; border-radius: 4px; font-weight: 900; }
+        .tag-ok { background: rgba(0, 255, 204, 0.1); color: var(--accent); }
+        .tag-fail { background: rgba(255, 75, 43, 0.1); color: #ff4b2b; }
+
+        .save-footer { margin-top: 30px; display: flex; justify-content: space-between; align-items: center; }
+        .btn-save { background: var(--accent); color: black; border: none; padding: 15px 40px; border-radius: 8px; font-weight: 900; cursor: pointer; text-transform: uppercase; }
     </style>
 </head>
 <body>
 
-<h1>📈 Payout Economy Simulator</h1>
+<div class="tabs" id="range_tabs">
+    <button class="tab active" onclick="switchRange('micro')">1-20 (Micro)</button>
+    <button class="tab" onclick="switchRange('club')">21-100 (Club)</button>
+    <button class="tab" onclick="switchRange('regional')">101-500 (Reg)</button>
+    <button class="tab" onclick="switchRange('national')">501-2500 (Nat)</button>
+    <button class="tab" onclick="switchRange('global')">2501+ (Global)</button>
+</div>
 
 <div class="setup-bar">
     <div class="setup-item">
-        <label>Total Round Pool (TBNB)</label>
-        <input type="number" id="sim_pool" value="100000" oninput="simulate()">
+        <label>Simulation: Total Pool</label>
+        <input type="number" id="sim_pool" value="10000" oninput="render()">
     </div>
     <div class="setup-item">
-        <label>Total Cars in Round</label>
-        <input type="number" id="sim_cars" value="10000" oninput="simulate()">
+        <label>Simulation: Car Count</label>
+        <input type="number" id="sim_cars" value="15" oninput="render()">
     </div>
     <div class="setup-item">
-        <label>Decay Factor (k)</label>
-        <input type="number" id="sim_k" value="0.75" step="0.05" oninput="simulate()">
+        <label>Decay (k Factor)</label>
+        <input type="number" id="sim_k" value="0.8" step="0.05" oninput="render()">
     </div>
 </div>
 
-<table>
+<table id="payout_table">
     <thead>
         <tr>
-            <th>Tier Name</th>
-            <th>Field Split (%)</th>
-            <th>Pot Multiplier</th>
-            <th>Payout Depth (%)</th>
-            <th>P1 Winner (TBNB)</th>
-            <th>P-Last Floor (TBNB)</th>
-            <th>Ladder Status</th>
+            <th>Tier</th>
+            <th>Field %</th>
+            <th>Multiplier</th>
+            <th>Payout Depth %</th>
+            <th>P1 Winner</th>
+            <th>P-Last (Floor)</th>
+            <th>Status</th>
         </tr>
     </thead>
-    <tbody id="tier_body">
-        </tbody>
+    <tbody id="tier_rows"></tbody>
 </table>
 
-<button class="btn-save" onclick="saveEconomy()">Save Economy Structure</button>
+<div class="save-footer">
+    <div id="status_msg" style="color: #555; font-size: 0.7rem;">MODES LOADED</div>
+    <button class="btn-save" onclick="saveAll()">Save All Range Rules</button>
+</div>
 
 <script>
     const firebaseConfig = { databaseURL: "https://nuclearf1-94a6b-default-rtdb.asia-southeast1.firebasedatabase.app" };
     firebase.initializeApp(firebaseConfig);
     const db = firebase.database();
 
-    // The Tier Structure
-    let tiers = [
-        { id: 'diamond', name: 'Diamond', split: 5, mult: 12.0, depth: 50 },
-        { id: 'platinum', name: 'Platinum', split: 15, mult: 5.0, depth: 30 },
-        { id: 'gold', name: 'Gold', split: 30, mult: 2.2, depth: 20 },
-        { id: 'silver', name: 'Silver', split: 40, mult: 1.0, depth: 10 },
-        { id: 'bronze', name: 'Bronze', split: 10, mult: 0.5, depth: 5 }
-    ];
+    let currentRange = 'micro';
+    let ranges = {
+        micro: { k: 1.1, tiers: [{id:'t1', name:'Lobby', split:100, mult:1, depth:20}] },
+        club: { k: 0.9, tiers: [{id:'t1', name:'Pro', split:40, mult:2.5, depth:30}, {id:'t2', name:'Am', split:60, mult:0.8, depth:10}] },
+        regional: { k: 0.8, tiers: [{id:'t1', name:'Elite', split:20, mult:4, depth:40}, {id:'t2', name:'Pro', split:30, mult:1.5, depth:20}, {id:'t3', name:'Club', split:50, mult:0.5, depth:10}] },
+        national: { k: 0.75, tiers: [{id:'t1', name:'Diamond', split:10, mult:8, depth:50}, {id:'t2', name:'Gold', split:40, mult:2, depth:20}, {id:'t3', name:'Silver', split:50, mult:0.5, depth:10}] },
+        global: { k: 0.7, tiers: [{id:'t1', name:'Diamond', split:5, mult:15, depth:50}, {id:'t2', name:'Plat', split:15, mult:5, depth:30}, {id:'t3', name:'Gold', split:30, mult:2, depth:20}, {id:'t4', name:'Silver', split:50, mult:0.5, depth:10}] }
+    };
 
-    function simulate() {
-        const pool = parseFloat(document.getElementById('sim_pool').value) || 0;
-        const totalCars = parseFloat(document.getElementById('sim_cars').value) || 0;
-        const k = parseFloat(document.getElementById('sim_k').value) || 0.75;
+    function switchRange(r) {
+        currentRange = r;
+        document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+        event.target.classList.add('active');
+        document.getElementById('sim_k').value = ranges[r].k;
+        render();
+    }
+
+    function render() {
+        const pool = parseFloat(document.getElementById('sim_pool').value);
+        const cars = parseFloat(document.getElementById('sim_cars').value);
+        const k = parseFloat(document.getElementById('sim_k').value);
+        ranges[currentRange].k = k;
         
-        const container = document.getElementById('tier_body');
-        container.innerHTML = '';
+        const body = document.getElementById('tier_rows');
+        body.innerHTML = '';
 
-        let lastCeiling = 0;
+        let results = [];
 
-        tiers.forEach((tier, idx) => {
-            const carsInTier = Math.floor(totalCars * (tier.split / 100));
+        ranges[currentRange].tiers.forEach((tier, idx) => {
+            const carsInTier = Math.floor(cars * (tier.split / 100));
             const paidDepth = Math.max(1, Math.floor(carsInTier * (tier.depth / 100)));
-            
-            // Calculate Tier Pot based on Multiplier weight
-            // This is a simplified version for simulation preview
-            const tierPot = (pool * (tier.split / 100) * tier.mult) / 2.5; // Normalized weight
+            const tierPot = (pool * (tier.split / 100) * tier.mult) / (ranges[currentRange].tiers.length * 0.8);
 
-            // Exponential Decay Math
             let harmonicSum = 0;
             for(let i=1; i<=paidDepth; i++) harmonicSum += Math.pow(i, -k);
             
             const p1 = (Math.pow(1, -k) / harmonicSum) * tierPot;
             const pLast = (Math.pow(paidDepth, -k) / harmonicSum) * tierPot;
 
-            // Check Ladder Gap (Current Floor vs Next Tier Ceiling)
-            let statusHtml = '';
-            if (idx > 0) {
-                // We compare THIS P1 vs PREVIOUS P-Last
-                // (Logic: Previous Higher Tier Last Place > Current Winner)
-            }
+            results.push({p1, pLast});
 
-            container.innerHTML += `
-                <tr id="row_${tier.id}">
-                    <td class="tier-name">${tier.name}</td>
-                    <td><input type="number" class="tier-input" value="${tier.split}" onchange="updateTier('${tier.id}', 'split', this.value)"> %</td>
-                    <td><input type="number" class="tier-input" value="${tier.mult}" onchange="updateTier('${tier.id}', 'mult', this.value)"> x</td>
-                    <td><input type="number" class="tier-input" value="${tier.depth}" onchange="updateTier('${tier.id}', 'depth', this.value)"> %</td>
-                    <td class="val-large">${p1.toFixed(0)} <div class="val-sub">TBNB</div></td>
-                    <td class="val-large" id="floor_${tier.id}">${pLast.toFixed(0)} <div class="val-sub">TBNB</div></td>
-                    <td id="status_${tier.id}">-</td>
-                </tr>
-            `;
-            
-            tier.p1 = p1;
-            tier.pLast = pLast;
+            body.innerHTML += `
+                <tr>
+                    <td style="font-weight:900">${tier.name}</td>
+                    <td><input type="number" class="tier-input" value="${tier.split}" oninput="updateTier(${idx}, 'split', this.value)"> %</td>
+                    <td><input type="number" class="tier-input" value="${tier.mult}" oninput="updateTier(${idx}, 'mult', this.value)"> x</td>
+                    <td><input type="number" class="tier-input" value="${tier.depth}" oninput="updateTier(${idx}, 'depth', this.value)"> %</td>
+                    <td class="val-main">${p1.toFixed(0)}</td>
+                    <td class="val-main">${pLast.toFixed(0)}</td>
+                    <td id="status_${idx}">-</td>
+                </tr>`;
         });
 
-        // Update Gap Statuses
-        tiers.forEach((tier, idx) => {
-            if (idx < tiers.length - 1) {
-                const currentFloor = tier.pLast;
-                const nextWinner = tiers[idx+1].p1;
-                const statusBox = document.getElementById(`status_${tier.id}`);
-                
-                if (currentFloor > nextWinner) {
-                    statusBox.innerHTML = `<span class="gap-status gap-ok">✓ FLOOR > NEXT P1</span>`;
+        // Validate Gaps
+        results.forEach((res, i) => {
+            if(i < results.length - 1) {
+                const status = document.getElementById(`status_${i}`);
+                if(res.pLast > results[i+1].p1) {
+                    status.innerHTML = '<span class="gap-tag tag-ok">✓ LADDER OK</span>';
                 } else {
-                    statusBox.innerHTML = `<span class="gap-status gap-fail">⚠ INCREASE MULTIPLIER</span>`;
+                    status.innerHTML = '<span class="gap-tag tag-fail">⚠ INCREASE MULTI</span>';
                 }
             }
         });
     }
 
-    function updateTier(id, field, value) {
-        const tier = tiers.find(t => t.id === id);
-        tier[field] = parseFloat(value);
-        simulate();
+    function updateTier(idx, field, val) {
+        ranges[currentRange].tiers[idx][field] = parseFloat(val);
+        render();
     }
 
-    function saveEconomy() {
-        db.ref('payout_rates/v2_structure').set({
-            tiers: tiers,
-            decay_k: parseFloat(document.getElementById('sim_k').value),
-            last_updated: Date.now()
-        }).then(() => alert("Economy Structure Saved & Synchronized!"));
+    function saveAll() {
+        db.ref('payout_config/ranges').set(ranges).then(() => {
+            alert("All 5 Range Rulebooks Saved!");
+        });
     }
 
-    window.onload = simulate;
+    window.onload = () => {
+        db.ref('payout_config/ranges').once('value', snap => {
+            if(snap.val()) {
+                ranges = snap.val();
+                render();
+            }
+        });
+    };
 </script>
 </body>
 </html>
