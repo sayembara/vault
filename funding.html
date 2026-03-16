@@ -9,41 +9,51 @@
             --accent: #00ffcc; --bg: #0b0e14; --card: #161b22; --border: #30363d; 
             --danger: #ff4b2b; --warning: #ffcc00; --success: #00ffcc; --boost: #b300ff;
         }
-        body { background: var(--bg); color: white; font-family: 'Inter', sans-serif; padding: 20px; }
+        body { background: var(--bg); color: white; font-family: 'Inter', sans-serif; padding: 20px; line-height: 1.4; }
         .container { max-width: 1200px; margin: 0 auto; }
         
-        /* Header */
-        .treasury-header { display: flex; justify-content: space-between; align-items: center; background: var(--card); padding: 30px; border-radius: 12px; border: 1px solid var(--border); margin-bottom: 25px; }
-        .total-fund { font-size: 2.8rem; font-weight: 900; color: var(--accent); letter-spacing: -1px; }
+        /* Main Vault Header */
+        .treasury-header { 
+            display: flex; justify-content: space-between; align-items: center; 
+            background: var(--card); padding: 35px; border-radius: 12px; 
+            border: 1px solid var(--border); margin-bottom: 25px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+        }
+        .total-fund { font-size: 3rem; font-weight: 900; color: var(--accent); letter-spacing: -1.5px; }
         
-        .input-row { display: flex; gap: 10px; margin-top: 15px; }
-        .deposit-input { background: #0d1117; border: 1px solid var(--border); color: var(--accent); padding: 12px; border-radius: 6px; width: 180px; font-weight: bold; font-size: 1.1rem; }
+        /* Controls */
+        .input-row { display: flex; gap: 12px; margin-top: 15px; }
+        .deposit-input { 
+            background: #0d1117; border: 1px solid var(--border); color: var(--accent); 
+            padding: 14px; border-radius: 8px; width: 200px; font-weight: bold; font-size: 1.2rem; 
+        }
         
-        .btn { border: none; padding: 12px 24px; border-radius: 6px; font-weight: 900; cursor: pointer; text-transform: uppercase; transition: 0.2s; }
+        .btn { border: none; padding: 14px 26px; border-radius: 8px; font-weight: 900; cursor: pointer; text-transform: uppercase; transition: 0.2s; }
         .btn-normal { background: var(--accent); color: #000; }
-        .btn-boost { background: var(--boost); color: #fff; box-shadow: 0 0 15px rgba(179, 0, 255, 0.3); }
-        .btn:hover { transform: translateY(-2px); opacity: 0.9; }
+        .btn-boost { background: var(--boost); color: #fff; box-shadow: 0 0 20px rgba(179, 0, 255, 0.3); }
+        .btn:hover { transform: translateY(-2px); filter: brightness(1.1); }
 
-        .section-title { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 2px; color: #8b949e; margin: 35px 0 15px 0; display: flex; align-items: center; gap: 10px; }
+        .section-title { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 2px; color: #8b949e; margin: 40px 0 20px 0; display: flex; align-items: center; gap: 10px; }
         .section-title::after { content: ""; flex: 1; height: 1px; background: var(--border); }
 
-        /* Grid */
-        .bucket-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 15px; }
-        .card { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 20px; transition: 0.3s; }
+        /* Grid Layouts */
+        .bucket-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 20px; }
+        .card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 22px; position: relative; transition: 0.3s; }
         .card.active { border: 2px solid var(--accent); background: rgba(0, 255, 204, 0.03); }
         .card.past { opacity: 0.4; filter: grayscale(1); }
         
         /* N : B Display */
-        .bucket-label { font-size: 0.65rem; color: #8b949e; font-weight: bold; }
-        .bucket-main { font-family: 'Courier New', monospace; font-size: 1.4rem; margin: 10px 0; }
+        .bucket-label { font-size: 0.7rem; color: #8b949e; font-weight: 800; text-transform: uppercase; }
+        .bucket-main { font-family: 'Courier New', monospace; font-size: 1.6rem; margin: 12px 0; display: flex; align-items: center; }
         .n-val { color: #8b949e; }
-        .b-val { color: var(--accent); font-weight: bold; }
+        .b-val { color: var(--accent); font-weight: 900; }
         
-        .breakdown { display: flex; justify-content: space-between; font-size: 0.65rem; border-top: 1px solid #222; padding-top: 10px; margin-top: 5px; }
-        .val-nrm { color: var(--accent); }
+        /* Sub-stats breakdown */
+        .breakdown { display: flex; justify-content: space-between; font-size: 0.7rem; border-top: 1px solid #2d333b; padding-top: 12px; margin-top: 5px; }
+        .val-nrm { color: var(--accent); font-weight: bold; }
         .val-bst { color: var(--boost); font-weight: bold; }
 
-        .status { font-size: 0.6rem; text-transform: uppercase; font-weight: 900; padding: 3px 8px; border-radius: 4px; display: inline-block; margin-top: 10px;}
+        .status { font-size: 0.65rem; text-transform: uppercase; font-weight: 900; padding: 4px 10px; border-radius: 5px; display: inline-block; margin-top: 12px; }
         .status-below { background: rgba(255, 75, 43, 0.1); color: var(--danger); }
         .status-min { background: rgba(255, 204, 0, 0.1); color: var(--warning); }
         .status-max { background: rgba(0, 255, 204, 0.1); color: var(--success); }
@@ -54,7 +64,7 @@
 <div class="container">
     <div class="treasury-header">
         <div>
-            <label style="color: #8b949e; text-transform: uppercase; font-size: 0.7rem; font-weight: 900;">Master Treasury Vault</label>
+            <label style="color: #8b949e; text-transform: uppercase; font-size: 0.75rem; font-weight: 900; letter-spacing: 1px;">Live Treasury Vault (Source of Truth)</label>
             <div class="total-fund" id="total_display">0 TBNB</div>
             <div class="input-row">
                 <input type="number" id="inject_amt" class="deposit-input" placeholder="0.00">
@@ -63,30 +73,30 @@
             </div>
         </div>
         <div style="text-align: right;">
-            <div id="round_status" style="color: var(--accent); font-weight: 900; font-size: 1.5rem;">SYNCING...</div>
-            <div style="font-size: 0.65rem; color: #8b949e; margin-top: 5px;">DIVISOR: <span id="divisor_display">0</span> BUCKETS</div>
+            <div id="round_status" style="color: var(--accent); font-weight: 900; font-size: 1.6rem; margin-bottom: 5px;">ROUND 4</div>
+            <div style="font-size: 0.7rem; color: #8b949e;">BOOST DIVISOR: <span id="divisor_display" style="color: var(--boost); font-weight: bold;">0</span> BUCKETS</div>
         </div>
     </div>
 
-    <div class="section-title">Global Pools (Waterfall + Boost)</div>
+    <div class="section-title">Global Pools (Waterfall + Static Boost)</div>
     <div class="bucket-grid" style="grid-template-columns: 1fr 1fr;">
         <div id="season_bucket_ui"></div>
         <div id="constructor_bucket_ui"></div>
     </div>
 
-    <div class="section-title">12-Round Payout Schedule (N : B)</div>
+    <div class="section-title">12-Round Distribution Schedule (N : B)</div>
     <div class="bucket-grid" id="rounds_grid"></div>
 </div>
 
 <script>
-    /** * SOURCE OF TRUTH: These would normally be stored in a shared state or DB.
-     * The Sponsor page will read these totals to display its own header.
+    /**
+     * STATE MANAGEMENT
+     * In this version, we use localStorage to sync with the Sponsor Page.
      */
-    let currentRound = 4; // Managed by Master Page
-    let totalNormal = 45000;
-    let totalBoost = 11000;
-    
-    // Limits synced from Sponsor Policy
+    let currentRound = 4; // This will eventually be read from Master Page state
+    let totalNormal = parseFloat(localStorage.getItem('sanrat_total_normal')) || 0;
+    let totalBoost = parseFloat(localStorage.getItem('sanrat_total_boost')) || 0;
+
     const limits = {
         wk: { min: 1000, max: 5000 },
         sea: { min: 5000, max: 20000 },
@@ -97,17 +107,26 @@
         const val = parseFloat(document.getElementById('inject_amt').value) || 0;
         if (type === 'normal') totalNormal += val;
         else totalBoost += val;
+        
+        // Sync to shared memory
+        localStorage.setItem('sanrat_total_normal', totalNormal);
+        localStorage.setItem('sanrat_total_boost', totalBoost);
+        localStorage.setItem('sanrat_vault_total', (totalNormal + totalBoost));
+        
         document.getElementById('inject_amt').value = '';
         calculateAndRender();
     }
 
-    /** * WIPE LOGIC: This clears the Treasury. 
-     * When called, any page observing these totals (Sponsor) will show 0.
+    /**
+     * SIGNAL LISTENER
+     * Listens for the "Wipe" command from the Sponsor Page
      */
-    window.addEventListener('message', (event) => {
-        if (event.data === 'WIPE_TREASURY') {
+    window.addEventListener('storage', (event) => {
+        if (event.key === 'sanrat_vault_total' && event.newValue === "0") {
             totalNormal = 0;
             totalBoost = 0;
+            localStorage.setItem('sanrat_total_normal', 0);
+            localStorage.setItem('sanrat_total_boost', 0);
             calculateAndRender();
         }
     });
@@ -115,78 +134,82 @@
     function calculateAndRender() {
         let remainingNormal = totalNormal;
         
-        // BOOST ALLOCATION LOGIC:
-        // Divisor = (Active Round + All Future Rounds) + Season + Constructor
-        const activeAndFutureCount = (12 - currentRound) + 1;
-        const totalBoostDivisor = activeAndFutureCount + 2; 
-        const boostPerBucket = totalBoost > 0 ? (totalBoost / totalBoostDivisor) : 0;
+        // --- DYNAMIC BOOST MATH ---
+        // Divisor = Remaining Rounds (inc. Active) + 2 Pools
+        const remainingRounds = (12 - currentRound) + 1;
+        const divisor = remainingRounds + 2;
+        const boostShare = totalBoost > 0 ? (totalBoost / divisor) : 0;
 
-        document.getElementById('divisor_display').innerText = totalBoostDivisor;
+        document.getElementById('divisor_display').innerText = divisor;
         document.getElementById('round_status').innerText = `ROUND ${currentRound} LIVE`;
 
-        let rounds = [];
+        let roundData = [];
         for(let i=0; i<12; i++) {
             let isEligible = (i + 1) >= currentRound;
-            rounds.push({ nrm: 0, bst: isEligible ? boostPerBucket : 0 });
+            roundData.push({ nrm: 0, bst: isEligible ? boostShare : 0 });
         }
 
-        // WATERFALL NORMAL:
-        // 1. Lock Past (Assume Maxed)
+        // --- NORMAL WATERFALL LOGIC ---
+        // 1. Past Rounds (Assumed Closed at Max)
         for (let i = 0; i < currentRound - 1; i++) {
-            rounds[i].nrm = limits.wk.max;
+            roundData[i].nrm = limits.wk.max;
             remainingNormal -= limits.wk.max;
         }
 
-        // 2. Weekly & Pool Minima
+        // 2. Minimums (Current + Future Rounds, then Pools)
         for (let i = currentRound - 1; i < 12; i++) {
             let amt = Math.min(remainingNormal, limits.wk.min);
-            rounds[i].nrm += amt; remainingNormal -= amt;
+            roundData[i].nrm += amt; remainingNormal -= amt;
         }
-        let sNrm = Math.min(remainingNormal, limits.sea.min); remainingNormal -= sNrm;
-        let cNrm = Math.min(remainingNormal, limits.con.min); remainingNormal -= cNrm;
+        let seaN = Math.min(remainingNormal, limits.sea.min); remainingNormal -= seaN;
+        let conN = Math.min(remainingNormal, limits.con.min); remainingNormal -= conN;
 
-        // 3. Weekly & Pool Maxima (Waterfall)
-        let aIdx = currentRound - 1;
-        let aTop = Math.min(remainingNormal, limits.wk.max - rounds[aIdx].nrm);
-        rounds[aIdx].nrm += aTop; remainingNormal -= aTop;
+        // 3. Maximums (Active Round Priority, then Future, then Pools)
+        let activeIdx = currentRound - 1;
+        let activeTop = Math.min(remainingNormal, limits.wk.max - roundData[activeIdx].nrm);
+        roundData[activeIdx].nrm += activeTop; remainingNormal -= activeTop;
 
         for (let i = currentRound; i < 12; i++) {
-            let top = Math.min(remainingNormal, limits.wk.max - rounds[i].nrm);
-            rounds[i].nrm += top; remainingNormal -= top;
+            let top = Math.min(remainingNormal, limits.wk.max - roundData[i].nrm);
+            roundData[i].nrm += top; remainingNormal -= top;
         }
-        let sMax = Math.min(remainingNormal, limits.sea.max - sNrm); sNrm += sMax;
-        let cMax = Math.min(remainingNormal, limits.con.max - cNrm); cNrm += cMax;
+        
+        let seaMaxTop = Math.min(remainingNormal, limits.sea.max - seaN); seaN += seaMaxTop; remainingNormal -= seaMaxTop;
+        let conMaxTop = Math.min(remainingNormal, limits.con.max - conN); conN += conMaxTop;
 
-        renderUI(rounds, sNrm, cNrm, boostPerBucket);
+        renderUI(roundData, seaN, conN, boostShare);
     }
 
-    function renderUI(rounds, sNrm, cNrm, bst) {
-        document.getElementById('total_display').innerText = `${(totalNormal + totalBoost).toLocaleString()} TBNB`;
+    function renderUI(rounds, sN, cN, bShare) {
+        const total = totalNormal + totalBoost;
+        document.getElementById('total_display').innerText = `${total.toLocaleString()} TBNB`;
         
         // Render Special Pools
-        document.getElementById('season_bucket_ui').innerHTML = renderCard(`Season Pool`, sNrm, bst, limits.sea.max, limits.sea.min, 'special');
-        document.getElementById('constructor_bucket_ui').innerHTML = renderCard(`Constructor Pool`, cNrm, bst, limits.con.max, limits.con.min, 'special');
+        document.getElementById('season_bucket_ui').innerHTML = renderCardUI(`Season Payout Pool`, sN, bShare, limits.sea.max, limits.sea.min, 'special');
+        document.getElementById('constructor_bucket_ui').innerHTML = renderCardUI(`Constructor Payout Pool`, cN, bShare, limits.con.max, limits.con.min, 'special');
 
-        // Render Round Buckets
+        // Render Rounds
         const grid = document.getElementById('rounds_grid');
         grid.innerHTML = '';
         rounds.forEach((r, i) => {
             let rNum = i + 1;
             let state = rNum < currentRound ? 'past' : (rNum === currentRound ? 'active' : 'future');
-            grid.innerHTML += renderCard(`Round ${rNum}`, r.nrm, r.bst, limits.wk.max, limits.wk.min, state);
+            grid.innerHTML += renderCardUI(`Round ${rNum}`, r.nrm, r.bst, limits.wk.max, limits.wk.min, state);
         });
     }
 
-    function renderCard(label, nVal, bVal, maxN, minN, state) {
-        let total = nVal + bVal;
-        let sCls = total >= maxN ? 'status-max' : (total >= minN ? 'status-min' : 'status-below');
-        let sTxt = total >= maxN ? 'Maxed' : (total >= minN ? 'At Min' : 'Below Min');
+    function renderCardUI(label, nVal, bVal, limitN, minN, state) {
+        let totalB = nVal + bVal;
+        let sCls = totalB >= limitN ? 'status-max' : (totalB >= minN ? 'status-min' : 'status-below');
+        let sTxt = totalB >= limitN ? 'Maxed' : (totalB >= minN ? 'At Min' : 'Below Min');
 
         return `
             <div class="card ${state}">
                 <span class="bucket-label">${label}</span>
                 <div class="bucket-main">
-                    <span class="n-val">${maxN}</span><span style="color:#444"> : </span><span class="b-val">${total.toFixed(0)}</span>
+                    <span class="n-val">${limitN}</span>
+                    <span style="color:#444; margin: 0 8px;">:</span>
+                    <span class="b-val">${totalB.toFixed(0)}</span>
                 </div>
                 <div class="breakdown">
                     <span>N: <span class="val-nrm">${nVal.toFixed(0)}</span></span>
@@ -197,6 +220,7 @@
         `;
     }
 
+    // Initial Run
     calculateAndRender();
 </script>
 </body>
