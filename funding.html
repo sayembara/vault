@@ -7,7 +7,7 @@
     <style>
         :root { 
             --accent: #00ffcc; --bg: #0b0e14; --card: #161b22; --border: #30363d; 
-            --danger: #ff4b2b; --warning: #ffcc00; --success: #00ffcc;
+            --danger: #ff4b2b; --warning: #ffcc00; --success: #00ffcc; --boost: #b300ff;
         }
         body { background: var(--bg); color: white; font-family: 'Inter', sans-serif; padding: 20px; }
         .container { max-width: 1200px; margin: 0 auto; }
@@ -16,27 +16,34 @@
         .treasury-header { display: flex; justify-content: space-between; align-items: center; background: var(--card); padding: 30px; border-radius: 12px; border: 1px solid var(--border); margin-bottom: 25px; }
         .total-fund { font-size: 2.5rem; font-weight: 900; color: var(--accent); }
         
-        /* Deposit Controls */
-        .deposit-box { display: flex; gap: 10px; margin-top: 15px; }
-        .deposit-input { background: #0d1117; border: 1px solid var(--border); color: var(--accent); padding: 12px; border-radius: 6px; width: 150px; font-weight: bold; }
-        .btn-deposit { background: var(--accent); color: #000; border: none; padding: 12px 24px; border-radius: 6px; font-weight: bold; cursor: pointer; }
+        /* Injection Controls */
+        .deposit-box { display: flex; flex-direction: column; gap: 10px; margin-top: 15px; }
+        .input-row { display: flex; gap: 10px; }
+        .deposit-input { background: #0d1117; border: 1px solid var(--border); color: var(--accent); padding: 12px; border-radius: 6px; width: 180px; font-weight: bold; font-size: 1.1rem; }
+        
+        .btn { border: none; padding: 12px 20px; border-radius: 6px; font-weight: 900; cursor: pointer; text-transform: uppercase; transition: 0.2s; }
+        .btn-normal { background: var(--accent); color: #000; }
+        .btn-boost { background: var(--boost); color: #fff; box-shadow: 0 0 10px rgba(179, 0, 255, 0.4); }
+        .btn:hover { opacity: 0.8; transform: translateY(-1px); }
 
-        /* Bucket Grid */
-        .section-title { font-size: 0.8rem; text-transform: uppercase; letter-spacing: 2px; color: #8b949e; margin: 30px 0 15px 0; display: flex; align-items: center; gap: 10px; }
+        .section-title { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 2px; color: #8b949e; margin: 30px 0 15px 0; display: flex; align-items: center; gap: 10px; }
         .section-title::after { content: ""; flex: 1; height: 1px; background: var(--border); }
 
-        .bucket-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 15px; }
-        .card { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 15px; position: relative; }
+        /* Bucket Grid */
+        .bucket-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 15px; }
+        .card { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 18px; position: relative; }
         .card.active { border: 2px solid var(--accent); background: rgba(0, 255, 204, 0.03); }
-        .card.past { opacity: 0.5; filter: grayscale(0.5); }
+        .card.past { opacity: 0.5; filter: grayscale(0.6); }
         
-        .bucket-label { font-size: 0.7rem; color: #8b949e; font-weight: bold; }
-        .bucket-main { font-family: 'Courier New', monospace; font-size: 1.1rem; margin: 8px 0; }
-        .target { color: #8b949e; }
-        .balance { color: var(--accent); font-weight: bold; }
+        /* N : B Formatting */
+        .bucket-label { font-size: 0.65rem; color: #8b949e; font-weight: bold; text-transform: uppercase; }
+        .bucket-main { font-family: 'Courier New', monospace; font-size: 1.2rem; margin: 8px 0; display: flex; align-items: center; gap: 5px; }
+        .n-val { color: #8b949e; font-weight: normal; }
+        .separator { color: #444; }
+        .b-val { color: var(--accent); font-weight: bold; }
         
-        /* Status Tags */
-        .status { font-size: 0.6rem; text-transform: uppercase; font-weight: 900; padding: 2px 6px; border-radius: 4px; }
+        /* Status Badges */
+        .status { font-size: 0.6rem; text-transform: uppercase; font-weight: 900; padding: 2px 6px; border-radius: 4px; display: inline-block; }
         .status-below { background: rgba(255, 75, 43, 0.1); color: var(--danger); }
         .status-min { background: rgba(255, 204, 0, 0.1); color: var(--warning); }
         .status-max { background: rgba(0, 255, 204, 0.1); color: var(--success); }
@@ -47,16 +54,21 @@
 <div class="container">
     <div class="treasury-header">
         <div>
-            <label style="color: #8b949e; text-transform: uppercase; font-size: 0.75rem;">Global Treasury Balance</label>
+            <label style="color: #8b949e; text-transform: uppercase; font-size: 0.75rem;">Global Treasury</label>
             <div class="total-fund" id="total_display">0 TBNB</div>
+            
             <div class="deposit-box">
-                <input type="number" id="deposit_amt" class="deposit-input" placeholder="Amount">
-                <button class="btn-deposit" onclick="addFunds()">ADD SPONSORSHIP</button>
+                <div class="input-row">
+                    <input type="number" id="inject_amt" class="deposit-input" placeholder="0.00 TBNB">
+                    <button class="btn btn-normal" onclick="injectNormal()">Inject Normal</button>
+                    <button class="btn btn-boost" onclick="injectBoost()">Inject Boost</button>
+                </div>
+                <p style="font-size: 0.65rem; color: #6e7681; margin: 0;">Normal follows Waterfall. Boost targets Active Round directly.</p>
             </div>
         </div>
         <div style="text-align: right;">
-            <div id="round_status" style="color: var(--accent); font-weight: bold;">ROUND 4 ACTIVE</div>
-            <div style="font-size: 0.8rem; color: #8b949e;">Next Transition: Sunday 00:00</div>
+            <div id="round_status" style="color: var(--accent); font-weight: bold; font-size: 1.2rem;">ROUND 4</div>
+            <div id="mode_status" style="font-size: 0.75rem; color: #8b949e; margin-top: 5px;">TIME-SYNCED WITH MASTER</div>
         </div>
     </div>
 
@@ -67,113 +79,119 @@
         <div id="constructor_bucket_ui"></div>
     </div>
 
-    <div class="section-title">Round-by-Round Breakdown</div>
-    <div class="bucket-grid" id="rounds_grid">
-        </div>
+    <div class="section-title">12-Round Payout Forecast (N : B)</div>
+    <div class="bucket-grid" id="rounds_grid"></div>
 
-    <div class="section-title">Treasury Overflow</div>
+    <div class="section-title">Overflow Reserve</div>
     <div id="overflow_ui"></div>
 </div>
 
 <script>
-    // DATA FROM MASTER & SPONSOR PAGES
+    // State
     let currentRound = 4;
-    let totalVault = 72000;
-    
-    // Limits pulled from sponsor.html settings
+    let totalVault = 68000;
+    let boostAmount = 0; // Tracks manual boosts to active round
+
     const limits = {
         wk: { min: 1000, max: 5000 },
         sea: { min: 5000, max: 20000 },
         con: { min: 2000, max: 10000 }
     };
 
-    function addFunds() {
-        const val = parseFloat(document.getElementById('deposit_amt').value) || 0;
+    function injectNormal() {
+        const val = parseFloat(document.getElementById('inject_amt').value) || 0;
         totalVault += val;
-        document.getElementById('deposit_amt').value = '';
-        runFundingWaterfall();
+        document.getElementById('inject_amt').value = '';
+        calculateAndRender();
     }
 
-    function runFundingWaterfall() {
-        let remaining = totalVault;
+    function injectBoost() {
+        const val = parseFloat(document.getElementById('inject_amt').value) || 0;
+        totalVault += val;
+        boostAmount += val; // Force this into the active round
+        document.getElementById('inject_amt').value = '';
+        calculateAndRender();
+    }
+
+    function calculateAndRender() {
+        let remaining = totalVault - boostAmount;
         let b = { rounds: Array(12).fill(0), sea: 0, con: 0, over: 0 };
 
-        // 1. Lock Past Rounds (Assumed Maxed)
+        // 1. Past Rounds
         for (let i = 0; i < currentRound - 1; i++) {
             b.rounds[i] = limits.wk.max;
             remaining -= limits.wk.max;
         }
 
-        // 2. Weekly Min (Current & Future)
+        // 2. Waterfall Mins
         for (let i = currentRound - 1; i < 12; i++) {
             let amt = Math.min(remaining, limits.wk.min);
             b.rounds[i] += amt; remaining -= amt;
         }
-
-        // 3. Season & Constructor Min
         let sM = Math.min(remaining, limits.sea.min); b.sea += sM; remaining -= sM;
         let cM = Math.min(remaining, limits.con.min); b.con += cM; remaining -= cM;
 
-        // 4. Weekly Max (Active Round Priority)
+        // 3. Inject Boost to Active Round First
+        b.rounds[currentRound-1] += boostAmount;
+
+        // 4. Waterfall Maxes
         let aIdx = currentRound - 1;
         let aTop = Math.min(remaining, limits.wk.max - b.rounds[aIdx]);
         b.rounds[aIdx] += aTop; remaining -= aTop;
 
-        // 5. Weekly Max (Future Rounds)
         for (let i = currentRound; i < 12; i++) {
             let top = Math.min(remaining, limits.wk.max - b.rounds[i]);
             b.rounds[i] += top; remaining -= top;
         }
 
-        // 6. Season & Constructor Max
         let sX = Math.min(remaining, limits.sea.max - b.sea); b.sea += sX; remaining -= sX;
         let cX = Math.min(remaining, limits.con.max - b.con); b.con += cX; remaining -= cX;
 
         b.over = remaining;
-        renderFundingUI(b);
+        renderUI(b);
     }
 
-    function renderFundingUI(b) {
+    function renderUI(b) {
         document.getElementById('total_display').innerText = `${totalVault.toLocaleString()} TBNB`;
+        document.getElementById('round_status').innerText = `ROUND ${currentRound} ACTIVE`;
         
-        // Render 12 Rounds
         const grid = document.getElementById('rounds_grid');
         grid.innerHTML = '';
         b.rounds.forEach((val, i) => {
-            let rNum = i + 1;
-            let state = rNum < currentRound ? 'past' : (rNum === currentRound ? 'active' : 'future');
-            grid.innerHTML += renderCard(`Round ${rNum}`, val, limits.wk.min, limits.wk.max, state);
+            let state = (i+1) < currentRound ? 'past' : ((i+1) === currentRound ? 'active' : 'future');
+            grid.innerHTML += renderBucket(`Round ${i+1}`, val, limits.wk.max, limits.wk.min, state);
         });
 
-        // Render Totals
-        document.getElementById('weekly_bucket_ui').innerHTML = renderCard(`Active Sponsor (R${currentRound})`, b.rounds[currentRound-1], limits.wk.min, limits.wk.max, 'active');
-        document.getElementById('season_bucket_ui').innerHTML = renderCard('Season Pool', b.sea, limits.sea.min, limits.sea.max, 'special');
-        document.getElementById('constructor_bucket_ui').innerHTML = renderCard('Constructor Pool', b.con, limits.con.min, limits.con.max, 'special');
+        document.getElementById('weekly_bucket_ui').innerHTML = renderBucket(`Active Sponsor`, b.rounds[currentRound-1], limits.wk.max, limits.wk.min, 'active');
+        document.getElementById('season_bucket_ui').innerHTML = renderBucket('Season Pool', b.sea, limits.sea.max, limits.sea.min, 'special');
+        document.getElementById('constructor_bucket_ui').innerHTML = renderBucket('Constructor Pool', b.con, limits.con.max, limits.con.min, 'special');
         
         document.getElementById('overflow_ui').innerHTML = `
-            <div class="card" style="border-color: #444; width: 300px;">
-                <span class="bucket-label">Overflow Reserve</span>
-                <div class="bucket-main"><span class="balance">${b.over.toFixed(2)}</span></div>
+            <div class="card" style="width: 250px;">
+                <span class="bucket-label">Vault Overflow</span>
+                <div class="bucket-main"><span class="b-val">${b.over.toFixed(2)}</span></div>
                 <span class="status status-max">Secured</span>
             </div>
         `;
     }
 
-    function renderCard(label, val, min, max, state) {
-        let sCls = val >= max ? 'status-max' : (val >= min ? 'status-min' : 'status-below');
-        let sTxt = val >= max ? 'Maxed' : (val >= min ? 'At Min' : 'Below Min');
+    function renderBucket(label, b, n, min, state) {
+        let sCls = b >= n ? 'status-max' : (b >= min ? 'status-min' : 'status-below');
+        let sTxt = b >= n ? 'Maxed' : (b >= min ? 'At Min' : 'Below Min');
         return `
             <div class="card ${state}">
                 <span class="bucket-label">${label}</span>
                 <div class="bucket-main">
-                    <span class="target">${max}:</span><span class="balance">${val.toFixed(0)}</span>
+                    <span class="n-val">${n}</span>
+                    <span class="separator">:</span>
+                    <span class="b-val">${b.toFixed(0)}</span>
                 </div>
                 <span class="status ${sCls}">${sTxt}</span>
             </div>
         `;
     }
 
-    runFundingWaterfall();
+    calculateAndRender();
 </script>
 </body>
 </html>
