@@ -36,13 +36,16 @@
 
         /* 14 Buckets Grid */
         .bucket-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 12px; }
-        .b-card { background: #0d1117; border: 1px solid var(--border); border-radius: 8px; padding: 15px; }
+        .b-card { background: #0d1117; border: 1px solid var(--border); border-radius: 8px; padding: 15px; position: relative; overflow: hidden; }
         .b-card.active { border: 1px solid var(--accent); box-shadow: 0 0 15px rgba(0, 255, 204, 0.1); }
+        .b-card.maxed { border: 1px solid var(--accent); background: rgba(0, 255, 204, 0.02); }
         .b-card.special { border: 1px solid var(--boost); }
         .b-card.past { opacity: 0.4; filter: grayscale(1); }
         .b-main { font-family: 'Courier New', monospace; font-size: 1.3rem; margin: 8px 0; }
         .val-total { color: var(--accent); font-weight: bold; }
         .b-breakdown { font-size: 0.55rem; border-top: 1px solid #222; padding-top: 8px; color: #666; display: flex; justify-content: space-between; }
+        .max-tag { position: absolute; top: 0; right: 0; background: var(--accent); color: black; font-size: 0.5rem; font-weight: 900; padding: 2px 5px; text-transform: uppercase; display: none; }
+        .maxed .max-tag { display: block; }
 
         .btn { flex: 1; padding: 18px; border-radius: 8px; font-weight: 900; cursor: pointer; border: none; text-transform: uppercase; transition: 0.2s; font-size: 0.9rem; }
         .btn-save { background: var(--accent); color: #0b0e14; }
@@ -56,15 +59,15 @@
     <div class="header">
         <div>
             <h1>🤝 Sponsor Policy</h1>
-            <div id="sync_status" class="sync-indicator">CONNECTING...</div>
+            <div id="sync_status" class="sync-indicator">CONNECTING TO DATABASE...</div>
         </div>
         <div class="vault-stats">
             <div class="stat-item">
-                <span class="stat-label">Normal</span>
+                <span class="stat-label">Normal Pool</span>
                 <div class="vault-value" id="val_n" style="color:var(--accent)">0</div>
             </div>
             <div class="stat-item">
-                <span class="stat-label">Boost</span>
+                <span class="stat-label">Boost Pool</span>
                 <div class="vault-value" id="val_b" style="color:var(--boost)">0</div>
             </div>
             <div class="stat-item" style="border-left: 1px solid #333; padding-left: 15px;">
@@ -99,7 +102,7 @@
         </div>
     </div>
 
-    <div class="section-title">Live Preview (12 Rounds + 2 Special Pools)</div>
+    <div class="section-title">Funding Page Mirror (Live Feed)</div>
     <div id="sponsor_grid_mirror" class="bucket-grid"></div>
 
     <div style="display: flex; margin-top: 30px;">
@@ -121,52 +124,32 @@
     firebase.initializeApp(firebaseConfig);
     const db = firebase.database();
 
-    // --- DEBUGGER UI ---
-    const debugDiv = document.createElement('div');
-    debugDiv.style = "position:fixed; bottom:10px; right:10px; background:rgba(0,0,0,0.9); border:1px solid #ff4b2b; color:#00ffcc; padding:15px; font-family:monospace; font-size:11px; z-index:9999; border-radius:8px; width:300px; box-shadow:0 0 20px rgba(0,0,0,0.5);";
-    debugDiv.innerHTML = `<strong>📡 DATABASE PULSE</strong><hr style='border:0;border-top:1px solid #333'><div id='debug_logs'>Waiting for data...</div>`;
-    document.body.appendChild(debugDiv);
-
-    function logDebug(label, val) {
-        const logs = document.getElementById('debug_logs');
-        const color = (val === null || val === undefined) ? '#ff4b2b' : '#00ffcc';
-        logs.innerHTML += `<div style="margin-top:5px">${label}: <span style="color:${color}">${JSON.stringify(val)}</span></div>`;
-    }
-
     let currentRound = 1;
-    let treasury = { normal: 0, boost: 0 };
 
     window.onload = () => {
-        document.getElementById('debug_logs').innerHTML = ''; // Clear wait message
-
         // 1. Sync Round
         db.ref('race_state/round').on('value', (snap) => {
             currentRound = snap.val() || 1;
-            logDebug("Round Path", currentRound);
-            calculateAndRender();
         });
 
-        // 2. Sync Treasury
+        // 2. Sync Global Treasury (Header)
         db.ref('treasury').on('value', (snap) => {
-            const data = snap.val();
-            logDebug("Treasury Path", data); // THIS IS THE KEY LOG
-            
-            if (data) {
-                treasury = {
-                    normal: Number(data.normal) || 0,
-                    boost: Number(data.boost) || 0
-                };
-                document.getElementById('sync_status').innerText = "● LIVE SYNC ACTIVE";
-            } else {
-                document.getElementById('sync_status').innerText = "⚠️ NO DATA AT 'treasury'";
-            }
-            calculateAndRender();
+            const t = snap.val() || { normal: 0, boost: 0 };
+            document.getElementById('val_n').innerText = Math.floor(t.normal).toLocaleString();
+            document.getElementById('val_b').innerText = Math.floor(t.boost).toLocaleString();
+            document.getElementById('val_total').innerText = Math.floor(t.normal + t.boost).toLocaleString();
         });
 
-        // 3. Listen for Policy
+        // 3. Mirror the 'funding' node calculated by the Funding Page
+        db.ref('funding').on('value', (snap) => {
+            const fundingData = snap.val() || {};
+            renderMirror(fundingData);
+            document.getElementById('sync_status').innerText = "● LIVE FEED FROM FUNDING";
+        });
+
+        // 4. Load current Policy settings
         db.ref('policy').on('value', (snap) => {
             const p = snap.val();
-            logDebug("Policy Path", p ? "Found" : "Missing");
             if (p) {
                 document.getElementById('wk_min').value = p.wk_min;
                 document.getElementById('wk_max').value = p.wk_max;
@@ -174,66 +157,53 @@
                 document.getElementById('sea_max').value = p.sea_max;
                 document.getElementById('con_min').value = p.con_min;
                 document.getElementById('con_max').value = p.con_max;
-                calculateAndRender();
             }
         });
     };
 
-    function calculateAndRender() {
-        const total = treasury.normal + treasury.boost;
-        
-        // Update Header
-        document.getElementById('val_n').innerText = treasury.normal.toLocaleString();
-        document.getElementById('val_b').innerText = treasury.boost.toLocaleString();
-        document.getElementById('val_total').innerText = total.toLocaleString();
-
-        const wkMax = parseInt(document.getElementById('wk_max').value) || 0;
-        const wkMin = parseInt(document.getElementById('wk_min').value) || 0;
-        const seaMax = parseInt(document.getElementById('sea_max').value) || 0;
-        const conMax = parseInt(document.getElementById('con_max').value) || 0;
-
+    function renderMirror(data) {
         const grid = document.getElementById('sponsor_grid_mirror');
         grid.innerHTML = '';
 
-        const activeRoundsCount = Math.max(0, 12 - currentRound + 1);
-        const divisor = activeRoundsCount + 2; 
-        const bShare = (treasury.boost > 0 && divisor > 0) ? (treasury.boost / divisor) : 0;
+        const wkMax = parseInt(document.getElementById('wk_max').value) || 0;
+        const seaMax = parseInt(document.getElementById('sea_max').value) || 0;
+        const conMax = parseInt(document.getElementById('con_max').value) || 0;
 
-        let remNrm = treasury.normal;
-
+        // Render 12 Rounds
         for (let i = 1; i <= 12; i++) {
-            let n = 0, b = 0, state = '';
-            if (i < currentRound) {
-                state = 'past'; n = 0; b = 0;
-            } else {
-                state = (i === currentRound) ? 'active' : '';
-                n = Math.max(0, Math.min(remNrm, wkMin));
-                remNrm -= n;
-                b = bShare;
-            }
-            renderBucket(grid, `Round ${i}`, n, b, wkMax, state);
+            const bkt = data[`round${i}`] || { n: 0, b: 0 };
+            let state = i < currentRound ? 'past' : (i === currentRound ? 'active' : '');
+            renderBucket(grid, `Round ${i}`, bkt.n, bkt.b, wkMax, state);
         }
 
-        const sN = Math.max(0, Math.min(remNrm, seaMax));
-        remNrm -= sN;
-        renderBucket(grid, "Season Pool", sN, bShare, seaMax, 'special');
+        // Render Specials
+        const sPool = data['season_pool'] || { n: 0, b: 0 };
+        renderBucket(grid, "Season Pool", sPool.n, sPool.b, seaMax, 'special');
 
-        const cN = Math.max(0, Math.min(remNrm, conMax));
-        remNrm -= cN;
-        renderBucket(grid, "Constructor", cN, bShare, conMax, 'special');
+        const cPool = data['constructor_pool'] || { n: 0, b: 0 };
+        renderBucket(grid, "Constructor", cPool.n, cPool.b, conMax, 'special');
+
+        // Render Overflow if it exists in funding data
+        if (data['overflow'] && data['overflow'].n > 0) {
+            renderBucket(grid, "Overflow Vault", data['overflow'].n, 0, "∞", "special");
+        }
     }
 
     function renderBucket(container, label, n, b, max, state) {
+        const total = Number(n) + Number(b);
+        const isMaxed = n >= max && max > 0;
+        
         container.innerHTML += `
-            <div class="b-card ${state}">
+            <div class="b-card ${state} ${isMaxed ? 'maxed' : ''}">
+                <div class="max-tag">MAXED</div>
                 <span style="font-size: 0.6rem; color: #8b949e; text-transform: uppercase; font-weight: 800;">${label}</span>
                 <div class="b-main">
                     <span style="color:#555">${max}</span> : 
-                    <span class="val-total">${(n + b).toFixed(0)}</span>
+                    <span class="val-total">${total.toFixed(0)}</span>
                 </div>
                 <div class="b-breakdown">
-                    <span>N: ${n.toFixed(0)}</span>
-                    <span>B: +${b.toFixed(0)}</span>
+                    <span>N: ${Number(n).toFixed(0)}</span>
+                    <span>B: +${Number(b).toFixed(0)}</span>
                 </div>
             </div>
         `;
@@ -249,14 +219,15 @@
             con_max: parseInt(document.getElementById('con_max').value) || 0
         };
         db.ref('policy').set(policyData).then(() => {
-            document.getElementById('sync_status').innerText = "✅ POLICY SYNCED";
-            setTimeout(() => { document.getElementById('sync_status').innerText = "● LIVE SYNC ACTIVE"; }, 2000);
+            document.getElementById('sync_status').innerText = "✅ POLICY SENT";
+            setTimeout(() => { document.getElementById('sync_status').innerText = "● LIVE FEED FROM FUNDING"; }, 2000);
         });
     }
 
     function triggerWipe() {
         if(confirm("DANGER: Wipe global treasury?")) {
             db.ref('treasury').set({ normal: 0, boost: 0 });
+            db.ref('funding').set({}); // Clear the mirror data too
         }
     }
 </script>
