@@ -12,7 +12,6 @@
         body { background: var(--bg); color: white; font-family: 'Inter', sans-serif; padding: 20px; }
         .container { max-width: 1200px; margin: 0 auto; }
         
-        /* Treasury Header */
         .treasury-header { display: flex; justify-content: space-between; align-items: center; background: var(--card); padding: 30px; border-radius: 12px; border: 1px solid var(--border); margin-bottom: 25px; }
         .total-fund { font-size: 2.5rem; font-weight: 900; color: var(--accent); }
         
@@ -23,25 +22,22 @@
         .btn-normal { background: var(--accent); color: #000; }
         .btn-boost { background: var(--boost); color: #fff; }
 
-        /* Bucket Grid */
         .section-title { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 2px; color: #8b949e; margin: 30px 0 15px 0; display: flex; align-items: center; gap: 10px; }
         .section-title::after { content: ""; flex: 1; height: 1px; background: var(--border); }
 
         .bucket-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 15px; }
-        .card { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 18px; }
+        .card { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 18px; position: relative;}
         .card.active { border: 2px solid var(--accent); }
         .card.past { opacity: 0.5; }
         
-        /* N : B Formatting */
         .bucket-label { font-size: 0.65rem; color: #8b949e; font-weight: bold; }
         .bucket-main { font-family: 'Courier New', monospace; font-size: 1.3rem; margin: 10px 0; }
         .n-val { color: #8b949e; }
         .b-val { color: var(--accent); font-weight: bold; }
         
-        /* Sub-values for Normal/Boost */
         .breakdown { display: flex; justify-content: space-between; font-size: 0.65rem; border-top: 1px solid #222; padding-top: 8px; margin-top: 5px; }
         .val-nrm { color: var(--accent); }
-        .val-bst { color: var(--boost); }
+        .val-bst { color: var(--boost); font-weight: bold; }
 
         .status { font-size: 0.6rem; text-transform: uppercase; font-weight: 900; padding: 2px 6px; border-radius: 4px; display: inline-block; margin-top: 10px;}
         .status-below { background: rgba(255, 75, 43, 0.1); color: var(--danger); }
@@ -54,7 +50,7 @@
 <div class="container">
     <div class="treasury-header">
         <div>
-            <label style="color: #8b949e; text-transform: uppercase; font-size: 0.7rem;">Live Treasury</label>
+            <label style="color: #8b949e; text-transform: uppercase; font-size: 0.7rem;">Live Treasury Vault (Source of Truth)</label>
             <div class="total-fund" id="total_display">0 TBNB</div>
             <div class="input-row">
                 <input type="number" id="inject_amt" class="deposit-input" placeholder="0.00">
@@ -64,13 +60,12 @@
         </div>
         <div style="text-align: right;">
             <div id="round_status" style="color: var(--accent); font-weight: 900; font-size: 1.4rem;">ROUND 4</div>
-            <button onclick="syncFromSponsor()" style="background: none; border: 1px solid #333; color: #666; font-size: 0.6rem; cursor: pointer; padding: 4px 8px; border-radius: 4px; margin-top: 10px;">REFRESH FROM SPONSOR</button>
+            <button onclick="wipeOut()" style="background: var(--danger); border: none; color: #fff; font-size: 0.6rem; cursor: pointer; padding: 6px 10px; border-radius: 4px; margin-top: 10px; font-weight: bold;">WIPE ALL (FROM SPONSOR)</button>
         </div>
     </div>
 
-    <div class="section-title">Global Pool Allocations</div>
-    <div class="bucket-grid" style="grid-template-columns: 1fr 1fr 1fr;">
-        <div id="weekly_bucket_ui"></div>
+    <div class="section-title">Primary Pools (Equal Boost Shares)</div>
+    <div class="bucket-grid" style="grid-template-columns: 1fr 1fr;">
         <div id="season_bucket_ui"></div>
         <div id="constructor_bucket_ui"></div>
     </div>
@@ -80,12 +75,12 @@
 </div>
 
 <script>
-    // State variables
+    // System State
     let currentRound = 4;
-    let totalVault = 75000;
-    let normalPool = 70000; // Total from Normal Injections
-    let boostPool = 5000;   // Total from Boost Injections
-
+    let totalNormal = 70000;
+    let totalBoost = 0;
+    
+    // Limits pulled from Sponsor Policy
     const limits = {
         wk: { min: 1000, max: 5000 },
         sea: { min: 5000, max: 20000 },
@@ -95,83 +90,78 @@
     function inject(type) {
         const val = parseFloat(document.getElementById('inject_amt').value) || 0;
         if (type === 'normal') {
-            normalPool += val;
+            totalNormal += val;
         } else {
-            boostPool += val;
+            totalBoost += val; // Added to the global boost pool
         }
-        totalVault = normalPool + boostPool;
         document.getElementById('inject_amt').value = '';
         calculateAndRender();
     }
 
-    // This simulates reading from the "Sponsor" wipe action
-    function syncFromSponsor() {
-        // In a real app: fetch from DB. Here: Reset to mock "wiped" state.
-        totalVault = 0; normalPool = 0; boostPool = 0;
-        calculateAndRender();
+    // Called when Sponsor clicks Wipe Out
+    function wipeOut() {
+        if(confirm("Sponsor Action: Clear all TBNB from Funding?")) {
+            totalNormal = 0;
+            totalBoost = 0;
+            calculateAndRender();
+        }
     }
 
     function calculateAndRender() {
-        let remainingNormal = normalPool;
-        let b = { 
-            rounds: Array(12).fill({normal: 0, boost: 0}),
-            sea: {normal: 0, boost: 0},
-            con: {normal: 0, boost: 0}
-        };
+        let remainingNormal = totalNormal;
+        
+        // Boost Split: Divide global boost equally among 14 buckets (12 rounds + 2 pools)
+        let boostPerBucket = totalBoost / 14;
 
-        // Initialize object structure for each round
-        let roundRes = [];
-        for(let i=0; i<12; i++) roundRes.push({n:0, b:0});
+        let roundData = [];
+        for(let i=0; i<12; i++) roundData.push({ nrm: 0, bst: boostPerBucket });
 
-        // 1. Lock Past Rounds (Assuming they were maxed by Normal)
+        // 1. Lock Past Rounds Normal Min
         for (let i = 0; i < currentRound - 1; i++) {
-            roundRes[i].n = limits.wk.max;
+            roundData[i].nrm = limits.wk.max;
             remainingNormal -= limits.wk.max;
         }
 
         // 2. Normal Waterfall Minima
         for (let i = currentRound - 1; i < 12; i++) {
             let amt = Math.min(remainingNormal, limits.wk.min);
-            roundRes[i].n += amt; remainingNormal -= amt;
+            roundData[i].nrm += amt; remainingNormal -= amt;
         }
-        let sMin = Math.min(remainingNormal, limits.sea.min); 
-        let seaN = sMin; remainingNormal -= sMin;
-        
-        let cMin = Math.min(remainingNormal, limits.con.min);
-        let conN = cMin; remainingNormal -= cMin;
 
-        // 3. APPLY BOOST (Directly to Active Round)
-        roundRes[currentRound-1].b += boostPool;
+        let sNrm = Math.min(remainingNormal, limits.sea.min); remainingNormal -= sNrm;
+        let cNrm = Math.min(remainingNormal, limits.con.min); remainingNormal -= cNrm;
 
-        // 4. Normal Waterfall Maxima
+        // 3. Normal Waterfall Maxima
         let aIdx = currentRound - 1;
-        let aTop = Math.min(remainingNormal, limits.wk.max - roundRes[aIdx].n);
-        roundRes[aIdx].n += aTop; remainingNormal -= aTop;
+        let aTop = Math.min(remainingNormal, limits.wk.max - roundData[aIdx].nrm);
+        roundData[aIdx].nrm += aTop; remainingNormal -= aTop;
 
         for (let i = currentRound; i < 12; i++) {
-            let top = Math.min(remainingNormal, limits.wk.max - roundRes[i].n);
-            roundRes[i].n += top; remainingNormal -= top;
+            let top = Math.min(remainingNormal, limits.wk.max - roundData[i].nrm);
+            roundData[i].nrm += top; remainingNormal -= top;
         }
 
-        let sMax = Math.min(remainingNormal, limits.sea.max - seaN); seaN += sMax;
-        let cMax = Math.min(remainingNormal, limits.con.max - conN); conN += cMax;
+        let sMax = Math.min(remainingNormal, limits.sea.max - sNrm); sNrm += sMax;
+        let cMax = Math.min(remainingNormal, limits.con.max - cNrm); cNrm += cMax;
 
-        renderUI(roundRes, seaN, conN);
+        renderUI(roundData, sNrm, cNrm, boostPerBucket);
     }
 
-    function renderUI(rounds, seaN, conN) {
-        document.getElementById('total_display').innerText = `${totalVault.toLocaleString()} TBNB`;
+    function renderUI(rounds, sNrm, cNrm, bst) {
+        let grandTotal = totalNormal + totalBoost;
+        document.getElementById('total_display').innerText = `${grandTotal.toLocaleString()} TBNB`;
         
+        // Render Pools
+        document.getElementById('season_bucket_ui').innerHTML = renderBucketUI('Season Pool', sNrm, bst, limits.sea.max, limits.sea.min, 'special');
+        document.getElementById('constructor_bucket_ui').innerHTML = renderBucketUI('Constructor Pool', cNrm, bst, limits.con.max, limits.con.min, 'special');
+
+        // Render Rounds
         const grid = document.getElementById('rounds_grid');
         grid.innerHTML = '';
         rounds.forEach((r, i) => {
             let state = (i+1) < currentRound ? 'past' : ((i+1) === currentRound ? 'active' : 'future');
-            grid.innerHTML += renderBucketUI(`Round ${i+1}`, r.n, r.b, limits.wk.max, limits.wk.min, state);
+            grid.innerHTML += renderBucketUI(`Round ${i+1}`, r.nrm, r.bst, limits.wk.max, limits.wk.min, state);
         });
-
-        document.getElementById('weekly_bucket_ui').innerHTML = renderBucketUI(`Active Round`, rounds[currentRound-1].n, rounds[currentRound-1].b, limits.wk.max, limits.wk.min, 'active');
-        document.getElementById('season_bucket_ui').innerHTML = renderBucketUI(`Season Pool`, seaN, 0, limits.sea.max, limits.sea.min, 'special');
-        document.getElementById('constructor_bucket_ui').innerHTML = renderBucketUI(`Constructor Pool`, conN, 0, limits.con.max, limits.con.min, 'special');
     }
 
     function renderBucketUI(label, nVal, bVal, limitN, min, state) {
@@ -185,11 +175,11 @@
                 <div class="bucket-main">
                     <span class="n-val">${limitN}</span>
                     <span style="color:#444"> : </span>
-                    <span class="b-val">${totalB.toFixed(0)}</span>
+                    <span class="b-val">${totalB.toFixed(1)}</span>
                 </div>
                 <div class="breakdown">
-                    <span>Normal: <span class="val-nrm">${nVal.toFixed(0)}</span></span>
-                    <span>Boost: <span class="val-bst">${bVal.toFixed(0)}</span></span>
+                    <span>Normal: <span class="val-nrm">${nVal.toFixed(1)}</span></span>
+                    <span>Boost: <span class="val-bst">+${bVal.toFixed(1)}</span></span>
                 </div>
                 <span class="status ${sCls}">${sTxt}</span>
             </div>
