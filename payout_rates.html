@@ -2,79 +2,87 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>SANRAT | Distribution Engine</title>
+    <title>SANRAT | Dynamic Payout Hub</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-database-compat.js"></script>
     <style>
         :root { --accent: #00ffcc; --bg: #0b0e14; --card: #161b22; --border: #30363d; --dim: #8b949e; }
-        body { background: var(--bg); color: white; font-family: 'Inter', sans-serif; padding: 25px; }
+        body { background: var(--bg); color: white; font-family: 'Inter', sans-serif; padding: 25px; margin: 0; }
         
-        /* Navigation */
-        .mode-nav { display: flex; gap: 10px; margin-bottom: 25px; }
-        .btn-mode { flex: 1; background: var(--card); border: 1px solid var(--border); color: var(--dim); padding: 12px; border-radius: 8px; cursor: pointer; font-weight: 800; text-transform: uppercase; font-size: 0.7rem; transition: 0.2s; }
+        .nav-header { display: flex; gap: 10px; margin-bottom: 20px; }
+        .btn-mode { flex: 1; background: var(--card); border: 1px solid var(--border); color: var(--dim); padding: 12px; border-radius: 8px; cursor: pointer; font-weight: 800; text-transform: uppercase; font-size: 0.7rem; }
         .btn-mode.active { border-color: var(--accent); color: var(--accent); background: rgba(0,255,204,0.05); }
 
-        /* Stats Display */
-        .stats-bar { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 25px; }
-        .stat-card { background: var(--card); border: 1px solid var(--border); padding: 15px; border-radius: 12px; position: relative;}
-        .stat-card label { display: block; font-size: 0.6rem; color: var(--dim); text-transform: uppercase; margin-bottom: 5px; font-weight: 800; }
-        .stat-val { font-size: 1.6rem; font-weight: 900; }
-        .opt-indicator { position: absolute; top: 15px; right: 15px; font-size: 0.6rem; color: var(--accent); border: 1px solid var(--accent); padding: 2px 6px; border-radius: 4px; display: none;}
+        .context-bar { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 15px; margin-bottom: 20px; }
+        .input-card { background: var(--card); border: 1px solid var(--border); padding: 15px; border-radius: 12px; }
+        .input-card label { display: block; font-size: 0.6rem; color: var(--dim); text-transform: uppercase; margin-bottom: 8px; font-weight: 800; }
+        .input-card input { width: 100%; background: #0d1117; border: 1px solid var(--border); color: white; padding: 10px; border-radius: 6px; font-family: monospace; outline: none; }
+        .input-card input:focus { border-color: var(--accent); }
 
-        /* Execution Control */
-        .exec-panel { background: #1c2128; border: 1px solid var(--border); padding: 25px; border-radius: 12px; margin-bottom: 25px; display: flex; align-items: flex-end; gap: 20px; }
-        .beta-input-group { flex: 1; }
-        .beta-input-group input { width: 100%; background: #0d1117; border: 1px solid var(--border); color: var(--accent); padding: 15px; border-radius: 8px; font-size: 1.5rem; font-family: monospace; outline: none; transition: border 0.3s; }
-        .beta-input-group input:focus { border-color: var(--accent); }
+        .stats-summary { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 20px; }
+        .stat-box { background: var(--card); border: 1px solid var(--border); padding: 15px; border-radius: 12px; }
+        .stat-label { font-size: 0.65rem; color: var(--dim); text-transform: uppercase; margin-bottom: 5px; }
+        .stat-val { font-size: 1.5rem; font-weight: 900; color: var(--accent); }
 
-        .btn-main { background: var(--accent); color: black; border: none; padding: 15px 45px; border-radius: 8px; font-weight: 900; cursor: pointer; text-transform: uppercase; height: 58px; transition: 0.3s; box-shadow: 0 4px 15px rgba(0,255,204,0.2); }
-        .btn-main:hover { transform: translateY(-2px); filter: brightness(1.1); }
-        .btn-main:disabled { background: #333; color: #666; cursor: not-allowed; transform: none; box-shadow: none; }
+        .execution-zone { background: #1c2128; border: 1px solid var(--border); padding: 20px; border-radius: 12px; display: flex; gap: 20px; align-items: flex-end; margin-bottom: 25px; }
+        .btn-exec { background: var(--accent); color: black; border: none; padding: 0 40px; border-radius: 8px; font-weight: 900; cursor: pointer; height: 50px; text-transform: uppercase; transition: 0.2s; }
+        .btn-exec:hover { transform: translateY(-2px); box-shadow: 0 4px 15px rgba(0,255,204,0.3); }
+        .btn-exec:disabled { background: #333; color: #666; cursor: not-allowed; transform: none; }
 
-        /* Visualization */
-        .chart-container { background: var(--card); border: 1px solid var(--border); padding: 20px; border-radius: 12px; height: 280px; margin-bottom: 25px; }
+        .chart-wrap { background: var(--card); border: 1px solid var(--border); padding: 20px; border-radius: 12px; height: 250px; margin-bottom: 25px; }
         
-        table { width: 100%; border-collapse: collapse; background: var(--card); border-radius: 12px; overflow: hidden; border: 1px solid var(--border); }
-        th { background: rgba(255,255,255,0.03); text-align: left; padding: 12px; font-size: 0.6rem; color: var(--dim); text-transform: uppercase; }
-        td { padding: 12px; border-bottom: 1px solid rgba(255,255,255,0.02); font-family: monospace; font-size: 0.9rem; }
-        .rank-col { color: var(--dim); width: 60px; }
-        .prize-col { color: var(--accent); font-weight: bold; }
+        table { width: 100%; border-collapse: collapse; background: var(--card); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; }
+        th { background: rgba(255,255,255,0.03); text-align: left; padding: 12px; font-size: 0.6rem; color: var(--dim); }
+        td { padding: 12px; border-bottom: 1px solid rgba(255,255,255,0.02); font-family: monospace; font-size: 0.85rem; }
     </style>
 </head>
 <body>
 
-<div class="mode-nav">
-    <button id="btn-round" class="btn-mode active" onclick="switchMode('round')">Round</button>
-    <button id="btn-season" class="btn-mode" onclick="switchMode('season')">Season</button>
-    <button id="btn-constructor" class="btn-mode" onclick="switchMode('constructor')">Constructor</button>
+<div class="nav-header">
+    <button id="btn-round" class="btn-mode active" onclick="setMode('round')">Round Payout</button>
+    <button id="btn-season" class="btn-mode" onclick="setMode('season')">Season Payout</button>
+    <button id="btn-constructor" class="btn-mode" onclick="setMode('constructor')">Constructor</button>
 </div>
 
-<div class="stats-bar">
-    <div class="stat-card">
-        <label id="n-label">Participants (N)</label>
-        <div id="val-n" class="stat-val">--</div>
-        <div id="opt-tag" class="opt-indicator">Auto-Beta ACTIVE</div>
+<div class="context-bar">
+    <div class="input-card">
+        <label>Target ID (e.g., 1, 5, "current")</label>
+        <input type="text" id="target-id" value="1" onchange="fetchData()">
     </div>
-    <div class="stat-card">
-        <label>Total Pool (P)</label>
-        <div id="val-p" class="stat-val">-- <small style="font-size: 0.7rem; color:var(--dim)">TBNB</small></div>
+    <div class="input-card">
+        <label>Base Beta (β)</label>
+        <input type="number" id="beta-val" value="4.0" step="0.1" oninput="calculate()">
+    </div>
+    <div class="input-card" style="opacity: 0.5;">
+        <label>Small Race Logic</label>
+        <div style="padding-top: 10px; font-size: 0.7rem; color: var(--accent);">ALWAYS AUTO-ENABLED</div>
     </div>
 </div>
 
-<div class="exec-panel">
-    <div class="beta-input-group">
-        <label>Adjust Base Beta (β)</label>
-        <input type="number" id="beta-in" value="4.0" step="0.1" oninput="calculate()">
+<div class="stats-summary">
+    <div class="stat-box">
+        <div class="stat-label">Actual Finishers (N)</div>
+        <div id="stat-n" class="stat-val">--</div>
     </div>
-    <button id="exec-btn" class="btn-main" onclick="distribute()">Finalize & Distribute</button>
+    <div class="stat-box">
+        <div class="stat-label">Treasury Pool (P)</div>
+        <div id="stat-p" class="stat-val">--</div>
+    </div>
 </div>
 
-<div class="chart-container"><canvas id="prizeChart"></canvas></div>
+<div class="execution-zone">
+    <div style="flex: 1; font-size: 0.75rem; color: var(--dim);">
+        Finalize rewards based on the current curve. These values will be added to each player's <strong>pending_claim</strong> node in Firebase.
+    </div>
+    <button id="dist-btn" class="btn-exec" onclick="distributeRewards()">Finalize & Distribute</button>
+</div>
+
+<div class="chart-wrap"><canvas id="payoutChart"></canvas></div>
 
 <table>
-    <thead><tr><th class="rank-col">Rank</th><th>Entity/Player</th><th class="prize-col">Prize</th><th>Share</th></tr></thead>
-    <tbody id="table-body"></tbody>
+    <thead><tr><th>Rank</th><th>Name/UID</th><th>Prize (TBNB)</th><th>% of Pool</th></tr></thead>
+    <tbody id="payout-rows"></tbody>
 </table>
 
 <script>
@@ -83,100 +91,93 @@
     const db = firebase.database();
 
     let chart, currentMode = 'round';
-    let localN = 0, localP = 0, localList = [];
-    let activePayouts = [];
+    let dataN = 0, dataP = 0, participants = [], calculatedPrizes = [];
 
-    async function switchMode(mode) {
+    async function setMode(mode) {
         currentMode = mode;
         document.querySelectorAll('.btn-mode').forEach(b => b.classList.remove('active'));
         document.getElementById(`btn-${mode}`).classList.add('active');
-        
-        let nPath, pPath, listPath;
-        if(mode === 'round') {
-            nPath = 'race_stats/day7/total_cars';
-            pPath = 'funding/round_fund';
-            listPath = 'race_results/day7_final_leaderboard';
-            document.getElementById('n-label').innerText = "Round Cars (Day 7)";
-        } else if(mode === 'season') {
-            nPath = 'season_stats/cars_with_points';
-            pPath = 'funding/season_fund';
-            listPath = 'season_results/leaderboard';
-            document.getElementById('n-label').innerText = "Season Cars w/ Points";
+        fetchData();
+    }
+
+    async function fetchData() {
+        const id = document.getElementById('target-id').value;
+        let pPath, listPath;
+
+        if (currentMode === 'round') {
+            pPath = `funding/round_fund`; // Assuming fund is global for current round
+            listPath = `race_results/round_${id}_final_leaderboard`;
+        } else if (currentMode === 'season') {
+            pPath = `funding/season_fund`;
+            listPath = `season_results/season_${id}_leaderboard`;
         } else {
-            nPath = 'constructor_stats/teams_with_points';
-            pPath = 'funding/constructor_fund';
-            listPath = 'constructor_results/leaderboard';
-            document.getElementById('n-label').innerText = "Constructor Teams";
+            pPath = `funding/constructor_fund`;
+            listPath = `constructor_results/season_${id}_leaderboard`;
         }
 
-        const [nSnap, pSnap, listSnap] = await Promise.all([
-            db.ref(nPath).once('value'),
+        const [pSnap, listSnap] = await Promise.all([
             db.ref(pPath).once('value'),
             db.ref(listPath).orderByChild('rank').once('value')
         ]);
 
-        localN = nSnap.val() || 0;
-        localP = pSnap.val() || 0;
-        localList = [];
-        listSnap.forEach(c => localList.push({ id: c.key, name: c.val().name || c.key, rank: c.val().rank }));
-
-        document.getElementById('val-n').innerText = localN;
-        document.getElementById('val-p').innerText = localP.toLocaleString();
+        dataP = pSnap.val() || 0;
+        participants = [];
+        listSnap.forEach(c => participants.push({ id: c.key, rank: c.val().rank, name: c.val().name || c.key }));
+        
+        dataN = participants.length;
+        document.getElementById('stat-n').innerText = dataN;
+        document.getElementById('stat-p').innerText = dataP.toLocaleString() + " TBNB";
+        
         calculate();
     }
 
     function calculate() {
-        if (!localN) return;
-        let beta = parseFloat(document.getElementById('beta-in').value) || 4.0;
+        if (dataN === 0) return;
+        let beta = parseFloat(document.getElementById('beta-val').value) || 4.0;
         
-        // Small Race Optimization (Locked)
-        if (localN < 20) {
-            beta = 1.5;
-            document.getElementById('opt-tag').style.display = 'block';
-        } else {
-            document.getElementById('opt-tag').style.display = 'none';
-        }
+        // Forced Small Race Optimization
+        if (dataN < 20) beta = 1.5;
 
-        const cutoff = Math.max(1, Math.floor(0.8 * localN));
+        const cutoff = Math.max(1, Math.floor(0.8 * dataN));
         const denom = 1 - Math.exp(-beta);
         
         let sumPart = 0;
-        for (let r = 1; r <= cutoff; r++) sumPart += Math.exp(-beta * (r - 1) / localN) / denom;
-        const alpha = localN / sumPart;
+        for (let r = 1; r <= cutoff; r++) sumPart += Math.exp(-beta * (r - 1) / dataN) / denom;
+        const alpha = dataN / sumPart;
 
-        activePayouts = [];
-        const tbody = document.getElementById('table-body');
+        calculatedPrizes = [];
+        const tbody = document.getElementById('payout-rows');
         tbody.innerHTML = '';
 
         for (let r = 1; r <= cutoff; r++) {
-            const val = (localP / localN) * ((alpha * Math.exp(-beta * (r - 1) / localN)) / denom);
-            activePayouts.push(val);
+            const val = (dataP / dataN) * ((alpha * Math.exp(-beta * (r - 1) / dataN)) / denom);
+            calculatedPrizes.push(val);
             
-            if (r <= 25) { // Table preview top 25
-                const player = localList.find(p => p.rank === r) || { name: '---' };
-                tbody.innerHTML += `<tr><td class="rank-col">#${r}</td><td>${player.name}</td><td class="prize-col">${val.toFixed(4)}</td><td style="color:var(--dim)">${((val/localP)*100).toFixed(2)}%</td></tr>`;
+            if (r <= 20) {
+                const p = participants.find(x => x.rank === r) || { name: 'Unknown' };
+                tbody.innerHTML += `<tr><td>#${r}</td><td>${p.name}</td><td style="color:var(--accent)">${val.toFixed(4)}</td><td>${((val/dataP)*100).toFixed(2)}%</td></tr>`;
             }
         }
         updateChart();
     }
 
-    async function distribute() {
-        if (!confirm(`PUSH TO BLOCKCHAIN: Distribute ${localP} TBNB to ${activePayouts.length} participants?`)) return;
-        const btn = document.getElementById('exec-btn');
+    async function distributeRewards() {
+        if (!confirm(`Finalize payout for ${dataN} finishers?`)) return;
+        const btn = document.getElementById('dist-btn');
         btn.disabled = true;
-        btn.innerText = "Writing to Database...";
+        btn.innerText = "Writing...";
 
         try {
-            for (let i = 0; i < activePayouts.length; i++) {
-                const player = localList[i];
-                const amount = activePayouts[i];
-                if (player && amount > 0) {
-                    const ref = db.ref(`players/${player.id}/pending_claim`);
-                    await ref.transaction(current => (current || 0) + amount);
+            for (let i = 0; i < calculatedPrizes.length; i++) {
+                const p = participants[i];
+                const prize = calculatedPrizes[i];
+                if (p && prize > 0) {
+                    const ref = db.ref(`players/${p.id}/pending_claim`);
+                    await ref.transaction(current => (current || 0) + prize);
                 }
             }
-            alert("Success: Payouts added to player balances.");
-            btn.innerText = "Distribution Complete";
+            alert("Prizes successfully distributed to pending claims!");
+            btn.innerText = "Done";
         } catch (e) {
             alert("Error: " + e.message);
             btn.disabled = false;
@@ -184,19 +185,19 @@
     }
 
     function updateChart() {
-        const ctx = document.getElementById('prizeChart').getContext('2d');
+        const ctx = document.getElementById('payoutChart').getContext('2d');
         if (chart) chart.destroy();
         chart = new Chart(ctx, {
             type: 'line',
             data: {
-                labels: activePayouts.map((_, i) => i + 1),
-                datasets: [{ data: activePayouts, borderColor: '#00ffcc', fill: true, backgroundColor: 'rgba(0, 255, 204, 0.1)', pointRadius: 0, tension: 0.2 }]
+                labels: calculatedPrizes.map((_, i) => i + 1),
+                datasets: [{ data: calculatedPrizes, borderColor: '#00ffcc', fill: true, backgroundColor: 'rgba(0, 255, 204, 0.1)', pointRadius: 0, tension: 0.2 }]
             },
-            options: { responsive: true, maintainAspectRatio: false, scales: { x: { display: false }, y: { grid: { color: '#333' }, ticks: { color: '#8b949e' } } }, plugins: { legend: { display: false } } }
+            options: { responsive: true, maintainAspectRatio: false, scales: { x: { display: false }, y: { grid: { color: '#333' } } }, plugins: { legend: { display: false } } }
         });
     }
 
-    window.onload = () => switchMode('round');
+    window.onload = fetchData;
 </script>
 </body>
 </html>
