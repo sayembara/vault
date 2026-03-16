@@ -121,26 +121,52 @@
     firebase.initializeApp(firebaseConfig);
     const db = firebase.database();
 
+    // --- DEBUGGER UI ---
+    const debugDiv = document.createElement('div');
+    debugDiv.style = "position:fixed; bottom:10px; right:10px; background:rgba(0,0,0,0.9); border:1px solid #ff4b2b; color:#00ffcc; padding:15px; font-family:monospace; font-size:11px; z-index:9999; border-radius:8px; width:300px; box-shadow:0 0 20px rgba(0,0,0,0.5);";
+    debugDiv.innerHTML = `<strong>📡 DATABASE PULSE</strong><hr style='border:0;border-top:1px solid #333'><div id='debug_logs'>Waiting for data...</div>`;
+    document.body.appendChild(debugDiv);
+
+    function logDebug(label, val) {
+        const logs = document.getElementById('debug_logs');
+        const color = (val === null || val === undefined) ? '#ff4b2b' : '#00ffcc';
+        logs.innerHTML += `<div style="margin-top:5px">${label}: <span style="color:${color}">${JSON.stringify(val)}</span></div>`;
+    }
+
     let currentRound = 1;
     let treasury = { normal: 0, boost: 0 };
 
     window.onload = () => {
-        // Sync Round from race_state
+        document.getElementById('debug_logs').innerHTML = ''; // Clear wait message
+
+        // 1. Sync Round
         db.ref('race_state/round').on('value', (snap) => {
             currentRound = snap.val() || 1;
+            logDebug("Round Path", currentRound);
             calculateAndRender();
         });
 
-        // Listen for Treasury
+        // 2. Sync Treasury
         db.ref('treasury').on('value', (snap) => {
-            treasury = snap.val() || { normal: 0, boost: 0 };
-            document.getElementById('sync_status').innerText = "● LIVE SYNC ACTIVE";
+            const data = snap.val();
+            logDebug("Treasury Path", data); // THIS IS THE KEY LOG
+            
+            if (data) {
+                treasury = {
+                    normal: Number(data.normal) || 0,
+                    boost: Number(data.boost) || 0
+                };
+                document.getElementById('sync_status').innerText = "● LIVE SYNC ACTIVE";
+            } else {
+                document.getElementById('sync_status').innerText = "⚠️ NO DATA AT 'treasury'";
+            }
             calculateAndRender();
         });
 
-        // Listen for Policy
+        // 3. Listen for Policy
         db.ref('policy').on('value', (snap) => {
             const p = snap.val();
+            logDebug("Policy Path", p ? "Found" : "Missing");
             if (p) {
                 document.getElementById('wk_min').value = p.wk_min;
                 document.getElementById('wk_max').value = p.wk_max;
@@ -156,7 +182,7 @@
     function calculateAndRender() {
         const total = treasury.normal + treasury.boost;
         
-        // Update Header Displays
+        // Update Header
         document.getElementById('val_n').innerText = treasury.normal.toLocaleString();
         document.getElementById('val_b').innerText = treasury.boost.toLocaleString();
         document.getElementById('val_total').innerText = total.toLocaleString();
@@ -169,26 +195,17 @@
         const grid = document.getElementById('sponsor_grid_mirror');
         grid.innerHTML = '';
 
-        // DIVISOR: Calculate share based ONLY on active/future buckets
         const activeRoundsCount = Math.max(0, 12 - currentRound + 1);
         const divisor = activeRoundsCount + 2; 
         const bShare = (treasury.boost > 0 && divisor > 0) ? (treasury.boost / divisor) : 0;
 
         let remNrm = treasury.normal;
 
-        // Render 12 Rounds
         for (let i = 1; i <= 12; i++) {
-            let n = 0;
-            let b = 0;
-            let state = '';
-
+            let n = 0, b = 0, state = '';
             if (i < currentRound) {
-                // PAST ROUNDS: Do not deduct from current balance
-                state = 'past';
-                n = 0; // Or show wkMax if you want historical record, but don't deduct remNrm
-                b = 0;
+                state = 'past'; n = 0; b = 0;
             } else {
-                // CURRENT & FUTURE
                 state = (i === currentRound) ? 'active' : '';
                 n = Math.max(0, Math.min(remNrm, wkMin));
                 remNrm -= n;
@@ -197,7 +214,6 @@
             renderBucket(grid, `Round ${i}`, n, b, wkMax, state);
         }
 
-        // 2 Special Pools
         const sN = Math.max(0, Math.min(remNrm, seaMax));
         remNrm -= sN;
         renderBucket(grid, "Season Pool", sN, bShare, seaMax, 'special');
@@ -224,10 +240,6 @@
     }
 
     function updatePolicy() {
-        const status = document.getElementById('sync_status');
-        status.innerText = "⏳ SAVING...";
-        status.style.color = "#ffcc00";
-
         const policyData = {
             wk_min: parseInt(document.getElementById('wk_min').value) || 0,
             wk_max: parseInt(document.getElementById('wk_max').value) || 0,
@@ -236,16 +248,9 @@
             con_min: parseInt(document.getElementById('con_min').value) || 0,
             con_max: parseInt(document.getElementById('con_max').value) || 0
         };
-
-        db.ref('policy').set(policyData, (error) => {
-            if (error) {
-                status.innerText = "❌ FAILED";
-                status.style.color = "#ff4b2b";
-            } else {
-                status.innerText = "✅ SYNCED TO FIREBASE";
-                status.style.color = "#00ffcc";
-                setTimeout(() => { status.innerText = "● LIVE SYNC ACTIVE"; status.style.color = "#8b949e"; }, 2000);
-            }
+        db.ref('policy').set(policyData).then(() => {
+            document.getElementById('sync_status').innerText = "✅ POLICY SYNCED";
+            setTimeout(() => { document.getElementById('sync_status').innerText = "● LIVE SYNC ACTIVE"; }, 2000);
         });
     }
 
