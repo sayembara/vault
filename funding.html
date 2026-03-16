@@ -2,52 +2,45 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SANRAT | Funding Master</title>
+    <title>Funding Master | SANRAT</title>
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-database-compat.js"></script>
     <style>
-        :root { --accent: #00ffcc; --bg: #0b0e14; --card: #161b22; --border: #30363d; --danger: #ff4b2b; }
-        body { background: var(--bg); color: white; font-family: 'Inter', sans-serif; padding: 20px; }
-        .container { max-width: 900px; margin: 0 auto; }
-        .card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 25px; margin-bottom: 20px; }
-        h1 { color: var(--accent); font-size: 1.2rem; text-transform: uppercase; margin: 0 0 20px 0; letter-spacing: 2px; }
-        
-        .input-group { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 20px; }
-        label { display: block; font-size: 0.7rem; color: #8b949e; text-transform: uppercase; margin-bottom: 8px; font-weight: 800; }
-        input { width: 100%; background: #0d1117; border: 1px solid var(--border); color: var(--accent); padding: 12px; border-radius: 8px; font-weight: 900; outline: none; box-sizing: border-box; }
-        
-        .btn { width: 100%; padding: 15px; border-radius: 8px; font-weight: 900; cursor: pointer; border: none; text-transform: uppercase; transition: 0.2s; }
-        .btn-inject { background: var(--accent); color: #0b0e14; }
-        .btn-inject:hover { transform: translateY(-2px); filter: brightness(1.1); }
-        
-        .status-box { font-family: monospace; font-size: 0.8rem; padding: 10px; background: #000; border-radius: 5px; border: 1px solid #333; margin-top: 10px; }
-        #log { color: #8b949e; max-height: 100px; overflow-y: auto; }
+        :root { --accent: #00ffcc; --bg: #0b0e14; --card: #161b22; --border: #30363d; --boost: #b300ff; }
+        body { background: var(--bg); color: white; font-family: 'Inter', sans-serif; padding: 20px; margin: 0; }
+        .stat-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 20px; margin-bottom: 30px; }
+        .stat-card { background: var(--card); border: 1px solid var(--border); padding: 20px; border-radius: 12px; text-align: center; }
+        .stat-val { font-size: 2rem; font-weight: 900; color: var(--accent); }
+        .inject-area { background: var(--card); padding: 25px; border-radius: 12px; border: 1px solid var(--border); margin-bottom: 30px; }
+        .input-row { display: flex; gap: 15px; align-items: flex-end; }
+        input { flex: 1; background: #0d1117; border: 1px solid var(--border); color: white; padding: 15px; border-radius: 8px; font-weight: bold; }
+        .btn-n { background: var(--accent); color: black; border: none; padding: 15px 30px; border-radius: 8px; font-weight: 900; cursor: pointer; }
+        .btn-b { background: var(--boost); color: white; border: none; padding: 15px 30px; border-radius: 8px; font-weight: 900; cursor: pointer; }
+        .bucket-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 15px; }
+        .b-card { background: rgba(255,255,255,0.03); border: 1px solid var(--border); padding: 15px; border-radius: 10px; position: relative; }
+        .tag { position: absolute; top: 10px; right: 10px; font-size: 0.5rem; background: #f1c40f; color: black; padding: 2px 5px; border-radius: 3px; font-weight: 900; }
+        .locked { opacity: 0.3; }
+        .active-bucket { border-color: var(--accent); }
     </style>
 </head>
 <body>
 
-<div class="container">
-    <div class="card">
-        <h1>💰 Treasury Injection</h1>
-        <div class="input-group">
-            <div>
-                <label>Add to Normal (N)</label>
-                <input type="number" id="inject_n" placeholder="0">
-            </div>
-            <div>
-                <label>Add to Boost (B)</label>
-                <input type="number" id="inject_b" placeholder="0">
-            </div>
-        </div>
-        <button class="btn btn-inject" onclick="injectFunds()">Process Injection</button>
-        
-        <div class="status-box">
-            <div style="color: var(--accent)" id="sync_status">SYSTEM IDLE</div>
-            <div id="log">Waiting for input...</div>
-        </div>
+<div class="stat-grid">
+    <div class="stat-card"><div>NORMAL TREASURY</div><div class="stat-val" id="disp_n">0</div></div>
+    <div class="stat-card"><div>BOOST POOL</div><div class="stat-val" id="disp_b" style="color:var(--boost)">0</div></div>
+    <div class="stat-card"><div>TOTAL ASSETS</div><div class="stat-val" id="disp_total">0</div></div>
+</div>
+
+<div class="inject-area">
+    <label style="font-size: 0.7rem; color: #8b949e; font-weight: 900;">AMOUNT (TBNB)</label>
+    <div class="input-row">
+        <input type="number" id="amt" step="0.01" placeholder="0.00">
+        <button class="btn-n" onclick="inject('normal')">INJECT N</button>
+        <button class="btn-b" onclick="inject('boost')">INJECT B</button>
     </div>
 </div>
+
+<div id="grid" class="bucket-grid"></div>
 
 <script>
     const firebaseConfig = { databaseURL: "https://nuclearf1-94a6b-default-rtdb.asia-southeast1.firebasedatabase.app" };
@@ -55,94 +48,68 @@
     const db = firebase.database();
 
     let treasury = { normal: 0, boost: 0 };
-    let policy = { wk_min: 0, wk_max: 0, sea_min: 0, sea_max: 0, con_min: 0, con_max: 0 };
-    let currentRound = 1;
+    let policy = { wk_min: 20, wk_max: 50, sea_min: 10, sea_max: 11, con_min: 1, con_max: 2 };
+    let round = 1;
 
-    // --- 1. DATA SYNC ---
-    db.ref('treasury').on('value', snap => {
-        treasury = snap.val() || { normal: 0, boost: 0 };
-        runWaterfall();
-    });
+    // Listeners
+    db.ref('treasury').on('value', snap => { treasury = snap.val() || {normal:0, boost:0}; updateUI(); });
+    db.ref('policy').on('value', snap => { if(snap.val()) policy = snap.val(); updateUI(); });
+    db.ref('race_state/round').on('value', snap => { round = snap.val() || 1; updateUI(); });
 
-    db.ref('policy').on('value', snap => {
-        if (snap.val()) {
-            policy = snap.val();
-            runWaterfall();
-        }
-    });
-
-    db.ref('race_state/round').on('value', snap => {
-        currentRound = snap.val() || 1;
-        runWaterfall();
-    });
-
-    // --- 2. WATERFALL ENGINE ---
-    function runWaterfall() {
-        let remNrm = treasury.normal;
-        let fundingExport = {};
-
-        // PASS 1: Fill Active Rounds to MIN
-        for (let i = 1; i <= 12; i++) {
-            fundingExport[`round${i}`] = { n: 0, b: 0 };
-            if (i >= currentRound) {
-                let take = Math.min(remNrm, policy.wk_min || 0);
-                fundingExport[`round${i}`].n = take;
-                remNrm -= take;
-            }
-        }
-
-        // PASS 2: Fill Special Pools to MAX (As requested in your logic)
-        let sN = Math.min(remNrm, policy.sea_max || 0);
-        fundingExport['season_pool'] = { n: sN, b: 0 };
-        remNrm -= sN;
-
-        let cN = Math.min(remNrm, policy.con_max || 0);
-        fundingExport['constructor_pool'] = { n: cN, b: 0 };
-        remNrm -= cN;
-
-        // PASS 3: Top up Active Rounds to MAX
-        for (let i = currentRound; i <= 12; i++) {
-            let currentN = fundingExport[`round${i}`].n;
-            let space = (policy.wk_max || 0) - currentN;
-            let take = Math.max(0, Math.min(remNrm, space));
-            fundingExport[`round${i}`].n += take;
-            remNrm -= take;
-        }
-
-        // BOOST SPLIT: Divide among active rounds + 2 pools
-        const activeCount = Math.max(0, 12 - currentRound + 1) + 2;
-        const bShare = treasury.boost / activeCount;
-
-        for (let i = currentRound; i <= 12; i++) { fundingExport[`round${i}`].b = bShare; }
-        fundingExport['season_pool'].b = bShare;
-        fundingExport['constructor_pool'].b = bShare;
-
-        // OVERFLOW
-        fundingExport['overflow'] = { n: Math.max(0, remNrm), b: 0 };
-
-        // PUSH TO MIRROR
-        db.ref('funding').set(fundingExport);
-        document.getElementById('sync_status').innerText = "● MIRROR SYNCED: " + new Date().toLocaleTimeString();
+    function inject(type) {
+        const val = parseFloat(document.getElementById('amt').value) || 0;
+        if(val <= 0) return;
+        treasury[type] += val;
+        db.ref('treasury').set(treasury);
+        document.getElementById('amt').value = '';
     }
 
-    // --- 3. INJECTION LOGIC ---
-    function injectFunds() {
-        const nAdd = parseInt(document.getElementById('inject_n').value) || 0;
-        const bAdd = parseInt(document.getElementById('inject_b').value) || 0;
+    function updateUI() {
+        document.getElementById('disp_n').innerText = treasury.normal.toFixed(0);
+        document.getElementById('disp_b').innerText = treasury.boost.toFixed(0);
+        document.getElementById('disp_total').innerText = (treasury.normal + treasury.boost).toFixed(0);
 
-        if (nAdd === 0 && bAdd === 0) return;
+        let remNrm = treasury.normal;
+        let funding = {};
 
-        const newTreasury = {
-            normal: treasury.normal + nAdd,
-            boost: treasury.boost + bAdd
-        };
+        // 1. Min Rounds
+        for(let i=1; i<=12; i++) {
+            funding[`round${i}`] = { n: 0, b: 0 };
+            if(i >= round) {
+                let take = Math.min(remNrm, policy.wk_min);
+                funding[`round${i}`].n = take; remNrm -= take;
+            }
+        }
+        // 2. Special Pools
+        let sN = Math.min(remNrm, policy.sea_max); funding.season_pool = { n: sN, b: 0 }; remNrm -= sN;
+        let cN = Math.min(remNrm, policy.con_max); funding.constructor_pool = { n: cN, b: 0 }; remNrm -= cN;
 
-        db.ref('treasury').set(newTreasury).then(() => {
-            const log = document.getElementById('log');
-            log.innerHTML = `<div>[${new Date().toLocaleTimeString()}] Injected: N+${nAdd}, B+${bAdd}</div>` + log.innerHTML;
-            document.getElementById('inject_n').value = '';
-            document.getElementById('inject_b').value = '';
-        });
+        // 3. Max Rounds
+        for(let i=round; i<=12; i++) {
+            let space = policy.wk_max - funding[`round${i}`].n;
+            let take = Math.min(remNrm, space); funding[`round${i}`].n += take; remNrm -= take;
+        }
+
+        // Boost
+        const div = Math.max(0, 12 - round + 1) + 2;
+        const bsh = treasury.boost / div;
+        for(let i=round; i<=12; i++) funding[`round${i}`].b = bsh;
+        funding.season_pool.b = bsh; funding.constructor_pool.b = bsh;
+        funding.overflow = { n: remNrm, b: 0 };
+
+        db.ref('funding').set(funding);
+        renderGrid(funding);
+    }
+
+    function renderGrid(data) {
+        const g = document.getElementById('grid'); g.innerHTML = '';
+        for(let i=1; i<=12; i++) {
+            let s = i < round ? 'locked' : (i === round ? 'active-bucket' : '');
+            g.innerHTML += `<div class="b-card ${s}">${i >= round ? '<div class="tag">AT MIN</div>':''}<div style="font-size:0.6rem; color:#8b949e">ROUND ${i}</div><div style="font-size:1.2rem; font-family:monospace">${policy.wk_max} : <span style="color:var(--accent)">${(data[`round${i}`].n + data[`round${i}`].b).toFixed(0)}</span></div></div>`;
+        }
+        g.innerHTML += `<div class="b-card active-bucket"><div class="tag">AT MIN</div><div style="font-size:0.6rem; color:#8b949e">SEASON</div><div style="font-size:1.2rem; font-family:monospace">${policy.sea_max} : <span style="color:var(--accent)">${(data.season_pool.n + data.season_pool.b).toFixed(0)}</span></div></div>`;
+        g.innerHTML += `<div class="b-card active-bucket"><div class="tag">AT MIN</div><div style="font-size:0.6rem; color:#8b949e">CONSTRUCTOR</div><div style="font-size:1.2rem; font-family:monospace">${policy.con_max} : <span style="color:var(--accent)">${(data.constructor_pool.n + data.constructor_pool.b).toFixed(0)}</span></div></div>`;
+        g.innerHTML += `<div class="b-card"><div style="font-size:0.6rem; color:#8b949e">OVERFLOW</div><div style="font-size:1.2rem; font-family:monospace">∞ : <span style="color:var(--accent)">${data.overflow.n.toFixed(0)}</span></div></div>`;
     }
 </script>
 </body>
