@@ -15,12 +15,11 @@
         body { background: var(--bg); color: white; font-family: 'Inter', sans-serif; padding: 20px; }
         .container { max-width: 1200px; margin: 0 auto; }
         
-        /* Header */
+        /* Header & Split Treasury */
         .header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border); padding-bottom: 20px; margin-bottom: 30px; }
         h1 { color: var(--accent); font-size: 1.6rem; text-transform: uppercase; letter-spacing: 2px; margin: 0; }
         .sync-indicator { font-size: 0.75rem; font-weight: bold; margin-top: 5px; color: #8b949e; transition: 0.3s; }
 
-        /* Updated Treasury Header */
         .vault-stats { display: flex; gap: 20px; text-align: right; background: rgba(0, 255, 204, 0.05); padding: 12px 20px; border-radius: 10px; border: 1px solid var(--border); }
         .stat-item { display: flex; flex-direction: column; }
         .stat-label { font-size: 0.55rem; color: #8b949e; font-weight: 900; text-transform: uppercase; }
@@ -126,7 +125,7 @@
     let treasury = { normal: 0, boost: 0 };
 
     window.onload = () => {
-        // Sync Round from Master Engine path
+        // Sync Round from race_state
         db.ref('race_state/round').on('value', (snap) => {
             currentRound = snap.val() || 1;
             calculateAndRender();
@@ -136,12 +135,6 @@
         db.ref('treasury').on('value', (snap) => {
             treasury = snap.val() || { normal: 0, boost: 0 };
             document.getElementById('sync_status').innerText = "● LIVE SYNC ACTIVE";
-            
-            // Update Header
-            document.getElementById('val_n').innerText = treasury.normal.toLocaleString();
-            document.getElementById('val_b').innerText = treasury.boost.toLocaleString();
-            document.getElementById('val_total').innerText = (treasury.normal + treasury.boost).toLocaleString();
-            
             calculateAndRender();
         });
 
@@ -160,7 +153,7 @@
         });
     };
 
-   function calculateAndRender() {
+    function calculateAndRender() {
         const total = treasury.normal + treasury.boost;
         
         // Update Header Displays
@@ -176,29 +169,27 @@
         const grid = document.getElementById('sponsor_grid_mirror');
         grid.innerHTML = '';
 
-        // 1. DIVISOR: Only divide Boost among active/future buckets
-        // (Remaining rounds + Season Pool + Constructor Pool)
+        // DIVISOR: Calculate share based ONLY on active/future buckets
         const activeRoundsCount = Math.max(0, 12 - currentRound + 1);
         const divisor = activeRoundsCount + 2; 
-        const bShare = treasury.boost > 0 ? (treasury.boost / divisor) : 0;
+        const bShare = (treasury.boost > 0 && divisor > 0) ? (treasury.boost / divisor) : 0;
 
         let remNrm = treasury.normal;
 
-        // 2. RENDER 12 ROUNDS
+        // Render 12 Rounds
         for (let i = 1; i <= 12; i++) {
             let n = 0;
             let b = 0;
             let state = '';
 
             if (i < currentRound) {
-                // PAST ROUNDS: Show as 0 or empty, do not deduct from remNrm
+                // PAST ROUNDS: Do not deduct from current balance
                 state = 'past';
-                n = 0;
+                n = 0; // Or show wkMax if you want historical record, but don't deduct remNrm
                 b = 0;
             } else {
-                // CURRENT & FUTURE ROUNDS
+                // CURRENT & FUTURE
                 state = (i === currentRound) ? 'active' : '';
-                // Take the minimum required (wkMin) or what's left
                 n = Math.max(0, Math.min(remNrm, wkMin));
                 remNrm -= n;
                 b = bShare;
@@ -206,18 +197,14 @@
             renderBucket(grid, `Round ${i}`, n, b, wkMax, state);
         }
 
-        // 3. SPECIAL POOLS (Season & Constructor)
-        // These always get a share of N (up to max) and their share of B
+        // 2 Special Pools
         const sN = Math.max(0, Math.min(remNrm, seaMax));
         remNrm -= sN;
         renderBucket(grid, "Season Pool", sN, bShare, seaMax, 'special');
 
         const cN = Math.max(0, Math.min(remNrm, conMax));
+        remNrm -= cN;
         renderBucket(grid, "Constructor", cN, bShare, conMax, 'special');
-    }
-
-        renderBucket(grid, "Season Pool", Math.max(0, Math.min(remNrm, seaMax)), bShare, seaMax, 'special');
-        renderBucket(grid, "Constructor", Math.max(0, Math.min(remNrm, conMax)), bShare, conMax, 'special');
     }
 
     function renderBucket(container, label, n, b, max, state) {
@@ -252,21 +239,18 @@
 
         db.ref('policy').set(policyData, (error) => {
             if (error) {
-                status.innerText = "❌ FAILED: CHECK RULES";
+                status.innerText = "❌ FAILED";
                 status.style.color = "#ff4b2b";
             } else {
                 status.innerText = "✅ SYNCED TO FIREBASE";
                 status.style.color = "#00ffcc";
-                setTimeout(() => {
-                    status.innerText = "● LIVE SYNC ACTIVE";
-                    status.style.color = "#8b949e";
-                }, 2000);
+                setTimeout(() => { status.innerText = "● LIVE SYNC ACTIVE"; status.style.color = "#8b949e"; }, 2000);
             }
         });
     }
 
     function triggerWipe() {
-        if(confirm("DANGER: This will wipe the treasury on ALL pages. Continue?")) {
+        if(confirm("DANGER: Wipe global treasury?")) {
             db.ref('treasury').set({ normal: 0, boost: 0 });
         }
     }
