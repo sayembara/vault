@@ -16,11 +16,12 @@
         input { flex: 1; background: #0d1117; border: 1px solid var(--border); color: white; padding: 15px; border-radius: 8px; font-weight: bold; }
         .btn-n { background: var(--accent); color: black; border: none; padding: 15px 30px; border-radius: 8px; font-weight: 900; cursor: pointer; }
         .btn-b { background: var(--boost); color: white; border: none; padding: 15px 30px; border-radius: 8px; font-weight: 900; cursor: pointer; }
-        .bucket-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 15px; }
+        .bucket-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 15px; }
         .b-card { background: rgba(255,255,255,0.03); border: 1px solid var(--border); padding: 15px; border-radius: 10px; position: relative; }
         .tag { position: absolute; top: 10px; right: 10px; font-size: 0.5rem; background: #f1c40f; color: black; padding: 2px 5px; border-radius: 3px; font-weight: 900; }
-        .locked { opacity: 0.3; }
-        .active-bucket { border-color: var(--accent); }
+        .locked { opacity: 0.3; filter: grayscale(1); }
+        .active-bucket { border-color: var(--accent); background: rgba(0, 255, 204, 0.05); }
+        .special-bucket { border-color: var(--boost); }
     </style>
 </head>
 <body>
@@ -32,11 +33,11 @@
 </div>
 
 <div class="inject-area">
-    <label style="font-size: 0.7rem; color: #8b949e; font-weight: 900;">AMOUNT (TBNB)</label>
+    <label style="font-size: 0.7rem; color: #8b949e; font-weight: 900;">INJECTION AMOUNT</label>
     <div class="input-row">
         <input type="number" id="amt" step="0.01" placeholder="0.00">
-        <button class="btn-n" onclick="inject('normal')">INJECT N</button>
-        <button class="btn-b" onclick="inject('boost')">INJECT B</button>
+        <button class="btn-n" onclick="inject('normal')">INJECT NORMAL</button>
+        <button class="btn-b" onclick="inject('boost')">INJECT BOOST</button>
     </div>
 </div>
 
@@ -48,13 +49,12 @@
     const db = firebase.database();
 
     let treasury = { normal: 0, boost: 0 };
-    let policy = { wk_min: 20, wk_max: 50, sea_min: 10, sea_max: 11, con_min: 1, con_max: 2 };
+    let policy = { wk_min: 0, wk_max: 0, sea_min: 0, sea_max: 0, con_min: 0, con_max: 0 };
     let round = 1;
 
-    // Listeners
-    db.ref('treasury').on('value', snap => { treasury = snap.val() || {normal:0, boost:0}; updateUI(); });
-    db.ref('policy').on('value', snap => { if(snap.val()) policy = snap.val(); updateUI(); });
-    db.ref('race_state/round').on('value', snap => { round = snap.val() || 1; updateUI(); });
+    db.ref('treasury').on('value', snap => { treasury = snap.val() || {normal:0, boost:0}; updateMath(); });
+    db.ref('policy').on('value', snap => { if(snap.val()) policy = snap.val(); updateMath(); });
+    db.ref('race_state/round').on('value', snap => { round = snap.val() || 1; updateMath(); });
 
     function inject(type) {
         const val = parseFloat(document.getElementById('amt').value) || 0;
@@ -64,35 +64,35 @@
         document.getElementById('amt').value = '';
     }
 
-    function updateUI() {
-        document.getElementById('disp_n').innerText = treasury.normal.toFixed(0);
-        document.getElementById('disp_b').innerText = treasury.boost.toFixed(0);
-        document.getElementById('disp_total').innerText = (treasury.normal + treasury.boost).toFixed(0);
+    function updateMath() {
+        document.getElementById('disp_n').innerText = treasury.normal.toLocaleString();
+        document.getElementById('disp_b').innerText = treasury.boost.toLocaleString();
+        document.getElementById('disp_total').innerText = (treasury.normal + treasury.boost).toLocaleString();
 
         let remNrm = treasury.normal;
         let funding = {};
 
-        // 1. Min Rounds
+        // 1. MIN ROUNDS
         for(let i=1; i<=12; i++) {
             funding[`round${i}`] = { n: 0, b: 0 };
             if(i >= round) {
-                let take = Math.min(remNrm, policy.wk_min);
+                let take = Math.min(remNrm, policy.wk_min || 0);
                 funding[`round${i}`].n = take; remNrm -= take;
             }
         }
-        // 2. Special Pools
-        let sN = Math.min(remNrm, policy.sea_max); funding.season_pool = { n: sN, b: 0 }; remNrm -= sN;
-        let cN = Math.min(remNrm, policy.con_max); funding.constructor_pool = { n: cN, b: 0 }; remNrm -= cN;
+        // 2. SPECIALS
+        let sN = Math.min(remNrm, policy.sea_max || 0); funding.season_pool = { n: sN, b: 0 }; remNrm -= sN;
+        let cN = Math.min(remNrm, policy.con_max || 0); funding.constructor_pool = { n: cN, b: 0 }; remNrm -= cN;
 
-        // 3. Max Rounds
+        // 3. MAX ROUNDS
         for(let i=round; i<=12; i++) {
-            let space = policy.wk_max - funding[`round${i}`].n;
+            let space = (policy.wk_max || 0) - funding[`round${i}`].n;
             let take = Math.min(remNrm, space); funding[`round${i}`].n += take; remNrm -= take;
         }
 
         // Boost
         const div = Math.max(0, 12 - round + 1) + 2;
-        const bsh = treasury.boost / div;
+        const bsh = (treasury.boost || 0) / div;
         for(let i=round; i<=12; i++) funding[`round${i}`].b = bsh;
         funding.season_pool.b = bsh; funding.constructor_pool.b = bsh;
         funding.overflow = { n: remNrm, b: 0 };
@@ -105,11 +105,12 @@
         const g = document.getElementById('grid'); g.innerHTML = '';
         for(let i=1; i<=12; i++) {
             let s = i < round ? 'locked' : (i === round ? 'active-bucket' : '');
-            g.innerHTML += `<div class="b-card ${s}">${i >= round ? '<div class="tag">AT MIN</div>':''}<div style="font-size:0.6rem; color:#8b949e">ROUND ${i}</div><div style="font-size:1.2rem; font-family:monospace">${policy.wk_max} : <span style="color:var(--accent)">${(data[`round${i}`].n + data[`round${i}`].b).toFixed(0)}</span></div></div>`;
+            let isAtMin = data[`round${i}`].n >= policy.wk_min && i >= round;
+            g.innerHTML += `<div class="b-card ${s}">${isAtMin ? '<div class="tag">AT MIN</div>':''}<div style="font-size:0.6rem; color:#8b949e">ROUND ${i}</div><div style="font-size:1.2rem; font-family:monospace">${policy.wk_max} : <span style="color:var(--accent)">${(data[`round${i}`].n + data[`round${i}`].b).toFixed(0)}</span></div></div>`;
         }
-        g.innerHTML += `<div class="b-card active-bucket"><div class="tag">AT MIN</div><div style="font-size:0.6rem; color:#8b949e">SEASON</div><div style="font-size:1.2rem; font-family:monospace">${policy.sea_max} : <span style="color:var(--accent)">${(data.season_pool.n + data.season_pool.b).toFixed(0)}</span></div></div>`;
-        g.innerHTML += `<div class="b-card active-bucket"><div class="tag">AT MIN</div><div style="font-size:0.6rem; color:#8b949e">CONSTRUCTOR</div><div style="font-size:1.2rem; font-family:monospace">${policy.con_max} : <span style="color:var(--accent)">${(data.constructor_pool.n + data.constructor_pool.b).toFixed(0)}</span></div></div>`;
-        g.innerHTML += `<div class="b-card"><div style="font-size:0.6rem; color:#8b949e">OVERFLOW</div><div style="font-size:1.2rem; font-family:monospace">∞ : <span style="color:var(--accent)">${data.overflow.n.toFixed(0)}</span></div></div>`;
+        g.innerHTML += `<div class="b-card active-bucket special-bucket"><div class="tag">POOL</div><div style="font-size:0.6rem; color:#8b949e">SEASON</div><div style="font-size:1.2rem; font-family:monospace">${policy.sea_max} : <span style="color:var(--accent)">${(data.season_pool.n + data.season_pool.b).toFixed(0)}</span></div></div>`;
+        g.innerHTML += `<div class="b-card active-bucket special-bucket"><div class="tag">POOL</div><div style="font-size:0.6rem; color:#8b949e">CONSTRUCTOR</div><div style="font-size:1.2rem; font-family:monospace">${policy.con_max} : <span style="color:var(--accent)">${(data.constructor_pool.n + data.constructor_pool.b).toFixed(0)}</span></div></div>`;
+        if(data.overflow.n > 0) g.innerHTML += `<div class="b-card"><div style="font-size:0.6rem; color:#8b949e">OVERFLOW</div><div style="font-size:1.2rem; font-family:monospace">∞ : <span style="color:var(--accent)">${data.overflow.n.toFixed(0)}</span></div></div>`;
     }
 </script>
 </body>
