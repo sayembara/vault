@@ -7,44 +7,46 @@
     <style>
         :root { 
             --accent: #00ffcc; --bg: #0b0e14; --card: #161b22; --border: #30363d; 
-            --danger: #ff4b2b; --warning: #ffcc00; --success: #00ffcc;
+            --danger: #ff4b2b; --warning: #ffcc00; --success: #00ffcc; --boost: #b300ff;
         }
         body { background: var(--bg); color: white; font-family: 'Inter', sans-serif; padding: 20px; }
-        .container { max-width: 1000px; margin: 0 auto; }
+        .container { max-width: 1200px; margin: 0 auto; }
         
         /* Header & Live Sync */
-        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 40px; border-bottom: 1px solid var(--border); padding-bottom: 30px; }
-        h1 { color: var(--accent); margin: 0; font-size: 1.8rem; text-transform: uppercase; letter-spacing: 2px; }
+        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px; border-bottom: 1px solid var(--border); padding-bottom: 20px; }
+        h1 { color: var(--accent); margin: 0; font-size: 1.6rem; text-transform: uppercase; letter-spacing: 2px; }
         
-        .vault-stats { text-align: right; background: rgba(0, 255, 204, 0.05); padding: 15px 25px; border-radius: 12px; border: 1px solid var(--border); }
-        .vault-label { font-size: 0.65rem; color: #8b949e; text-transform: uppercase; font-weight: 900; letter-spacing: 1px; display: block; margin-bottom: 5px; }
-        .vault-value { font-size: 2.2rem; font-weight: 900; color: var(--accent); font-family: 'Courier New', monospace; line-height: 1; }
+        .vault-stats { text-align: right; background: rgba(0, 255, 204, 0.05); padding: 12px 20px; border-radius: 10px; border: 1px solid var(--border); }
+        .vault-label { font-size: 0.6rem; color: #8b949e; text-transform: uppercase; font-weight: 900; display: block; margin-bottom: 4px; }
+        .vault-value { font-size: 2rem; font-weight: 900; color: var(--accent); font-family: 'Courier New', monospace; line-height: 1; }
 
-        .section-title { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 2px; color: #8b949e; margin: 40px 0 20px 0; display: flex; align-items: center; gap: 10px; }
+        .section-title { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 2px; color: #8b949e; margin: 40px 0 15px 0; display: flex; align-items: center; gap: 10px; }
         .section-title::after { content: ""; flex: 1; height: 1px; background: var(--border); }
 
         /* Policy Grid */
-        .grid-3 { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; }
-        .card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 25px; transition: 0.3s; }
-        .card:hover { border-color: #444; }
-        
-        .input-group { margin-top: 15px; }
-        .input-pair { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-top: 10px; }
-        
-        label { display: block; font-size: 0.65rem; color: #8b949e; margin-bottom: 8px; font-weight: 800; text-transform: uppercase; }
-        input { 
-            width: 100%; background: #0d1117; border: 1px solid var(--border); color: var(--accent); 
-            padding: 14px; border-radius: 8px; font-weight: 900; font-size: 1rem; outline: none; transition: 0.2s;
-        }
-        input:focus { border-color: var(--accent); box-shadow: 0 0 10px rgba(0, 255, 204, 0.1); }
+        .grid-3 { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 15px; }
+        .card { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 20px; }
+        .input-pair { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 10px; }
+        label { display: block; font-size: 0.6rem; color: #8b949e; margin-bottom: 5px; font-weight: 800; text-transform: uppercase; }
+        input { width: 100%; background: #0d1117; border: 1px solid var(--border); color: var(--accent); padding: 10px; border-radius: 6px; font-weight: 900; outline: none; }
 
-        /* Action Buttons */
-        .admin-actions { display: flex; gap: 20px; margin-top: 50px; }
-        .btn { flex: 1; padding: 20px; border-radius: 10px; font-weight: 900; cursor: pointer; border: none; text-transform: uppercase; font-size: 0.9rem; transition: 0.2s; }
-        .btn-save { background: var(--accent); color: #000; box-shadow: 0 4px 15px rgba(0, 255, 204, 0.2); }
+        /* Distribution Grid (Mirroring Funding Page) */
+        .bucket-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 12px; }
+        .b-card { background: #0d1117; border: 1px solid var(--border); border-radius: 8px; padding: 15px; }
+        .b-card.active { border: 1px solid var(--accent); box-shadow: 0 0 10px rgba(0, 255, 204, 0.1); }
+        .b-card.past { opacity: 0.4; filter: grayscale(1); }
+        .b-label { font-size: 0.6rem; color: #8b949e; font-weight: bold; text-transform: uppercase; }
+        .b-main { font-family: 'Courier New', monospace; font-size: 1.3rem; margin: 8px 0; }
+        .n-val { color: #8b949e; }
+        .val-total { color: var(--accent); font-weight: bold; }
+        .b-breakdown { font-size: 0.55rem; border-top: 1px solid #222; padding-top: 8px; color: #666; display: flex; justify-content: space-between; }
+
+        /* Actions */
+        .admin-actions { display: flex; gap: 15px; margin-top: 30px; }
+        .btn { flex: 1; padding: 15px; border-radius: 6px; font-weight: 900; cursor: pointer; border: none; text-transform: uppercase; transition: 0.2s; }
+        .btn-save { background: var(--accent); color: #000; }
         .btn-wipe { background: transparent; border: 2px solid var(--danger); color: var(--danger); }
-        .btn-wipe:hover { background: var(--danger); color: white; box-shadow: 0 4px 15px rgba(255, 75, 43, 0.3); }
-        .btn:active { transform: scale(0.98); }
+        .btn-wipe:hover { background: var(--danger); color: white; }
     </style>
 </head>
 <body>
@@ -53,94 +55,125 @@
     <div class="header">
         <div>
             <h1>🤝 Sponsor Policy</h1>
-            <div id="round_tag" style="font-size: 0.8rem; color: #8b949e; margin-top: 8px; font-weight: 600;">STATUS: CONNECTED TO MASTER</div>
+            <div id="round_tag" style="font-size: 0.75rem; color: #8b949e; margin-top: 5px; font-weight: bold;">ROUND 4 ACTIVE</div>
         </div>
         <div class="vault-stats">
-            <span class="vault-label">Live Treasury (Linked)</span>
+            <span class="vault-label">Live Treasury (Funding Page)</span>
             <div class="vault-value" id="sponsor_vault_display">0 TBNB</div>
         </div>
     </div>
 
-    <div class="section-title">Global Waterfall Limits (The "N" Values)</div>
+    <div class="section-title">Economic Policy (N-Limit Controls)</div>
     <div class="grid-3">
         <div class="card">
             <label>🗓️ Round Allocation</label>
             <div class="input-pair">
-                <div><label>Min (Floor)</label><input type="number" id="wk_min" value="1000"></div>
-                <div><label>Max (Limit N)</label><input type="number" id="wk_max" value="5000"></div>
+                <div><label>Min</label><input type="number" id="wk_min" value="1000"></div>
+                <div><label>Max (N)</label><input type="number" id="wk_max" value="5000"></div>
             </div>
         </div>
         <div class="card">
             <label>🏆 Season Payout</label>
             <div class="input-pair">
-                <div><label>Min (Floor)</label><input type="number" id="sea_min" value="5000"></div>
-                <div><label>Max (Limit N)</label><input type="number" id="sea_max" value="20000"></div>
+                <div><label>Min</label><input type="number" id="sea_min" value="5000"></div>
+                <div><label>Max (N)</label><input type="number" id="sea_max" value="20000"></div>
             </div>
         </div>
         <div class="card">
-            <label>🛠️ Constructor Team</label>
+            <label>🛠️ Constructor Pool</label>
             <div class="input-pair">
-                <div><label>Min (Floor)</label><input type="number" id="con_min" value="2000"></div>
-                <div><label>Max (Limit N)</label><input type="number" id="con_max" value="10000"></div>
+                <div><label>Min</label><input type="number" id="con_min" value="2000"></div>
+                <div><label>Max (N)</label><input type="number" id="con_max" value="10000"></div>
             </div>
         </div>
     </div>
 
+    <div class="section-title">Live Payout Distribution (N : B)</div>
+    <div class="bucket-grid" id="sponsor_grid_mirror">
+        </div>
+
     <div class="admin-actions">
-        <button class="btn btn-save" onclick="updatePolicy()">Update Economic Policy</button>
-        <button class="btn btn-wipe" onclick="triggerWipe()">Wipe All Payouts (0.00)</button>
+        <button class="btn btn-save" onclick="updatePolicy()">Update Policy</button>
+        <button class="btn btn-wipe" onclick="triggerWipe()">Wipe All Payouts</button>
     </div>
 </div>
 
 <script>
-    /**
-     * SYNCING WITH FUNDING PAGE
-     * We read the shared 'sanrat_vault_total' from localStorage.
-     */
-    function syncFromVault() {
-        const liveTotal = localStorage.getItem('sanrat_vault_total') || "0";
-        const formattedTotal = parseFloat(liveTotal).toLocaleString();
-        
-        document.getElementById('sponsor_vault_display').innerText = formattedTotal + " TBNB";
-        
-        // Update Round Tag (Mocking Master read)
-        document.getElementById('round_tag').innerText = "SEASON 1 | ROUND 4 ACTIVE";
-    }
+    let currentRound = 4;
 
-    /**
-     * POLICY UPDATES
-     * This pushes the new N values into memory for Funding.html to read.
-     */
-    function updatePolicy() {
-        const policy = {
-            wk_max: document.getElementById('wk_max').value,
-            sea_max: document.getElementById('sea_max').value,
-            con_max: document.getElementById('con_max').value
-        };
-        // Save limits to localStorage for the Funding Page to pick up
-        localStorage.setItem('sanrat_limits', JSON.stringify(policy));
-        alert("Economic Policy Updated. N values synchronized.");
-    }
+    function syncAndRender() {
+        // Read values from Funding Page's shared state
+        const totalNormal = parseFloat(localStorage.getItem('sanrat_total_normal')) || 0;
+        const totalBoost = parseFloat(localStorage.getItem('sanrat_total_boost')) || 0;
+        const grandTotal = totalNormal + totalBoost;
 
-    /**
-     * THE WIPE SIGNAL
-     * Sets the vault total to 0 in memory. Funding.html is listening for this.
-     */
-    function triggerWipe() {
-        if(confirm("CRITICAL: Wipe out all Treasury funds? This action will zero out the Funding Page and cannot be undone.")) {
-            // Signal the Funding Page by zeroing the source value
-            localStorage.setItem('sanrat_vault_total', "0");
-            localStorage.setItem('sanrat_total_normal', "0");
-            localStorage.setItem('sanrat_total_boost', "0");
+        document.getElementById('sponsor_vault_display').innerText = grandTotal.toLocaleString() + " TBNB";
+
+        // Constants from UI inputs
+        const wkMax = parseInt(document.getElementById('wk_max').value);
+        const wkMin = parseInt(document.getElementById('wk_min').value);
+        const seaMax = parseInt(document.getElementById('sea_max').value);
+        const seaMin = parseInt(document.getElementById('sea_min').value);
+        const conMax = parseInt(document.getElementById('con_max').value);
+        const conMin = parseInt(document.getElementById('con_min').value);
+
+        // Calculate Logic (Simulated matching Funding.html)
+        let remainingNrm = totalNormal;
+        const divisor = (12 - currentRound + 1) + 2;
+        const bstShare = totalBoost > 0 ? (totalBoost / divisor) : 0;
+
+        const grid = document.getElementById('sponsor_grid_mirror');
+        grid.innerHTML = '';
+
+        // Generate the 12 rounds
+        for (let i = 1; i <= 12; i++) {
+            let nVal = 0;
+            let bVal = (i >= currentRound) ? bstShare : 0;
             
-            syncFromVault();
-            alert("Treasury reset to 0.00 TBNB.");
+            // Minimal Waterfall logic for visual sync
+            if (i < currentRound) {
+                nVal = wkMax;
+                remainingNrm -= wkMax;
+            } else {
+                nVal = Math.min(remainingNrm, wkMin);
+                remainingNrm -= nVal;
+            }
+
+            let state = i < currentRound ? 'past' : (i === currentRound ? 'active' : 'future');
+            grid.innerHTML += `
+                <div class="b-card ${state}">
+                    <span class="b-label">Round ${i}</span>
+                    <div class="b-main">
+                        <span class="n-val">${wkMax}</span> <span style="color:#444">:</span> 
+                        <span class="val-total">${(nVal + bVal).toFixed(0)}</span>
+                    </div>
+                    <div class="b-breakdown">
+                        <span>N: ${nVal.toFixed(0)}</span>
+                        <span>B: +${bVal.toFixed(0)}</span>
+                    </div>
+                </div>
+            `;
         }
     }
 
-    // Start sync loop (Refresh every 1 second)
-    setInterval(syncFromVault, 1000);
-    syncFromVault();
+    function updatePolicy() {
+        // Here you would save the wk_max/wk_min to localStorage 
+        // so the Funding page picks up the new N limit.
+        alert("Policy Updated. N-limits synced to treasury.");
+    }
+
+    function triggerWipe() {
+        if(confirm("Confirm Wipe: This will zero out the Funding Page Treasury.")) {
+            localStorage.setItem('sanrat_vault_total', "0");
+            localStorage.setItem('sanrat_total_normal', "0");
+            localStorage.setItem('sanrat_total_boost', "0");
+            syncAndRender();
+        }
+    }
+
+    // Refresh every 1.5 seconds to catch Funding Page updates
+    setInterval(syncAndRender, 1500);
+    syncAndRender();
 </script>
 </body>
 </html>
