@@ -3,236 +3,248 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SANRAT | Sponsor Policy Center</title>
-    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-database-compat.js"></script>
-    
+    <title>SANRAT | Master Engine</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/6.7.0/ethers.umd.min.js"></script>
     <style>
-        :root { 
-            --accent: #00ffcc; --bg: #0b0e14; --card: #161b22; --border: #30363d; 
-            --danger: #ff4b2b; --boost: #b300ff;
-        }
-        body { background: var(--bg); color: white; font-family: 'Inter', sans-serif; padding: 20px; }
-        .container { max-width: 1200px; margin: 0 auto; }
+        :root { --glass: rgba(255, 255, 255, 0.08); --accent: #00ffcc; --gold: #ffcc00; --danger: #ff4b2b; --bg: #0b0e14; --boost: #b300ff; }
+        body { margin: 0; padding: 20px; font-family: 'Inter', sans-serif; background: var(--bg); color: white; display: flex; flex-direction: column; align-items: center; }
         
-        /* Header */
-        .header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border); padding-bottom: 20px; margin-bottom: 30px; }
-        h1 { color: var(--accent); font-size: 1.6rem; text-transform: uppercase; letter-spacing: 2px; margin: 0; }
-        .sync-indicator { font-size: 0.75rem; font-weight: bold; margin-top: 5px; color: #8b949e; transition: 0.3s; }
+        #auth-gate { position: fixed; inset: 0; background: var(--bg); z-index: 999; display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; }
+        .btn-connect { background: #f6851b; color: white; padding: 15px 40px; font-size: 1.2rem; border-radius: 50px; border: none; cursor: pointer; font-weight: bold; }
 
-        .vault-stats { text-align: right; background: rgba(0, 255, 204, 0.05); padding: 12px 20px; border-radius: 10px; border: 1px solid var(--border); }
-        .vault-value { font-size: 2.2rem; font-weight: 900; color: var(--accent); font-family: 'Courier New', monospace; }
+        #admin-ui { width: 100%; max-width: 1300px; display: none; grid-template-columns: 350px 1fr; gap: 20px; }
+        .card { background: var(--glass); border: 1px solid rgba(255,255,255,0.1); border-radius: 15px; padding: 20px; }
+        .full-width { grid-column: 1 / -1; }
+        
+        /* New Treasury Header Styles */
+        .treasury-mini-bar { display: flex; gap: 20px; background: rgba(0,0,0,0.3); padding: 10px 20px; border-radius: 10px; border: 1px solid #333; }
+        .t-stat { display: flex; flex-direction: column; align-items: center; }
+        .t-label { font-size: 0.6rem; text-transform: uppercase; color: #888; font-weight: 800; }
+        .t-value { font-family: 'Courier New', monospace; font-weight: 900; font-size: 1.1rem; }
 
-        /* Inputs */
-        .section-title { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 2px; color: #8b949e; margin: 40px 0 15px 0; display: flex; align-items: center; gap: 10px; }
-        .section-title::after { content: ""; flex: 1; height: 1px; background: var(--border); }
-        .grid-3 { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 15px; }
-        .card { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 20px; }
-        .input-pair { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 10px; }
-        label { display: block; font-size: 0.6rem; color: #8b949e; margin-bottom: 5px; font-weight: 800; text-transform: uppercase; }
-        input { width: 100%; background: #0d1117; border: 1px solid var(--border); color: var(--accent); padding: 10px; border-radius: 6px; font-weight: 900; outline: none; }
+        .status-tag { background: var(--accent); color: #000; padding: 4px 12px; border-radius: 4px; font-weight: bold; margin-left: 5px; }
+        .btn-master { padding: 12px 20px; border-radius: 8px; border: none; font-weight: bold; cursor: pointer; transition: 0.2s; }
+        
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 0.75rem; }
+        th, td { border: 1px solid #333; padding: 12px; text-align: center; }
+        .active-day-col { background: rgba(255, 75, 43, 0.2) !important; border: 2px solid var(--danger) !important; }
 
-        /* 14 Buckets Grid */
-        .bucket-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 12px; }
-        .b-card { background: #0d1117; border: 1px solid var(--border); border-radius: 8px; padding: 15px; }
-        .b-card.active { border: 1px solid var(--accent); box-shadow: 0 0 15px rgba(0, 255, 204, 0.1); }
-        .b-card.special { border: 1px solid var(--boost); }
-        .b-card.past { opacity: 0.4; filter: grayscale(1); }
-        .b-main { font-family: 'Courier New', monospace; font-size: 1.3rem; margin: 8px 0; }
-        .val-total { color: var(--accent); font-weight: bold; }
-        .b-breakdown { font-size: 0.55rem; border-top: 1px solid #222; padding-top: 8px; color: #666; display: flex; justify-content: space-between; }
-
-        .btn { flex: 1; padding: 18px; border-radius: 8px; font-weight: 900; cursor: pointer; border: none; text-transform: uppercase; transition: 0.2s; font-size: 0.9rem; }
-        .btn-save { background: var(--accent); color: #0b0e14; }
-        .btn-wipe { background: transparent; border: 2px solid var(--danger); color: var(--danger); margin-left: 15px; }
-        .btn:hover { transform: translateY(-2px); filter: brightness(1.2); }
+        .track-box { background: #000; height: 450px; position: relative; border-radius: 10px; border: 1px solid #444; overflow: hidden; padding-top: 10px; }
+        .finish-line { position: absolute; left: 50%; top: 0; bottom: 0; width: 2px; border-left: 2px dashed rgba(255,255,255,0.4); z-index: 1; }
+        
+        .track-lane { position: relative; width: 100%; height: 38px; border-bottom: 1px solid #222; }
+        .track-car { position: absolute; height: 24px; width: 42px; border-radius: 4px; top: 6px; font-size: 0.65rem; color: black; font-weight: 900; text-align: center; line-height: 24px; transition: left 0.8s linear; z-index: 2; }
     </style>
 </head>
 <body>
 
-<div class="container">
-    <div class="header">
-        <div>
-            <h1>🤝 Sponsor Policy</h1>
-            <div id="sync_status" class="sync-indicator">CONNECTING...</div>
-        </div>
-        <div class="vault-stats">
-            <span style="font-size: 0.6rem; color: #8b949e; font-weight: 900;">TREASURY BALANCE</span>
-            <div class="vault-value" id="sponsor_vault_display">0 TBNB</div>
-        </div>
+    <div id="auth-gate">
+        <h1>MASTER ENGINE</h1>
+        <button class="btn-connect" onclick="connectWallet()">Connect MetaMask</button>
     </div>
 
-    <div class="section-title">Waterfall Economic Limits (N)</div>
-    <div class="grid-3">
-        <div class="card">
-            <label>🗓️ Round Allocation</label>
-            <div class="input-pair">
-                <div><label>Min</label><input type="number" id="wk_min" value="1000"></div>
-                <div><label>Max (N)</label><input type="number" id="wk_max" value="5000"></div>
+    <div id="admin-ui">
+        <div class="card full-width" style="display:flex; justify-content:space-between; align-items:center;">
+            <div>
+                S: <span id="seasonNum" class="status-tag">1</span>
+                R: <span id="roundNum" class="status-tag">1</span>
+                <span id="dayLabel" style="margin-left:25px; font-weight: 800; color: var(--danger);">DAY 1</span>
             </div>
-        </div>
-        <div class="card">
-            <label>🏆 Season Payout</label>
-            <div class="input-pair">
-                <div><label>Min</label><input type="number" id="sea_min" value="5000"></div>
-                <div><label>Max (N)</label><input type="number" id="sea_max" value="20000"></div>
-            </div>
-        </div>
-        <div class="card">
-            <label>🛠️ Constructor Pool</label>
-            <div class="input-pair">
-                <div><label>Min</label><input type="number" id="con_min" value="2000"></div>
-                <div><label>Max (N)</label><input type="number" id="con_max" value="10000"></div>
-            </div>
-        </div>
-    </div>
 
-    <div class="section-title">Live Preview (12 Rounds + 2 Special Pools)</div>
-    <div id="sponsor_grid_mirror" class="bucket-grid"></div>
-
-    <div style="display: flex; margin-top: 30px;">
-        <button class="btn btn-save" onclick="updatePolicy()">Sync Policy to Firebase</button>
-        <button class="btn btn-wipe" onclick="triggerWipe()">Wipe Treasury (Global)</button>
-    </div>
-</div>
-
-<script>
-    // 1. CONFIG (Adjust regional URL if needed)
-    const firebaseConfig = {
-        apiKey: "YOUR_API_KEY",
-        authDomain: "nuclearf1-94a6b.firebaseapp.com",
-        databaseURL: "https://nuclearf1-94a6b-default-rtdb.asia-southeast1.firebasedatabase.app",
-        projectId: "nuclearf1-94a6b",
-        storageBucket: "nuclearf1-94a6b.appspot.com",
-        appId: "YOUR_APP_ID"
-    };
-
-    firebase.initializeApp(firebaseConfig);
-    const db = firebase.database();
-
-    let currentRound = 4;
-    let treasury = { normal: 0, boost: 0 };
-
-    // Initialize UI immediately
-    window.onload = () => {
-        calculateAndRender();
-        
-        // Listen for Treasury
-        db.ref('treasury').on('value', (snap) => {
-            treasury = snap.val() || { normal: 0, boost: 0 };
-            document.getElementById('sync_status').innerText = "● LIVE SYNC ACTIVE";
-            calculateAndRender();
-        });
-
-        // Listen for Policy
-        db.ref('policy').on('value', (snap) => {
-            const p = snap.val();
-            if (p) {
-                document.getElementById('wk_min').value = p.wk_min;
-                document.getElementById('wk_max').value = p.wk_max;
-                document.getElementById('sea_min').value = p.sea_min;
-                document.getElementById('sea_max').value = p.sea_max;
-                document.getElementById('con_min').value = p.con_min;
-                document.getElementById('con_max').value = p.con_max;
-                calculateAndRender();
-            }
-        });
-    };
-
-    function calculateAndRender() {
-        const total = treasury.normal + treasury.boost;
-        document.getElementById('sponsor_vault_display').innerText = total.toLocaleString() + " TBNB";
-
-        const wkMax = parseInt(document.getElementById('wk_max').value) || 0;
-        const wkMin = parseInt(document.getElementById('wk_min').value) || 0;
-        const seaMax = parseInt(document.getElementById('sea_max').value) || 0;
-        const conMax = parseInt(document.getElementById('con_max').value) || 0;
-
-        const grid = document.getElementById('sponsor_grid_mirror');
-        grid.innerHTML = '';
-
-        // ZERO GUARD: If treasury is empty, render 14 empty boxes
-        if (total <= 0) {
-            for(let i=1; i<=12; i++) renderBucket(grid, `Round ${i}`, 0, 0, wkMax, i < currentRound ? 'past' : '');
-            renderBucket(grid, "Season Pool", 0, 0, seaMax, 'special');
-            renderBucket(grid, "Constructor", 0, 0, conMax, 'special');
-            return;
-        }
-
-        // Waterfall Math
-        let remNrm = treasury.normal;
-        const divisor = (12 - currentRound + 1) + 2;
-        const bShare = treasury.boost / divisor;
-
-        // 12 Rounds
-        for (let i = 1; i <= 12; i++) {
-            let n = 0;
-            if (i < currentRound) {
-                n = wkMax;
-                remNrm -= wkMax;
-            } else {
-                n = Math.max(0, Math.min(remNrm, wkMin));
-                remNrm -= n;
-            }
-            renderBucket(grid, `Round ${i}`, n, (i >= currentRound ? bShare : 0), wkMax, i < currentRound ? 'past' : (i === currentRound ? 'active' : ''));
-        }
-
-        // 2 Special Pools
-        renderBucket(grid, "Season Pool", Math.max(0, Math.min(remNrm, seaMax)), bShare, seaMax, 'special');
-        renderBucket(grid, "Constructor", Math.max(0, Math.min(remNrm, conMax)), bShare, conMax, 'special');
-    }
-
-    function renderBucket(container, label, n, b, max, state) {
-        container.innerHTML += `
-            <div class="b-card ${state}">
-                <span style="font-size: 0.6rem; color: #8b949e; text-transform: uppercase; font-weight: 800;">${label}</span>
-                <div class="b-main">
-                    <span style="color:#555">${max}</span> : 
-                    <span class="val-total">${(n + b).toFixed(0)}</span>
+            <div class="treasury-mini-bar">
+                <div class="t-stat">
+                    <span class="t-label">Normal</span>
+                    <span id="bal_n" class="t-value" style="color:var(--accent)">0</span>
                 </div>
-                <div class="b-breakdown">
-                    <span>N: ${n.toFixed(0)}</span>
-                    <span>B: +${b.toFixed(0)}</span>
+                <div class="t-stat">
+                    <span class="t-label">Boost</span>
+                    <span id="bal_b" class="t-value" style="color:var(--boost)">0</span>
+                </div>
+                <div class="t-stat" style="border-left: 1px solid #444; padding-left: 15px;">
+                    <span class="t-label">Total Treasury</span>
+                    <span id="bal_total" class="t-value" style="color:white">0</span>
                 </div>
             </div>
-        `;
-    }
 
-    function updatePolicy() {
-        const status = document.getElementById('sync_status');
-        status.innerText = "⏳ SAVING...";
-        status.style.color = "#ffcc00";
+            <div style="display: flex; gap: 10px;">
+                <button id="nextBtn" class="btn-master" style="background:white;" onclick="triggerTick()">NEXT DAY</button>
+                <button id="endRoundBtn" class="btn-master" style="background:var(--danger); color:white;" onclick="runToEndOfRound()">FAST END</button>
+                <button class="btn-master" style="background:#555; color:white;" onclick="window.location.href='funding_treasury.html'">TREASURY</button>
+            </div>
+        </div>
 
-        const policyData = {
-            wk_min: parseInt(document.getElementById('wk_min').value) || 0,
-            wk_max: parseInt(document.getElementById('wk_max').value) || 0,
-            sea_min: parseInt(document.getElementById('sea_min').value) || 0,
-            sea_max: parseInt(document.getElementById('sea_max').value) || 0,
-            con_min: parseInt(document.getElementById('con_min').value) || 0,
-            con_max: parseInt(document.getElementById('con_max').value) || 0
+        <div class="card">
+            <h3 style="margin-top:0; color:var(--gold);">RANKINGS</h3>
+            <table><thead><tr><th>Rank</th><th>Unit</th><th>Dist</th></tr></thead><tbody id="rankBody"></tbody></table>
+        </div>
+
+        <div class="card">
+            <h3 style="margin-top:0;">7-DAY SEASON MATRIX</h3>
+            <div id="penalty-notice" style="font-size: 0.7rem; color: var(--gold); margin-bottom: 5px; font-weight: bold;"></div>
+            <table><thead><tr id="mat-head"></tr></thead><tbody id="mat-body"></tbody></table>
+        </div>
+
+        <div class="card full-width">
+            <div class="track-box"><div class="finish-line"></div><div id="master-layer"></div></div>
+        </div>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js";
+        import { getDatabase, ref, update, onValue, get } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-database.js";
+
+        const firebaseConfig = { 
+            apiKey: "AlzaSyBYxLOGFzaHN6CS4ro_bjnKEblbQE6Vtx4", 
+            databaseURL: "https://nuclearf1-94a6b-default-rtdb.asia-southeast1.firebasedatabase.app" 
+        };
+        const app = initializeApp(firebaseConfig);
+        const db = getDatabase(app);
+
+        const ADMIN_WALLET = "0xCe9782f77eC560a1Cb329F935b5D416AA41f1a5d".toLowerCase();
+        const icons = { straight:"➡️", right:"⤴️", left:"⤵️", flatland:"➖", uphill:"🔼", downhill:"🔽", dry:"☀️", wet:"🌧️" };
+        let lastRoundProcessed = -1;
+
+        window.connectWallet = async () => {
+            if (window.ethereum) {
+                const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
+                if (accounts[0].toLowerCase() === ADMIN_WALLET) {
+                    document.getElementById('auth-gate').style.display = 'none';
+                    document.getElementById('admin-ui').style.display = 'grid';
+                }
+            }
         };
 
-        db.ref('policy').set(policyData, (error) => {
-            if (error) {
-                status.innerText = "❌ FAILED: CHECK RULES";
-                status.style.color = "#ff4b2b";
-                alert("Firebase rejected the save. Check your Rules tab!");
-            } else {
-                status.innerText = "✅ SYNCED TO FIREBASE";
-                status.style.color = "#00ffcc";
-                setTimeout(() => {
-                    status.innerText = "● LIVE SYNC ACTIVE";
-                    status.style.color = "#8b949e";
-                }, 2000);
-            }
+        // --- NEW: SYNC TREASURY BALANCE ---
+        onValue(ref(db, 'treasury'), snap => {
+            const t = snap.val() || { normal: 0, boost: 0 };
+            document.getElementById('bal_n').innerText = Math.floor(t.normal).toLocaleString();
+            document.getElementById('bal_b').innerText = Math.floor(t.boost).toLocaleString();
+            document.getElementById('bal_total').innerText = Math.floor(t.normal + t.boost).toLocaleString();
         });
-    }
 
-    function triggerWipe() {
-        if(confirm("DANGER: This will wipe the treasury on ALL pages. Continue?")) {
-            db.ref('treasury').set({ normal: 0, boost: 0 });
+        // --- REST OF ENGINE LOGIC ---
+        // (Keeping your existing generateSeason, triggerTick, etc. logic exactly as it was)
+        
+        async function generateSeason() {
+            const stateSnap = await get(ref(db, 'race_state'));
+            const s = stateSnap.val() || { round: 1 };
+            
+            const dirs = ["straight", "right", "left"], elevs = ["flatland", "uphill", "downhill"];
+            const matrix = { direction: [], elevation: [], humidity: [], weather: [] };
+
+            for (let i = 0; i < 7; i++) {
+                matrix.direction.push(dirs[Math.floor(Math.random() * 3)]);
+                matrix.elevation.push(elevs[Math.floor(Math.random() * 3)]);
+                const hum = Math.floor(Math.random() * 101);
+                matrix.humidity.push(hum);
+                matrix.weather.push(hum < 50 ? "dry" : "wet");
+            }
+
+            if (s.round >= 2) {
+                const carsSnap = await get(ref(db, 'cars'));
+                const cars = Object.values(carsSnap.val() || {}).sort((a,b) => (b.total_dist||0) - (a.total_dist||0));
+                
+                if (cars.length >= 2) {
+                    const winner = cars[0], runner = cars[1];
+                    const apply = (day, car) => {
+                        const t = car.traits || { propulsion: 1, traction: 1, stability: 1 };
+                        matrix.direction[day] = t.propulsion <= 5 ? "straight" : (Math.random() > 0.5 ? "right" : "left");
+                        const rain = t.traction <= 5;
+                        matrix.humidity[day] = rain ? 100 : 0;
+                        matrix.weather[day] = rain ? "wet" : "dry";
+                        matrix.elevation[day] = t.stability <= 5 ? (Math.random() > 0.5 ? "uphill" : "downhill") : "flatland";
+                    };
+                    apply(0, winner); apply(2, winner);
+                    apply(1, runner);
+                    document.getElementById('penalty-notice').innerText = `⚠️ PENALTY APPLIED: ${winner.id} & ${runner.id}`;
+                }
+            }
+            await update(ref(db, 'race_constants'), matrix);
         }
-    }
-</script>
+
+        window.triggerTick = async () => {
+            const snap = await get(ref(db));
+            const data = snap.val();
+            const s = data.race_state || { day_in_round: 1, round: 1, season: 1 };
+            const c = data.race_constants;
+            const cars = data.cars;
+            const up = {};
+
+            if (s.day_in_round === 8) {
+                const maxR = s.max_rounds || 10;
+                if (s.round >= maxR) { up['race_state/season'] = (s.season || 1) + 1; up['race_state/round'] = 1; }
+                else { up['race_state/round'] = s.round + 1; }
+                up['race_state/day_in_round'] = 1;
+                Object.keys(cars).forEach(id => { up[`cars/${id}/total_dist`] = 0; up[`cars/${id}/hp`] = 100; });
+                await update(ref(db), up);
+                return;
+            }
+
+            const dayIdx = s.day_in_round - 1;
+            const L1 = c.limits?.l1 || 5, L2 = c.limits?.l2 || 15;
+            const getR = () => (1 - (Math.floor(Math.random() * (L2 - L1 + 1)) + L1) / 100);
+
+            Object.keys(cars).forEach(id => {
+                const car = cars[id];
+                if (car.role === 'support' && car.hp > 0) {
+                    const t = car.traits || { propulsion: 1, traction: 1, stability: 1, core: 1 };
+                    const a1 = (c.traits.propulsion[c.direction[dayIdx]][t.propulsion-1] || 0) * getR();
+                    const a2 = (c.traits.traction[c.weather[dayIdx]][t.traction-1] || 0) * getR();
+                    const a3 = (c.traits.stability[c.elevation[dayIdx]][t.stability-1] || 0) * getR();
+                    const roll = Math.floor(Math.random() * 100);
+                    const a4 = roll > c.traits.core.cutoff[t.core-1] ? (c.traits.core.impact[t.core-1] * getR()) : 0;
+                    const dist = (a1 + a2 + a3) * (1 - a4/100);
+                    up[`cars/${id}/total_dist`] = (car.total_dist || 0) + dist;
+                    up[`cars/${id}/hp`] = Math.max(0, car.hp - (Math.random() * 5 + 5));
+                }
+            });
+
+            up['race_state/day_in_round'] = s.day_in_round + 1;
+            await update(ref(db), up);
+        };
+
+        window.runToEndOfRound = async () => {
+            for(let i=0; i<8; i++) {
+                const s = (await get(ref(db, 'race_state'))).val() || { day_in_round: 1 };
+                if(s.day_in_round === 8) break;
+                await triggerTick();
+                await new Promise(r => setTimeout(r, 900));
+            }
+        };
+
+        onValue(ref(db, 'race_state'), async snap => {
+            const s = snap.val() || { day_in_round: 1, round: 1, season: 1 };
+            document.getElementById('seasonNum').innerText = s.season || 1;
+            document.getElementById('roundNum').innerText = s.round;
+            document.getElementById('dayLabel').innerText = s.day_in_round === 8 ? "🏁 RESULTS" : `DAY ${s.day_in_round}`;
+            
+            if (s.round !== lastRoundProcessed && s.day_in_round === 1) {
+                lastRoundProcessed = s.round;
+                await generateSeason();
+            }
+            syncMatrix(s.day_in_round);
+        });
+
+        async function syncMatrix(activeDay) {
+            const cSnap = await get(ref(db, 'race_constants'));
+            const c = cSnap.val();
+            if(!c || !c.direction) return;
+            let h = '<th>Type</th>';
+            for(let i=1; i<=7; i++) h += `<th class="${i===activeDay?'active-day-col':''}">D${i}</th>`;
+            document.getElementById('mat-head').innerHTML = h;
+            const rows = [{l:"Dir",d:c.direction,i:true},{l:"Elev",d:c.elevation,i:true},{l:"Hum",d:c.humidity,s:"%"},{l:"Wx",d:c.weather,i:true}];
+            document.getElementById('mat-body').innerHTML = rows.map(r => `<tr><td><b>${r.l}</b></td>${r.d.map((v,idx)=>`<td class="${idx+1===activeDay?'active-day-col':''}">${r.i?icons[v]||v:v+(r.s||'')}</td>`).join('')}</tr>`).join('');
+        }
+
+        onValue(ref(db, 'cars'), snap => {
+            const list = Object.values(snap.val() || {}).sort((a,b) => (b.total_dist||0) - (a.total_dist||0));
+            document.getElementById('rankBody').innerHTML = list.slice(0,8).map((c,i)=>`<tr><td>${i+1}</td><td>${c.id}</td><td>${Math.round(c.total_dist)}m</td></tr>`).join('');
+            const layer = document.getElementById('master-layer'); layer.innerHTML = '';
+            list.filter(c => c.role).forEach(c => {
+                const p = Math.min((c.total_dist/2000)*100, 95);
+                layer.innerHTML += `<div class="track-lane"><div class="track-car" style="left:${p}%; background:${c.role==='support'?'#00ffcc':'#ffcc00'}">${c.id}</div></div>`;
+            });
+        });
+    </script>
 </body>
 </html>
