@@ -2,62 +2,62 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Exponential Tier Engine | SANRAT</title>
+    <title>SANRAT | Exponential Economy v3</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
-        :root { --accent: #00ffcc; --bg: #0b0e14; --card: #161b22; --border: #30363d; --dim: #8b949e; --diamond: rgba(0, 255, 204, 0.2); --plat: rgba(179, 0, 255, 0.1); --gold: rgba(255, 215, 0, 0.1); }
+        :root { --accent: #00ffcc; --bg: #0b0e14; --card: #161b22; --border: #30363d; --dim: #8b949e; }
         body { background: var(--bg); color: white; font-family: 'Inter', sans-serif; padding: 30px; margin: 0; }
         
-        .header { margin-bottom: 30px; }
-        .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 25px; }
+        .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 20px; }
         .card { background: var(--card); border: 1px solid var(--border); padding: 15px; border-radius: 12px; }
         label { display: block; font-size: 0.6rem; color: var(--dim); text-transform: uppercase; margin-bottom: 8px; font-weight: 800; }
         input { width: 100%; background: #0d1117; border: 1px solid var(--border); color: var(--accent); padding: 10px; border-radius: 6px; box-sizing: border-box; font-family: monospace; font-size: 1.1rem; outline: none; }
         
-        .chart-container { background: var(--card); border: 1px solid var(--border); padding: 20px; border-radius: 12px; height: 350px; position: relative; }
-        .stats { font-family: monospace; font-size: 1.2rem; font-weight: 900; color: var(--accent); }
+        /* Toggle Switch */
+        .switch-group { display: flex; align-items: center; gap: 10px; margin-bottom: 20px; background: var(--card); padding: 15px; border-radius: 12px; border: 1px solid var(--border); }
+        .switch { position: relative; display: inline-block; width: 40px; height: 20px; }
+        .switch input { opacity: 0; width: 0; height: 0; }
+        .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #333; transition: .4s; border-radius: 20px; }
+        .slider:before { position: absolute; content: ""; height: 14px; width: 14px; left: 3px; bottom: 3px; background-color: white; transition: .4s; border-radius: 50%; }
+        input:checked + .slider { background-color: var(--accent); }
+        input:checked + .slider:before { transform: translateX(20px); }
+
+        .chart-container { background: var(--card); border: 1px solid var(--border); padding: 20px; border-radius: 12px; height: 300px; margin-bottom: 20px; }
         
-        table { width: 100%; border-collapse: collapse; margin-top: 25px; background: var(--card); border-radius: 12px; overflow: hidden; border: 1px solid var(--border); }
+        table { width: 100%; border-collapse: collapse; background: var(--card); border-radius: 12px; overflow: hidden; border: 1px solid var(--border); }
         th { background: rgba(255,255,255,0.03); text-align: left; padding: 12px; font-size: 0.65rem; color: var(--dim); text-transform: uppercase; }
-        td { padding: 12px; border-bottom: 1px solid rgba(255,255,255,0.02); font-family: monospace; font-size: 0.85rem; }
-        .tier-label { padding: 2px 6px; border-radius: 4px; font-weight: 800; font-size: 0.7rem; }
+        td { padding: 12px; border-bottom: 1px solid rgba(255,255,255,0.02); font-family: monospace; }
+        
+        .tier-tag { padding: 4px 8px; border-radius: 4px; font-size: 0.7rem; font-weight: 800; text-transform: uppercase; }
+        .diamond { background: rgba(0, 255, 204, 0.1); color: var(--accent); }
+        .plat { background: rgba(179, 0, 255, 0.1); color: #b300ff; }
+        .gold { background: rgba(255, 215, 0, 0.1); color: #ffd700; }
+        .silver { background: rgba(255, 255, 255, 0.05); color: #fff; }
     </style>
 </head>
 <body>
 
-<div class="header">
-    <h1>Exponential Prize Engine</h1>
-    <p style="color: var(--dim); font-size: 0.8rem;">Formula: $P(r) = (P/N) * (\alpha * e^{-\beta(r-1)/N}) / (1-e^{-\beta})$</p>
-</div>
-
 <div class="grid">
     <div class="card">
-        <label>Total Participants (N)</label>
-        <input type="number" id="N" value="8000" oninput="run()">
+        <label>Total Cars (N)</label>
+        <input type="number" id="N" value="20" oninput="run()">
     </div>
     <div class="card">
-        <label>Total Pot (P)</label>
+        <label>Total Pool (P)</label>
         <input type="number" id="P" value="10000" oninput="run()">
     </div>
     <div class="card">
-        <label>Decay Constant (β)</label>
+        <label>Base Beta (β)</label>
         <input type="number" id="beta" value="4.0" step="0.1" oninput="run()">
     </div>
 </div>
 
-<div class="grid">
-    <div class="card">
-        <label>Winner (P1)</label>
-        <div id="p1_val" class="stats">0</div>
-    </div>
-    <div class="card">
-        <label>Diamond Last (P400)</label>
-        <div id="d_last" class="stats" style="color: #b300ff;">0</div>
-    </div>
-    <div class="card">
-        <label>Payout Cutoff (80% N)</label>
-        <div id="cutoff_val" class="stats" style="color: white;">0</div>
-    </div>
+<div class="switch-group">
+    <label class="switch">
+        <input type="checkbox" id="small_race_toggle" onchange="run()" checked>
+        <span class="slider"></span>
+    </label>
+    <div style="font-size: 0.8rem; font-weight: bold;">Enable Small Race Optimization (Auto-Beta 1.5 if N < 20)</div>
 </div>
 
 <div class="chart-container">
@@ -82,81 +82,83 @@
     function run() {
         const N = parseInt(document.getElementById('N').value) || 1;
         const P = parseFloat(document.getElementById('P').value) || 0;
-        const beta = parseFloat(document.getElementById('beta').value) || 0.1;
-        const cutoff = Math.floor(0.8 * N);
+        let beta = parseFloat(document.getElementById('beta').value) || 0.1;
+        const useSmartBeta = document.getElementById('small_race_toggle').checked;
 
-        // 1. Normalization (Alpha)
+        // Apply Toggle Logic
+        if (N < 20 && useSmartBeta) {
+            beta = 1.5; 
+        }
+
+        const cutoff = Math.max(1, Math.floor(0.8 * N));
         const denomConst = 1 - Math.exp(-beta);
+        
+        // 1. Calculate Alpha (Summing the exponential sequence)
         let sumPart = 0;
         for (let r = 1; r <= cutoff; r++) {
             sumPart += Math.exp(-beta * (r - 1) / N) / denomConst;
         }
         const alpha = N / sumPart;
 
-        // 2. Calculation
+        // 2. Generate and Sort Payouts
         let payouts = [];
         for (let r = 1; r <= cutoff; r++) {
             const val = (P / N) * ((alpha * Math.exp(-beta * (r - 1) / N)) / denomConst);
-            payouts.push(val);
+            payouts.push({ rank: r, val: val });
         }
 
-        // 3. UI Updates
-        document.getElementById('p1_val').innerText = payouts[0].toFixed(2) + " TBNB";
-        const dLastIndex = Math.floor(N * 0.05); // Diamond is top 5%
-        document.getElementById('d_last').innerText = payouts[dLastIndex - 1].toFixed(2) + " TBNB";
-        document.getElementById('cutoff_val').innerText = payouts[payouts.length - 1].toFixed(4) + " TBNB";
-
-        // Table Sample
+        // 3. Render Table (Corrected Sorting)
         const list = document.getElementById('payout_list');
         list.innerHTML = '';
-        [1, 2, 10, dLastIndex, Math.floor(N*0.2), cutoff].forEach(r => {
-            if (r > cutoff) return;
-            const val = payouts[r-1];
-            let tier = 'Silver';
-            if (r <= N * 0.05) tier = '<span class="tier-label" style="background:var(--diamond); color:var(--accent)">Diamond</span>';
-            else if (r <= N * 0.20) tier = '<span class="tier-label" style="background:var(--plat); color:#b300ff">Platinum</span>';
-            else if (r <= N * 0.50) tier = '<span class="tier-label" style="background:var(--gold); color:gold">Gold</span>';
-            
-            list.innerHTML += `<tr><td>#${r}</td><td>${tier}</td><td>${val.toFixed(4)}</td><td>${((val/P)*100).toFixed(2)}%</td></tr>`;
+        
+        // Show Top 20 or all if less than 20
+        const displayRows = payouts.slice(0, 20);
+        displayRows.forEach(item => {
+            let tierClass = 'silver';
+            let tierName = 'Silver';
+            const r = item.rank;
+
+            if (r <= N * 0.05) { tierClass = 'diamond'; tierName = 'Diamond'; }
+            else if (r <= N * 0.20) { tierClass = 'plat'; tierName = 'Platinum'; }
+            else if (r <= N * 0.50) { tierClass = 'gold'; tierName = 'Gold'; }
+
+            list.innerHTML += `
+                <tr>
+                    <td>#${r}</td>
+                    <td><span class="tier-tag ${tierClass}">${tierName}</span></td>
+                    <td>${item.val.toFixed(4)}</td>
+                    <td>${((item.val / P) * 100).toFixed(2)}%</td>
+                </tr>`;
         });
 
-        updateChart(payouts, N);
+        updateChart(payouts);
     }
 
-    function updateChart(data, N) {
+    function updateChart(data) {
         const ctx = document.getElementById('expChart').getContext('2d');
         if (chart) chart.destroy();
-        
-        // Sampling for performance
-        const step = Math.max(1, Math.floor(data.length / 100));
-        const sampledData = data.filter((_, i) => i % step === 0);
-        const sampledLabels = sampledData.map((_, i) => i * step + 1);
-
         chart = new Chart(ctx, {
             type: 'line',
             data: {
-                labels: sampledLabels,
+                labels: data.map(d => d.rank),
                 datasets: [{
-                    label: 'Payout Curve',
-                    data: sampledData,
+                    label: 'Payout',
+                    data: data.map(d => d.val),
                     borderColor: '#00ffcc',
                     backgroundColor: 'rgba(0, 255, 204, 0.1)',
                     fill: true,
-                    pointRadius: 0,
-                    tension: 0.3
+                    pointRadius: data.length < 50 ? 3 : 0,
+                    tension: 0.2
                 }]
             },
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
                 scales: {
-                    x: { display: true, grid: { color: '#30363d' }, ticks: { color: '#8b949e' } },
+                    x: { grid: { color: '#30363d' }, ticks: { color: '#8b949e' } },
                     y: { grid: { color: '#30363d' }, ticks: { color: '#8b949e' } }
                 },
-                plugins: {
-                    legend: { display: false },
-                    tooltip: { mode: 'index', intersect: false }
-                }
+                plugins: { legend: { display: false } }
             }
         });
     }
