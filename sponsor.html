@@ -7,54 +7,67 @@
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-database-compat.js"></script>
     <style>
-        :root { --accent: #00ffcc; --bg: #0b0e14; --card: #161b22; --border: #30363d; --boost: #b300ff; }
+        :root { --accent: #00ffcc; --bg: #0b0e14; --card: #161b22; --border: #30363d; --boost: #b300ff; --text: #8b949e; }
         body { background: var(--bg); color: white; font-family: 'Inter', sans-serif; padding: 20px; margin: 0; }
-        .container { max-width: 1000px; margin: 0 auto; }
+        .container { max-width: 1200px; margin: 0 auto; }
         
-        /* THE REQUESTED HEADER: Split Treasury */
-        .sponsor-header { 
+        /* Split Treasury Header */
+        .portal-header { 
             display: flex; justify-content: space-between; align-items: center; 
-            background: var(--card); padding: 20px; border-radius: 12px; border: 1px solid var(--border);
-            margin-bottom: 20px;
+            background: var(--card); padding: 15px 25px; border-radius: 12px; 
+            border: 1px solid var(--border); margin-bottom: 25px;
         }
-        .round-info { font-weight: 900; color: var(--accent); font-size: 1.2rem; }
+        .header-left { display: flex; align-items: center; gap: 20px; }
+        .round-box { font-weight: 900; font-size: 1.4rem; color: var(--accent); letter-spacing: -1px; }
         
-        .treasury-display { display: flex; gap: 25px; }
-        .t-group { text-align: center; }
-        .t-label { font-size: 0.6rem; text-transform: uppercase; color: #8b949e; display: block; margin-bottom: 4px; }
-        .t-val { font-family: 'Courier New', monospace; font-weight: 900; font-size: 1.1rem; }
+        .treasury-display { display: flex; gap: 30px; }
+        .t-stat { text-align: right; }
+        .t-label { font-size: 0.6rem; text-transform: uppercase; color: var(--text); font-weight: 800; display: block; }
+        .t-val { font-family: 'Courier New', monospace; font-weight: 900; font-size: 1.2rem; }
 
-        /* Preservation of your existing Sponsor Styles */
-        .car-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 15px; }
-        .car-card { background: var(--card); border: 1px solid var(--border); padding: 15px; border-radius: 10px; }
-        .car-id { font-weight: 900; color: var(--accent); margin-bottom: 10px; display: flex; justify-content: space-between; }
-        .trait-row { display: flex; justify-content: space-between; font-size: 0.8rem; margin: 5px 0; color: #8b949e; }
-        .trait-val { color: white; font-weight: bold; }
+        /* Car Grid from Reference */
+        .car-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 15px; }
+        .car-card { background: var(--card); border: 1px solid var(--border); padding: 20px; border-radius: 12px; transition: 0.2s; }
+        .car-card:hover { border-color: #444; }
         
-        .btn-action { 
-            width: 100%; margin-top: 10px; padding: 10px; border-radius: 6px; 
-            border: none; font-weight: 900; cursor: pointer; text-transform: uppercase;
+        .car-header { display: flex; justify-content: space-between; margin-bottom: 15px; border-bottom: 1px solid #222; padding-bottom: 10px; }
+        .car-name { font-weight: 900; color: var(--accent); font-size: 1.1rem; }
+        .car-role { font-size: 0.65rem; color: var(--text); text-transform: uppercase; font-weight: 800; }
+
+        .trait-list { margin-bottom: 20px; }
+        .trait-item { display: flex; justify-content: space-between; font-size: 0.85rem; margin: 6px 0; color: var(--text); }
+        .trait-item b { color: white; }
+
+        .btn-boost { 
+            width: 100%; padding: 12px; border-radius: 8px; border: none; 
+            background: var(--boost); color: white; font-weight: 900; 
+            cursor: pointer; text-transform: uppercase; font-size: 0.75rem;
+            transition: 0.2s;
         }
-        .btn-boost { background: var(--boost); color: white; }
+        .btn-boost:hover { opacity: 0.8; transform: translateY(-1px); }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <div class="sponsor-header">
-        <div class="round-info">ROUND <span id="display_round">4</span></div>
+    <div class="portal-header">
+        <div class="header-left">
+            <div class="round-box">R<span id="display_round">?</span></div>
+            <div style="height: 30px; width: 1px; background: #333;"></div>
+            <h2 style="margin:0; font-size: 1rem; text-transform: uppercase; letter-spacing: 2px;">Sponsor Portal</h2>
+        </div>
         
         <div class="treasury-display">
-            <div class="t-group">
-                <span class="t-label">Normal</span>
+            <div class="t-stat">
+                <span class="t-label">Normal Pool</span>
                 <span id="bal_n" class="t-val" style="color:var(--accent)">0</span>
             </div>
-            <div class="t-group">
-                <span class="t-label">Boost</span>
+            <div class="t-stat">
+                <span class="t-label">Boost Pool</span>
                 <span id="bal_b" class="t-val" style="color:var(--boost)">0</span>
             </div>
-            <div class="t-group" style="border-left: 1px solid #333; padding-left: 20px;">
-                <span class="t-label">Total Treasury</span>
+            <div class="t-stat" style="border-left: 1px solid #333; padding-left: 25px;">
+                <span class="t-label">Total Assets</span>
                 <span id="bal_total" class="t-val" style="color:white">0</span>
             </div>
         </div>
@@ -64,7 +77,6 @@
 </div>
 
 <script>
-    // Configuration
     const firebaseConfig = {
         apiKey: "AlzaSyBYxLOGFzaHN6CS4ro_bjnKEblbQE6Vtx4",
         databaseURL: "https://nuclearf1-94a6b-default-rtdb.asia-southeast1.firebasedatabase.app",
@@ -74,12 +86,12 @@
     firebase.initializeApp(firebaseConfig);
     const db = firebase.database();
 
-    // 1. Sync Round from race_state
+    // 1. Sync Round
     db.ref('race_state/round').on('value', snap => {
-        document.getElementById('display_round').innerText = snap.val() || 4;
+        document.getElementById('display_round').innerText = snap.val() || 1;
     });
 
-    // 2. Sync Treasury (Split Display)
+    // 2. Sync Split Treasury
     db.ref('treasury').on('value', snap => {
         const t = snap.val() || { normal: 0, boost: 0 };
         document.getElementById('bal_n').innerText = Math.floor(t.normal).toLocaleString();
@@ -87,7 +99,7 @@
         document.getElementById('bal_total').innerText = Math.floor(t.normal + t.boost).toLocaleString();
     });
 
-    // 3. Original Car List Logic
+    // 3. Load Cars
     db.ref('cars').on('value', snap => {
         const grid = document.getElementById('car_grid');
         grid.innerHTML = '';
@@ -95,24 +107,29 @@
         
         for(let id in cars) {
             const car = cars[id];
+            if(!car.role) continue; // Only show cars with assigned roles
+
             grid.innerHTML += `
                 <div class="car-card">
-                    <div class="car-id">
-                        <span>${id}</span>
-                        <span style="color:#555">#${car.role || 'NONE'}</span>
+                    <div class="car-header">
+                        <span class="car-name">${id}</span>
+                        <span class="car-role">${car.role}</span>
                     </div>
-                    <div class="trait-row"><span>Propulsion</span><span class="trait-val">${car.traits?.propulsion || 0}</span></div>
-                    <div class="trait-row"><span>Traction</span><span class="trait-val">${car.traits?.traction || 0}</span></div>
-                    <div class="trait-row"><span>Stability</span><span class="trait-val">${car.traits?.stability || 0}</span></div>
-                    <button class="btn-action btn-boost" onclick="applyBoost('${id}')">Apply Boost</button>
+                    <div class="trait-list">
+                        <div class="trait-item"><span>Propulsion</span><b>${car.traits?.propulsion || 0}</b></div>
+                        <div class="trait-item"><span>Traction</span><b>${car.traits?.traction || 0}</b></div>
+                        <div class="trait-item"><span>Stability</span><b>${car.traits?.stability || 0}</b></div>
+                        <div class="trait-item"><span>Core</span><b>${car.traits?.core || 0}</b></div>
+                    </div>
+                    <button class="btn-boost" onclick="applyBoost('${id}')">Apply Boost</button>
                 </div>
             `;
         }
     });
 
     function applyBoost(carId) {
-        // Your existing boost logic here
-        console.log("Boosting:", carId);
+        // Logic to deduct from 'boost' pool and apply to car
+        console.log("Applying boost to:", carId);
     }
 </script>
 </body>
