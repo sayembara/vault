@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SANRAT | Tier Configuration</title>
+    <style>
+        :root { --accent: #00ffcc; --bg: #0b0e14; --card: #161b22; }
+        body { background: var(--bg); color: white; font-family: 'Inter', sans-serif; padding: 40px; }
+        .config-container { max-width: 900px; margin: 0 auto; }
+        .card { background: var(--card); border: 1px solid #30363d; border-radius: 12px; padding: 24px; margin-bottom: 24px; }
+        .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+        h2 { color: var(--accent); margin-top: 0; }
+        .input-group { margin-bottom: 15px; }
+        label { display: block; font-size: 0.8rem; color: #8b949e; margin-bottom: 8px; text-transform: uppercase; }
+        input { width: 100%; background: #0d1117; border: 1px solid #30363d; color: white; padding: 12px; border-radius: 6px; box-sizing: border-box; }
+        .help-text { font-size: 0.75rem; color: #6e7681; margin-top: 5px; }
+        .btn-save { background: var(--accent); color: #000; border: none; padding: 15px 30px; border-radius: 6px; font-weight: bold; cursor: pointer; width: 100%; }
+        .tier-preview { border-left: 4px solid var(--accent); padding-left: 15px; margin-top: 10px; }
+    </style>
+</head>
+<body>
+
+<div class="config-container">
+    <h1>⚙️ Tier Detail Configuration</h1>
+    <p style="color: #8b949e;">Define the rules for the 7-day automated Round Transition.</p>
+
+    <div class="card">
+        <h2>Day 1 Seeding (Trait-Based)</h2>
+        <div class="grid">
+            <div class="input-group">
+                <label>Tier 1 Percentile (Top %)</label>
+                <input type="number" id="seed_t1" value="15">
+                <p class="help-text">Top % of total power score to enter Tier 1.</p>
+            </div>
+            <div class="input-group">
+                <label>Tier 2 Percentile (Next %)</label>
+                <input type="number" id="seed_t2" value="35">
+                <p class="help-text">Next % to enter Tier 2. Remaining go to T3.</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="card">
+        <h2>Weekly Transition Logic</h2>
+        <div class="grid">
+            <div class="input-group">
+                <label>Promotion Rate (%)</label>
+                <input type="number" id="promo_rate" value="10">
+                <p class="help-text">% of top performers moving UP from T2 and T3.</p>
+            </div>
+            <div class="input-group">
+                <label>Relegation Rate (%)</label>
+                <input type="number" id="rele_rate" value="10">
+                <p class="help-text">% of bottom performers moving DOWN from T1 and T2.</p>
+            </div>
+        </div>
+        <div class="input-group">
+            <label>Tier 1 Capacity Cap (Cars)</label>
+            <input type="number" id="t1_cap" value="500">
+            <p class="help-text">Maximum cars allowed in Elite Tier 1. 0 for unlimited.</p>
+        </div>
+    </div>
+
+    <div class="card">
+        <h2>Constructor Rules</h2>
+        <div class="grid">
+            <div class="input-group">
+                <label>Max Cars Per Team</label>
+                <input type="number" id="team_max" value="2" readonly>
+                <p class="help-text">Hardcoded to 2 cars max.</p>
+            </div>
+            <div class="input-group">
+                <label>Counting Cars</label>
+                <input type="text" id="team_count" value="ALL" readonly>
+                <p class="help-text">All cars with points contribute to team score.</p>
+            </div>
+        </div>
+    </div>
+
+    <button class="btn-save" onclick="saveConfig()">💾 SAVE CONFIGURATION</button>
+</div>
+
+<script>
+    function saveConfig() {
+        const config = {
+            seeding: {
+                t1: document.getElementById('seed_t1').value,
+                t2: document.getElementById('seed_t2').value
+            },
+            transition: {
+                promotion: document.getElementById('promo_rate').value,
+                relegation: document.getElementById('rele_rate').value,
+                t1_cap: document.getElementById('t1_cap').value
+            },
+            lastUpdated: new Date().toISOString()
+        };
+
+        // Here you would call your Database update function
+        console.log("Saving Configuration to Database...", config);
+        alert("Configuration Saved! Automator will use these values at the next Round Transition.");
+    }
+</script>
+
+</body>
+</html>
