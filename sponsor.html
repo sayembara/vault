@@ -107,17 +107,12 @@
 </div>
 
 <script>
-    // 1. DATA STATE (In a real app, this comes from your Database)
-    let totalFund = 25000; // Total TBNB available to distribute
-    let buckets = {
-        rounds: Array(12).fill(0),
-        season: 0,
-        constructor: 0,
-        overflow: 0
-    };
-
+    // 1. DYNAMIC STATE (This would be pulled from your Master Admin / Database)
+    let currentRound = 3; // The current round number (1-12)
+    let totalVault = 60000; // Total TBNB collected since Day 1
+    
     function runWaterfall() {
-        // --- A. GET LIMITS FROM UI ---
+        // --- A. GET LIMITS FROM SPONSOR INPUTS ---
         const wkMin = parseFloat(document.getElementById('wk_min').value) || 0;
         const wkMax = parseFloat(document.getElementById('wk_max').value) || 0;
         const seaMin = parseFloat(document.getElementById('sea_min').value) || 0;
@@ -125,95 +120,118 @@
         const conMin = parseFloat(document.getElementById('con_min').value) || 0;
         const conMax = parseFloat(document.getElementById('con_max').value) || 0;
 
-        let remaining = totalFund;
-        
-        // Reset Buckets
-        buckets.rounds = Array(12).fill(0);
-        buckets.season = 0;
-        buckets.constructor = 0;
-        buckets.overflow = 0;
+        let remaining = totalVault;
+        let buckets = {
+            rounds: Array(12).fill(0),
+            season: 0,
+            constructor: 0,
+            overflow: 0,
+            pastSpent: 0
+        };
 
-        // --- B. THE WATERFALL CALCULATION (Priority Order) ---
+        // --- B. TEMPORAL ALLOCATION ---
 
-        // 1. Weekly MINS (Rounds 1-12)
-        for(let i=0; i<12; i++) {
-            let amount = Math.min(remaining, wkMin);
-            buckets.rounds[i] += amount;
-            remaining -= amount;
+        // Step 1: Lock and deduct Past Rounds (Assuming they hit Max)
+        for (let i = 0; i < currentRound - 1; i++) {
+            buckets.rounds[i] = wkMax;
+            remaining -= wkMax;
+            buckets.pastSpent += wkMax;
         }
 
-        // 2. Season MIN
+        // Step 2: Fill MINS for Current & Future Rounds (Priority 1)
+        for (let i = currentRound - 1; i < 12; i++) {
+            let amt = Math.min(remaining, wkMin);
+            buckets.rounds[i] += amt;
+            remaining -= amt;
+        }
+
+        // Step 3: Fill Season MIN (Priority 2)
         let sMinAmt = Math.min(remaining, seaMin);
         buckets.season += sMinAmt;
         remaining -= sMinAmt;
 
-        // 3. Constructor MIN
+        // Step 4: Fill Constructor MIN (Priority 3)
         let cMinAmt = Math.min(remaining, conMin);
         buckets.constructor += cMinAmt;
         remaining -= cMinAmt;
 
-        // 4. Weekly MAX (Top-up rounds)
-        for(let i=0; i<12; i++) {
+        // Step 5: Fill ACTIVE Round to MAX (Priority 4 - Bonus to current racers)
+        let activeIdx = currentRound - 1;
+        let activeTopUp = Math.min(remaining, wkMax - buckets.rounds[activeIdx]);
+        buckets.rounds[activeIdx] += activeTopUp;
+        remaining -= activeTopUp;
+
+        // Step 6: Fill FUTURE Rounds to MAX (Priority 4 - Extended)
+        for (let i = currentRound; i < 12; i++) {
             let topUp = Math.min(remaining, wkMax - buckets.rounds[i]);
             buckets.rounds[i] += topUp;
             remaining -= topUp;
         }
 
-        // 5. Season MAX (Top-up)
+        // Step 7: Fill Season MAX (Priority 5)
         let sMaxTop = Math.min(remaining, seaMax - buckets.season);
         buckets.season += sMaxTop;
         remaining -= sMaxTop;
 
-        // 6. Constructor MAX (Top-up)
+        // Step 8: Fill Constructor MAX (Priority 6)
         let cMaxTop = Math.min(remaining, conMax - buckets.constructor);
         buckets.constructor += cMaxTop;
         remaining -= cMaxTop;
 
-        // 7. Overflow
+        // Step 9: Overflow
         buckets.overflow = remaining;
 
         // --- C. REFRESH UI ---
-        refreshUI(wkMin, wkMax, seaMin, seaMax, conMin, conMax);
+        updateUI(buckets, wkMin, wkMax, seaMin, seaMax, conMin, conMax);
     }
 
-    function refreshUI(wkMin, wkMax, seaMin, seaMax, conMin, conMax) {
-        document.getElementById('total_vault_display').innerText = `${totalFund.toLocaleString()} TBNB`;
-
-        // Render Round Buckets
+    function updateUI(b, wkMin, wkMax, seaMin, seaMax, conMin, conMax) {
+        document.getElementById('total_vault_display').innerText = `${totalVault.toLocaleString()} TBNB`;
         const grid = document.getElementById('round_buckets_grid');
         grid.innerHTML = '';
-        buckets.rounds.forEach((val, i) => {
-            grid.innerHTML += renderBucketUI(`Round ${i+1}`, val, wkMin, wkMax);
-        });
 
-        // Render Specials
-        document.getElementById('season_bucket_ui').innerHTML = renderBucketUI('Season Pool', buckets.season, seaMin, seaMax, true);
-        document.getElementById('constructor_bucket_ui').innerHTML = renderBucketUI('Constructor Pool', buckets.constructor, conMin, conMax, true);
-        
-        // Render Overflow
+        for (let i = 0; i < 12; i++) {
+            let roundNum = i + 1;
+            let status = "future";
+            let label = `Round ${roundNum}`;
+            
+            if (roundNum < currentRound) {
+                status = "past";
+                label += " (PAST)";
+            } else if (roundNum === currentRound) {
+                status = "active";
+                label += " (LIVE)";
+            }
+
+            grid.innerHTML += renderBucketHTML(label, b.rounds[i], wkMin, wkMax, status);
+        }
+
+        // Special Buckets
+        document.getElementById('season_bucket_ui').innerHTML = renderBucketHTML('Season Pool', b.season, seaMin, seaMax, 'special');
+        document.getElementById('constructor_bucket_ui').innerHTML = renderBucketHTML('Constructor Pool', b.constructor, conMin, conMax, 'special');
         document.getElementById('overflow_bucket_ui').innerHTML = `
-            <div class="card" style="border-color: #888;">
-                <span class="bucket-label">Overflow (Reserve)</span>
-                <div class="bucket-main"><span class="balance">${buckets.overflow.toFixed(2)}</span></div>
-                <span class="status" style="color:#888">Secured</span>
+            <div class="card overflow">
+                <span class="bucket-label">Vault Overflow</span>
+                <div class="bucket-main"><span class="balance">${b.overflow.toFixed(2)}</span></div>
+                <span class="status status-max">Secured</span>
             </div>
         `;
     }
 
-    function renderBucketUI(label, current, min, max, isSpecial = false) {
+    function renderBucketHTML(label, current, min, max, state) {
         let statusClass = "status-below";
         let statusText = "Below Min";
         
-        if (current >= max) {
-            statusClass = "status-max";
-            statusText = "Maxed";
-        } else if (current >= min) {
-            statusClass = "status-min";
-            statusText = "At Min";
-        }
+        if (current >= max) { statusClass = "status-max"; statusText = "Maxed"; }
+        else if (current >= min) { statusClass = "status-min"; statusText = "At Min"; }
+
+        // Styling past/active/future
+        let borderStyle = "";
+        if (state === 'past') borderStyle = "opacity: 0.5; border-color: #444;";
+        if (state === 'active') borderStyle = "border: 2px solid var(--accent); background: rgba(0,255,204,0.05);";
 
         return `
-            <div class="card ${isSpecial ? '' : 'bucket'}">
+            <div class="card" style="${borderStyle}">
                 <span class="bucket-label">${label}</span>
                 <div class="bucket-main">
                     <span class="target">${max}:</span><span class="balance">${current.toFixed(0)}</span>
@@ -222,20 +240,6 @@
             </div>
         `;
     }
-
-    function wipeAll() {
-        if(confirm("DANGER: Reset all bucket balances to 0?")) {
-            totalFund = 0; // Or keep totalFund and just clear allocations
-            runWaterfall();
-        }
-    }
-
-    function savePolicy() { 
-        alert("Waterfall Policy Saved! These limits are now live."); 
-    }
-
-    // Run once on load
-    runWaterfall();
 </script>
 
 </body>
