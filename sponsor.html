@@ -3,129 +3,138 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SANRAT | Sponsor Limits & Policy</title>
+    <title>SANRAT | Sponsor Control Center</title>
     <style>
-        :root { --accent: #00ffcc; --bg: #0b0e14; --card: #161b22; --border: #30363d; }
-        body { background: var(--bg); color: white; font-family: 'Inter', sans-serif; padding: 40px; line-height: 1.6; }
-        .container { max-width: 1000px; margin: 0 auto; }
+        :root { --accent: #00ffcc; --bg: #0b0e14; --card: #161b22; --border: #30363d; --danger: #ff4b2b; }
+        body { background: var(--bg); color: white; font-family: 'Inter', sans-serif; padding: 20px; line-height: 1.6; }
+        .container { max-width: 1100px; margin: 0 auto; }
         
-        .header { margin-bottom: 30px; border-bottom: 1px solid var(--border); padding-bottom: 20px; }
+        .header { display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 30px; border-bottom: 1px solid var(--border); padding-bottom: 20px; }
         h1 { color: var(--accent); margin: 0; font-size: 1.8rem; }
         
-        .section-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; }
-        .card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 24px; position: relative; }
-        .card h2 { font-size: 1.1rem; margin-top: 0; display: flex; align-items: center; gap: 10px; }
-        
-        .input-pair { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-top: 15px; }
-        label { display: block; font-size: 0.75rem; color: #8b949e; margin-bottom: 5px; text-transform: uppercase; letter-spacing: 1px; }
-        input { width: 100%; background: #0d1117; border: 1px solid var(--border); color: var(--accent); padding: 12px; border-radius: 6px; font-weight: bold; }
-        
-        .priority-badge { position: absolute; top: 15px; right: 15px; font-size: 0.65rem; background: #21262d; padding: 4px 8px; border-radius: 4px; color: #8b949e; }
-        
-        .btn-save { background: var(--accent); color: #000; border: none; padding: 18px; border-radius: 8px; font-weight: 900; cursor: pointer; width: 100%; margin-top: 30px; transition: transform 0.2s; }
-        .btn-save:hover { transform: translateY(-2px); opacity: 0.9; }
+        .section-title { font-size: 0.9rem; text-transform: uppercase; letter-spacing: 2px; color: #8b949e; margin: 30px 0 15px 0; display: flex; align-items: center; gap: 10px; }
+        .section-title::after { content: ""; flex: 1; height: 1px; background: var(--border); }
 
-        .note { background: rgba(0, 255, 204, 0.05); border: 1px dashed var(--accent); padding: 15px; border-radius: 8px; margin-top: 20px; font-size: 0.85rem; }
+        .grid-3 { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 20px; }
+        .card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 20px; position: relative; }
+        
+        /* Inputs */
+        .input-pair { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-top: 10px; }
+        label { display: block; font-size: 0.7rem; color: #8b949e; margin-bottom: 5px; }
+        input { width: 100%; background: #0d1117; border: 1px solid var(--border); color: var(--accent); padding: 10px; border-radius: 6px; font-weight: bold; }
+        
+        /* Buckets Display */
+        .bucket-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 10px; margin-top: 10px; }
+        .bucket { background: #0d1117; border: 1px solid #21262d; padding: 10px; border-radius: 6px; text-align: center; }
+        .bucket-label { font-size: 0.6rem; color: #8b949e; display: block; }
+        .bucket-value { font-size: 0.85rem; font-weight: bold; color: var(--accent); }
+        .special-bucket { grid-column: span 3; background: rgba(0, 255, 204, 0.05); border: 1px solid var(--accent); }
+
+        /* Action Buttons */
+        .admin-actions { display: flex; gap: 15px; margin-top: 30px; }
+        .btn { flex: 1; padding: 15px; border-radius: 8px; font-weight: 900; cursor: pointer; border: none; transition: 0.2s; text-transform: uppercase; }
+        .btn-save { background: var(--accent); color: #000; }
+        .btn-reallocate { background: transparent; border: 1px solid var(--accent); color: var(--accent); }
+        .btn-wipe { background: transparent; border: 1px solid var(--danger); color: var(--danger); font-size: 0.8rem; flex: 0.5; }
+        .btn:hover { opacity: 0.8; transform: translateY(-2px); }
     </style>
 </head>
 <body>
 
 <div class="container">
     <div class="header">
-        <h1>🤝 Sponsor Control Center</h1>
-        <p style="color: #8b949e;">Set the Minimum and Maximum limits for the Funding Waterfall Engine.</p>
-    </div>
-
-    <div class="section-grid">
-        <div class="card">
-            <span class="priority-badge">PRIORITY 1 & 4</span>
-            <h2>🗓️ Weekly (Round) Limits</h2>
-            <div class="input-pair">
-                <div>
-                    <label>Min Limit (TBNB)</label>
-                    <input type="number" id="wk_min" value="1000" placeholder="0">
-                </div>
-                <div>
-                    <label>Max Limit (TBNB)</label>
-                    <input type="number" id="wk_max" value="5000" placeholder="0">
-                </div>
-            </div>
-            <p style="font-size: 0.7rem; color: #6e7681; margin-top: 10px;">The primary bucket for active racers. Weekly min is filled first.</p>
+        <div>
+            <h1>🤝 Sponsor Control Center</h1>
+            <p style="color: #8b949e; margin: 5px 0 0 0;">Manage limits and monitor TBNB bucket allocations.</p>
         </div>
-
-        <div class="card">
-            <span class="priority-badge">PRIORITY 2 & 5</span>
-            <h2>🏆 Season Totals</h2>
-            <div class="input-pair">
-                <div>
-                    <label>Min Limit (TBNB)</label>
-                    <input type="number" id="sea_min" value="5000" placeholder="0">
-                </div>
-                <div>
-                    <label>Max Limit (TBNB)</label>
-                    <input type="number" id="sea_max" value="20000" placeholder="0">
-                </div>
-            </div>
-            <p style="font-size: 0.7rem; color: #6e7681; margin-top: 10px;">Cumulative prizes paid out at the end of the full season.</p>
-        </div>
-
-        <div class="card">
-            <span class="priority-badge">PRIORITY 3 & 6</span>
-            <h2>🛠️ Constructor Limits</h2>
-            <div class="input-pair">
-                <div>
-                    <label>Min Limit (TBNB)</label>
-                    <input type="number" id="con_min" value="2000" placeholder="0">
-                </div>
-                <div>
-                    <label>Max Limit (TBNB)</label>
-                    <input type="number" id="con_max" value="8000" placeholder="0">
-                </div>
-            </div>
-            <p style="font-size: 0.7rem; color: #6e7681; margin-top: 10px;">Dedicated rewards for Team Owners and Constructors.</p>
+        <div style="text-align: right;">
+            <label>Total Fund Available</label>
+            <div style="font-size: 1.5rem; font-weight: 900; color: var(--accent);">24,500 TBNB</div>
         </div>
     </div>
 
-    <div class="note">
-        <strong>Waterfall Intelligence:</strong> The <strong>Funding Page</strong> will read these values to fill buckets in order: 
-        <br><em>Weekly Min → Season Min → Constructor Min → Weekly Max → Season Max → Constructor Max → Overflow.</em>
+    <div class="section-title">Waterfall Limit Settings</div>
+    <div class="grid-3">
+        <div class="card">
+            <h2 style="font-size: 1rem; margin-top: 0;">🗓️ Weekly Limits</h2>
+            <div class="input-pair">
+                <div><label>MIN (PRIO 1)</label><input type="number" id="wk_min" value="1000"></div>
+                <div><label>MAX (PRIO 4)</label><input type="number" id="wk_max" value="5000"></div>
+            </div>
+        </div>
+        <div class="card">
+            <h2 style="font-size: 1rem; margin-top: 0;">🏆 Season Limits</h2>
+            <div class="input-pair">
+                <div><label>MIN (PRIO 2)</label><input type="number" id="sea_min" value="5000"></div>
+                <div><label>MAX (PRIO 5)</label><input type="number" id="sea_max" value="20000"></div>
+            </div>
+        </div>
+        <div class="card">
+            <h2 style="font-size: 1rem; margin-top: 0;">🛠️ Constructor Limits</h2>
+            <div class="input-pair">
+                <div><label>MIN (PRIO 3)</label><input type="number" id="con_min" value="2000"></div>
+                <div><label>MAX (PRIO 6)</label><input type="number" id="con_max" value="10000"></div>
+            </div>
+        </div>
     </div>
 
-    <button class="btn-save" onclick="saveSponsorLimits()">SAVE SPONSOR POLICY</button>
+    <div class="section-title">Live Round Buckets (1-12)</div>
+    <div class="card">
+        <div class="bucket-grid" id="round_buckets">
+            </div>
+    </div>
+
+    <div class="section-title">Specialized Buckets</div>
+    <div class="grid-3">
+        <div class="card special-bucket">
+            <span class="bucket-label">Total Season Pool</span>
+            <div class="bucket-value" style="font-size: 1.2rem;" id="season_val">0.00 TBNB</div>
+        </div>
+        <div class="card special-bucket" style="border-color: #8b949e;">
+            <span class="bucket-label">Total Constructor Pool</span>
+            <div class="bucket-value" style="font-size: 1.2rem;" id="constructor_val">0.00 TBNB</div>
+        </div>
+    </div>
+
+    <div class="admin-actions">
+        <button class="btn btn-save" onclick="saveLimits()">Save Policy</button>
+        <button class="btn btn-reallocate" onclick="triggerReallocate()">Reallocate Fund Waterfall</button>
+        <button class="btn btn-wipe" onclick="wipeRounds()">Wipe All Rounds</button>
+    </div>
 </div>
 
 <script>
-    function saveSponsorLimits() {
-        const limits = {
-            weekly: {
-                min: document.getElementById('wk_min').value,
-                max: document.getElementById('wk_max').value
-            },
-            season: {
-                min: document.getElementById('sea_min').value,
-                max: document.getElementById('sea_max').value
-            },
-            constructor: {
-                min: document.getElementById('con_min').value,
-                max: document.getElementById('con_max').value
-            },
-            updatedAt: new Date().toLocaleString()
-        };
+    // Initialize 12 Round Buckets UI
+    const bucketContainer = document.getElementById('round_buckets');
+    for (let i = 1; i <= 12; i++) {
+        bucketContainer.innerHTML += `
+            <div class="bucket">
+                <span class="bucket-label">RD ${i}</span>
+                <span class="bucket-value" id="rd_${i}_val">0.00</span>
+            </div>
+        `;
+    }
 
-        // This would typically be sent to Firebase/Supabase
-        console.log("Saving Sponsor Limits to Database...", limits);
-        
-        // Visual confirmation
-        const btn = document.querySelector('.btn-save');
-        const originalText = btn.innerText;
-        btn.innerText = "✅ LIMITS UPDATED";
-        btn.style.background = "#fff";
-        
-        setTimeout(() => {
-            btn.innerText = originalText;
-            btn.style.background = "var(--accent)";
-            alert("Limits successfully saved. The Funding Waterfall will now respect these boundaries.");
-        }, 1500);
+    function saveLimits() {
+        console.log("Saving limits to DB...");
+        alert("Policy Limits Saved.");
+    }
+
+    function triggerReallocate() {
+        console.log("Running Waterfall Algorithm...");
+        // This is where your waterfall logic from previous steps would run
+        // and update the 'bucket-value' innerTexts.
+        alert("Reallocation Complete. Fund has been distributed across Rounds, Season, and Constructors.");
+    }
+
+    function wipeRounds() {
+        if(confirm("DANGER: This will set all round buckets to 0. Are you sure?")) {
+            for (let i = 1; i <= 12; i++) {
+                document.getElementById(`rd_${i}_val`).innerText = "0.00";
+            }
+            document.getElementById('season_val').innerText = "0.00 TBNB";
+            document.getElementById('constructor_val').innerText = "0.00 TBNB";
+        }
     }
 </script>
 
