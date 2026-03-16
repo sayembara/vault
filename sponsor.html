@@ -3,7 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SANRAT | Sponsor Policy Center</title>
+    <title>SANRAT | Sponsor Policy (Firebase)</title>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-database-compat.js"></script>
+    
     <style>
         :root { 
             --accent: #00ffcc; --bg: #0b0e14; --card: #161b22; --border: #30363d; 
@@ -11,42 +14,33 @@
         }
         body { background: var(--bg); color: white; font-family: 'Inter', sans-serif; padding: 20px; }
         .container { max-width: 1200px; margin: 0 auto; }
-        
-        /* Header & Live Sync */
-        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px; border-bottom: 1px solid var(--border); padding-bottom: 20px; }
-        h1 { color: var(--accent); margin: 0; font-size: 1.6rem; text-transform: uppercase; letter-spacing: 2px; }
+        .header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border); padding-bottom: 20px; margin-bottom: 30px; }
+        h1 { color: var(--accent); font-size: 1.6rem; text-transform: uppercase; letter-spacing: 2px; margin: 0; }
         
         .vault-stats { text-align: right; background: rgba(0, 255, 204, 0.05); padding: 12px 20px; border-radius: 10px; border: 1px solid var(--border); }
-        .vault-label { font-size: 0.6rem; color: #8b949e; text-transform: uppercase; font-weight: 900; display: block; margin-bottom: 4px; }
         .vault-value { font-size: 2rem; font-weight: 900; color: var(--accent); font-family: 'Courier New', monospace; line-height: 1; }
 
         .section-title { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 2px; color: #8b949e; margin: 40px 0 15px 0; display: flex; align-items: center; gap: 10px; }
         .section-title::after { content: ""; flex: 1; height: 1px; background: var(--border); }
 
-        /* Policy Grid */
         .grid-3 { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 15px; }
         .card { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 20px; }
         .input-pair { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 10px; }
         label { display: block; font-size: 0.6rem; color: #8b949e; margin-bottom: 5px; font-weight: 800; text-transform: uppercase; }
         input { width: 100%; background: #0d1117; border: 1px solid var(--border); color: var(--accent); padding: 10px; border-radius: 6px; font-weight: 900; outline: none; }
 
-        /* Distribution Grid (Mirroring Funding Page) */
+        /* Distribution Grid */
         .bucket-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 12px; }
         .b-card { background: #0d1117; border: 1px solid var(--border); border-radius: 8px; padding: 15px; }
-        .b-card.active { border: 1px solid var(--accent); box-shadow: 0 0 10px rgba(0, 255, 204, 0.1); }
+        .b-card.active { border: 1px solid var(--accent); }
         .b-card.past { opacity: 0.4; filter: grayscale(1); }
-        .b-label { font-size: 0.6rem; color: #8b949e; font-weight: bold; text-transform: uppercase; }
         .b-main { font-family: 'Courier New', monospace; font-size: 1.3rem; margin: 8px 0; }
-        .n-val { color: #8b949e; }
         .val-total { color: var(--accent); font-weight: bold; }
         .b-breakdown { font-size: 0.55rem; border-top: 1px solid #222; padding-top: 8px; color: #666; display: flex; justify-content: space-between; }
 
-        /* Actions */
-        .admin-actions { display: flex; gap: 15px; margin-top: 30px; }
-        .btn { flex: 1; padding: 15px; border-radius: 6px; font-weight: 900; cursor: pointer; border: none; text-transform: uppercase; transition: 0.2s; }
+        .btn { flex: 1; padding: 15px; border-radius: 6px; font-weight: 900; cursor: pointer; border: none; text-transform: uppercase; transition: 0.2s; margin-top: 20px; }
         .btn-save { background: var(--accent); color: #000; }
-        .btn-wipe { background: transparent; border: 2px solid var(--danger); color: var(--danger); }
-        .btn-wipe:hover { background: var(--danger); color: white; }
+        .btn-wipe { background: transparent; border: 2px solid var(--danger); color: var(--danger); margin-left: 10px; }
     </style>
 </head>
 <body>
@@ -55,15 +49,15 @@
     <div class="header">
         <div>
             <h1>🤝 Sponsor Policy</h1>
-            <div id="round_tag" style="font-size: 0.75rem; color: #8b949e; margin-top: 5px; font-weight: bold;">ROUND 4 ACTIVE</div>
+            <div id="round_tag" style="font-size: 0.75rem; color: #8b949e; margin-top: 5px;">SYNCED TO FIREBASE</div>
         </div>
         <div class="vault-stats">
-            <span class="vault-label">Live Treasury (Funding Page)</span>
+            <span style="font-size: 0.6rem; color: #8b949e; font-weight: 900;">LIVE TREASURY</span>
             <div class="vault-value" id="sponsor_vault_display">0 TBNB</div>
         </div>
     </div>
 
-    <div class="section-title">Economic Policy (N-Limit Controls)</div>
+    <div class="section-title">N-Limit Controls (Firebase Shared)</div>
     <div class="grid-3">
         <div class="card">
             <label>🗓️ Round Allocation</label>
@@ -88,54 +82,70 @@
         </div>
     </div>
 
-    <div class="section-title">Live Payout Distribution (N : B)</div>
-    <div class="bucket-grid" id="sponsor_grid_mirror">
-        </div>
+    <div class="section-title">Live Distribution Preview (N : B)</div>
+    <div class="bucket-grid" id="sponsor_grid_mirror"></div>
 
-    <div class="admin-actions">
-        <button class="btn btn-save" onclick="updatePolicy()">Update Policy</button>
+    <div style="display: flex;">
+        <button class="btn btn-save" onclick="updatePolicy()">Update Economic Policy</button>
         <button class="btn btn-wipe" onclick="triggerWipe()">Wipe All Payouts</button>
     </div>
 </div>
 
 <script>
+    // 1. YOUR FIREBASE CONFIG
+    const firebaseConfig = {
+        apiKey: "YOUR_API_KEY",
+        authDomain: "YOUR_PROJECT.firebaseapp.com",
+        databaseURL: "https://YOUR_PROJECT.firebaseio.com",
+        projectId: "YOUR_PROJECT",
+        storageBucket: "YOUR_PROJECT.appspot.com",
+        appId: "YOUR_APP_ID"
+    };
+
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+
+    // Global State
     let currentRound = 4;
+    let treasuryData = { normal: 0, boost: 0 };
 
-    function syncAndRender() {
-        // Read values from Funding Page's shared state
-        const totalNormal = parseFloat(localStorage.getItem('sanrat_total_normal')) || 0;
-        const totalBoost = parseFloat(localStorage.getItem('sanrat_total_boost')) || 0;
-        const grandTotal = totalNormal + totalBoost;
+    // 2. LISTEN FOR DATA (TREASURY)
+    db.ref('treasury').on('value', (snapshot) => {
+        const data = snapshot.val();
+        if (data) {
+            treasuryData.normal = data.normal || 0;
+            treasuryData.boost = data.boost || 0;
+            calculateAndRender();
+        }
+    });
 
-        document.getElementById('sponsor_vault_display').innerText = grandTotal.toLocaleString() + " TBNB";
+    function calculateAndRender() {
+        const total = treasuryData.normal + treasuryData.boost;
+        document.getElementById('sponsor_vault_display').innerText = total.toLocaleString() + " TBNB";
 
-        // Constants from UI inputs
         const wkMax = parseInt(document.getElementById('wk_max').value);
-        const wkMin = parseInt(document.getElementById('wk_min').value);
-        const seaMax = parseInt(document.getElementById('sea_max').value);
-        const seaMin = parseInt(document.getElementById('sea_min').value);
-        const conMax = parseInt(document.getElementById('con_max').value);
-        const conMin = parseInt(document.getElementById('con_min').value);
-
-        // Calculate Logic (Simulated matching Funding.html)
-        let remainingNrm = totalNormal;
-        const divisor = (12 - currentRound + 1) + 2;
-        const bstShare = totalBoost > 0 ? (totalBoost / divisor) : 0;
-
         const grid = document.getElementById('sponsor_grid_mirror');
         grid.innerHTML = '';
 
-        // Generate the 12 rounds
+        // FIX: ZERO GUARD - If treasury is empty, don't calculate past rounds
+        if (total <= 0) {
+            for(let i=1; i<=12; i++) renderEmptyBucket(grid, i, wkMax);
+            return;
+        }
+
+        let remainingNrm = treasuryData.normal;
+        const divisor = (12 - currentRound + 1) + 2;
+        const bstShare = treasuryData.boost / divisor;
+
         for (let i = 1; i <= 12; i++) {
             let nVal = 0;
             let bVal = (i >= currentRound) ? bstShare : 0;
             
-            // Minimal Waterfall logic for visual sync
             if (i < currentRound) {
                 nVal = wkMax;
                 remainingNrm -= wkMax;
             } else {
-                nVal = Math.min(remainingNrm, wkMin);
+                nVal = Math.min(remainingNrm, 1000); // Using 1000 as default floor
                 remainingNrm -= nVal;
             }
 
@@ -144,7 +154,7 @@
                 <div class="b-card ${state}">
                     <span class="b-label">Round ${i}</span>
                     <div class="b-main">
-                        <span class="n-val">${wkMax}</span> <span style="color:#444">:</span> 
+                        <span style="color:#666">${wkMax}</span> <span style="color:#444">:</span> 
                         <span class="val-total">${(nVal + bVal).toFixed(0)}</span>
                     </div>
                     <div class="b-breakdown">
@@ -156,24 +166,38 @@
         }
     }
 
-    function updatePolicy() {
-        // Here you would save the wk_max/wk_min to localStorage 
-        // so the Funding page picks up the new N limit.
-        alert("Policy Updated. N-limits synced to treasury.");
+    function renderEmptyBucket(container, i, max) {
+        container.innerHTML += `
+            <div class="b-card ${i < currentRound ? 'past' : ''}">
+                <span class="b-label">Round ${i}</span>
+                <div class="b-main"><span style="color:#666">${max}</span> : <span class="val-total">0</span></div>
+                <div class="b-breakdown"><span>N: 0</span><span>B: +0</span></div>
+            </div>
+        `;
     }
 
+    // 3. PUSH POLICY TO FIREBASE
+    function updatePolicy() {
+        const policy = {
+            wk_min: parseInt(document.getElementById('wk_min').value),
+            wk_max: parseInt(document.getElementById('wk_max').value),
+            sea_min: parseInt(document.getElementById('sea_min').value),
+            sea_max: parseInt(document.getElementById('sea_max').value),
+            con_min: parseInt(document.getElementById('con_min').value),
+            con_max: parseInt(document.getElementById('con_max').value)
+        };
+
+        db.ref('policy').set(policy)
+            .then(() => { alert("Firebase Updated: N-Limits Synced."); calculateAndRender(); })
+            .catch(err => console.error(err));
+    }
+
+    // 4. TRIGGER WIPE (Wipes Firebase)
     function triggerWipe() {
-        if(confirm("Confirm Wipe: This will zero out the Funding Page Treasury.")) {
-            localStorage.setItem('sanrat_vault_total', "0");
-            localStorage.setItem('sanrat_total_normal', "0");
-            localStorage.setItem('sanrat_total_boost', "0");
-            syncAndRender();
+        if(confirm("Wipe Treasury across all pages?")) {
+            db.ref('treasury').set({ normal: 0, boost: 0 });
         }
     }
-
-    // Refresh every 1.5 seconds to catch Funding Page updates
-    setInterval(syncAndRender, 1500);
-    syncAndRender();
 </script>
 </body>
 </html>
