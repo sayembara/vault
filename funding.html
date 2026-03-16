@@ -31,12 +31,12 @@
         .btn-b { background: var(--boost); color: #fff; }
 
         .bucket-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 12px; }
-        .b-card { background: #0d1117; border: 1px solid var(--border); padding: 15px; border-radius: 10px; position: relative; }
+        .b-card { background: #0d1117; border: 1px solid var(--border); padding: 15px; border-radius: 10px; position: relative; transition: 0.3s; }
         
-        /* THE FIX: Ensure active round is bright */
-        .b-card.active { border: 2px solid var(--accent) !important; opacity: 1 !important; filter: none !important; }
+        /* State Colors */
+        .b-card.active { border: 2px solid var(--accent); box-shadow: 0 0 15px rgba(0, 255, 204, 0.1); }
         .b-card.future { border: 1px solid #444; opacity: 1; }
-        .b-card.past { opacity: 0.3; filter: grayscale(1); border-style: dotted; }
+        .b-card.past { opacity: 0.25; filter: grayscale(1); border-style: dotted; pointer-events: none; }
         
         .status-tag { position: absolute; top: 10px; right: 10px; font-size: 0.5rem; font-weight: 900; padding: 2px 6px; border-radius: 4px; text-transform: uppercase; }
         .status-max { background: var(--accent); color: #000; }
@@ -57,22 +57,22 @@
 <div class="container">
     <div class="stats-bar">
         <div class="stat-card">
-            <span class="stat-label">Normal (N)</span>
+            <span class="stat-label">Normal Treasury (N)</span>
             <div id="stat_n" class="stat-value">0</div>
         </div>
         <div class="stat-card">
-            <span class="stat-label">Boost (B)</span>
+            <span class="stat-label">Boost Pool (B)</span>
             <div id="stat_b" class="stat-value boost">0</div>
         </div>
         <div class="stat-card">
-            <span class="stat-label">Total Liquid Assets</span>
+            <span class="stat-label">Total Assets</span>
             <div id="stat_total" class="stat-value">0</div>
         </div>
     </div>
 
     <div class="injection-panel">
         <div class="input-group">
-            <label>TBNB Amount</label>
+            <label>Amount (TBNB)</label>
             <input type="number" id="inject_amt" placeholder="0.00">
         </div>
         <button class="btn-inject btn-n" onclick="processInjection('normal')">Inject N</button>
@@ -82,56 +82,49 @@
     <div id="main_grid" class="bucket-grid"></div>
     
     <div class="footer-bar">
-        <div id="last_update">Syncing...</div>
-        <div>Detected Round: <span id="round_display" style="color:var(--accent)">4</span></div>
+        <div id="last_update">Connecting...</div>
+        <div>Master Engine Round: <span id="round_display" style="color:var(--accent)">1</span></div>
     </div>
 </div>
 
 <script>
-    // --- FIREBASE CONFIG ---
+    // Configuration remains the same
     const firebaseConfig = {
-        apiKey: "YOUR_API_KEY",
-        authDomain: "nuclearf1-94a6b.firebaseapp.com",
+        apiKey: "AlzaSyBYxLOGFzaHN6CS4ro_bjnKEblbQE6Vtx4",
         databaseURL: "https://nuclearf1-94a6b-default-rtdb.asia-southeast1.firebasedatabase.app",
-        projectId: "nuclearf1-94a6b",
-        storageBucket: "nuclearf1-94a6b.appspot.com",
-        appId: "YOUR_APP_ID"
+        projectId: "nuclearf1-94a6b"
     };
 
     firebase.initializeApp(firebaseConfig);
     const db = firebase.database();
 
-    let currentRound = 4; // Default
+    let currentRound = 1; 
     let treasury = { normal: 0, boost: 0 };
     let policy = { wk_min: 10, wk_max: 50, sea_min: 100, sea_max: 500, con_min: 50, con_max: 200 };
 
     window.onload = () => {
-        // We listen to multiple possible paths for the round data
-        const roundPaths = ['currentRound', 'settings/currentRound', 'gameData/currentRound'];
-        
-        roundPaths.forEach(path => {
-            db.ref(path).on('value', (snap) => {
-                if (snap.exists()) {
-                    currentRound = parseInt(snap.val());
-                    console.log(`Found round at ${path}:`, currentRound);
-                    updateUI();
-                }
-            });
+        // --- THE FIX: Pointing to race_state/round ---
+        db.ref('race_state/round').on('value', (snap) => {
+            if (snap.exists()) {
+                currentRound = parseInt(snap.val());
+                console.log("Master Round detected:", currentRound);
+                refreshUI();
+            }
         });
 
         db.ref('treasury').on('value', (snap) => {
             treasury = snap.val() || { normal: 0, boost: 0 };
-            updateUI();
+            refreshUI();
         });
 
         db.ref('policy').on('value', (snap) => {
-            if (snap.val()) { policy = snap.val(); updateUI(); }
+            if (snap.val()) { policy = snap.val(); refreshUI(); }
         });
     };
 
-    function updateUI() {
+    function refreshUI() {
         const now = new Date();
-        document.getElementById('last_update').innerText = `Last Sync: ${now.toLocaleTimeString()}`;
+        document.getElementById('last_update').innerText = `Live Sync: ${now.toLocaleTimeString()}`;
         document.getElementById('round_display').innerText = currentRound;
         render();
     }
@@ -154,7 +147,7 @@
         for(let i=1; i<=12; i++) bucketN[`r${i}`] = 0;
         bucketN['sea'] = 0; bucketN['con'] = 0;
 
-        // PASS 1: MINIMUMS (Active -> Future -> Specials)
+        // Pass 1: Mins (Only for rounds >= currentRound)
         for (let i = currentRound; i <= 12; i++) {
             let n = Math.min(remNrm, policy.wk_min);
             bucketN[`r${i}`] = n;
@@ -168,7 +161,7 @@
         bucketN['con'] = cMin;
         remNrm -= cMin;
 
-        // PASS 2: MAXIMUMS (Sequential)
+        // Pass 2: Maxes
         for (let i = currentRound; i <= 12; i++) {
             let space = policy.wk_max - bucketN[`r${i}`];
             let n = Math.min(remNrm, space);
@@ -181,12 +174,11 @@
         bucketN['con'] += Math.min(remNrm, (policy.con_max - bucketN['con']));
         remNrm -= Math.min(remNrm, (policy.con_max - bucketN['con']));
 
-        // RENDER
+        // Render Loop
         for (let i = 1; i <= 12; i++) {
             let state = 'future';
             if (i < currentRound) state = 'past';
             if (i === currentRound) state = 'active';
-            
             renderBucket(grid, `Round ${i}`, bucketN[`r${i}`], (i >= currentRound ? bShare : 0), policy.wk_max, policy.wk_min, state);
         }
         renderBucket(grid, "Season Pool", bucketN['sea'], bShare, policy.sea_max, policy.sea_min, 'special');
@@ -196,14 +188,14 @@
 
     function renderBucket(container, label, n, b, max, min, state) {
         let statusClass = 'status-empty';
-        let statusText = 'Empty';
+        let statusText = 'Inactive';
 
         if (state === 'overflow') { statusText = n > 0 ? 'Overflow' : 'Idle'; statusClass = n > 0 ? 'status-max' : 'status-empty'; }
         else if (state === 'past') { statusText = 'LOCKED'; statusClass = 'status-empty'; }
         else {
             if (n >= max && max > 0) { statusClass = 'status-max'; statusText = 'Maxed'; }
             else if (n >= min && min > 0) { statusClass = 'status-min'; statusText = 'At Min'; }
-            else if (n > 0) { statusClass = 'status-below'; statusText = 'Below Min'; }
+            else if (n > 0) { statusClass = 'status-below'; statusText = 'Incomplete'; }
         }
 
         container.innerHTML += `
