@@ -160,8 +160,14 @@
         });
     };
 
-    function calculateAndRender() {
+   function calculateAndRender() {
         const total = treasury.normal + treasury.boost;
+        
+        // Update Header Displays
+        document.getElementById('val_n').innerText = treasury.normal.toLocaleString();
+        document.getElementById('val_b').innerText = treasury.boost.toLocaleString();
+        document.getElementById('val_total').innerText = total.toLocaleString();
+
         const wkMax = parseInt(document.getElementById('wk_max').value) || 0;
         const wkMin = parseInt(document.getElementById('wk_min').value) || 0;
         const seaMax = parseInt(document.getElementById('sea_max').value) || 0;
@@ -170,28 +176,45 @@
         const grid = document.getElementById('sponsor_grid_mirror');
         grid.innerHTML = '';
 
-        if (total <= 0) {
-            for(let i=1; i<=12; i++) renderBucket(grid, `Round ${i}`, 0, 0, wkMax, i < currentRound ? 'past' : (i === currentRound ? 'active' : ''));
-            renderBucket(grid, "Season Pool", 0, 0, seaMax, 'special');
-            renderBucket(grid, "Constructor", 0, 0, conMax, 'special');
-            return;
-        }
+        // 1. DIVISOR: Only divide Boost among active/future buckets
+        // (Remaining rounds + Season Pool + Constructor Pool)
+        const activeRoundsCount = Math.max(0, 12 - currentRound + 1);
+        const divisor = activeRoundsCount + 2; 
+        const bShare = treasury.boost > 0 ? (treasury.boost / divisor) : 0;
 
         let remNrm = treasury.normal;
-        const divisor = (12 - currentRound + 1) + 2;
-        const bShare = treasury.boost / divisor;
 
+        // 2. RENDER 12 ROUNDS
         for (let i = 1; i <= 12; i++) {
             let n = 0;
+            let b = 0;
+            let state = '';
+
             if (i < currentRound) {
-                n = wkMax;
-                remNrm -= wkMax;
+                // PAST ROUNDS: Show as 0 or empty, do not deduct from remNrm
+                state = 'past';
+                n = 0;
+                b = 0;
             } else {
+                // CURRENT & FUTURE ROUNDS
+                state = (i === currentRound) ? 'active' : '';
+                // Take the minimum required (wkMin) or what's left
                 n = Math.max(0, Math.min(remNrm, wkMin));
                 remNrm -= n;
+                b = bShare;
             }
-            renderBucket(grid, `Round ${i}`, n, (i >= currentRound ? bShare : 0), wkMax, i < currentRound ? 'past' : (i === currentRound ? 'active' : ''));
+            renderBucket(grid, `Round ${i}`, n, b, wkMax, state);
         }
+
+        // 3. SPECIAL POOLS (Season & Constructor)
+        // These always get a share of N (up to max) and their share of B
+        const sN = Math.max(0, Math.min(remNrm, seaMax));
+        remNrm -= sN;
+        renderBucket(grid, "Season Pool", sN, bShare, seaMax, 'special');
+
+        const cN = Math.max(0, Math.min(remNrm, conMax));
+        renderBucket(grid, "Constructor", cN, bShare, conMax, 'special');
+    }
 
         renderBucket(grid, "Season Pool", Math.max(0, Math.min(remNrm, seaMax)), bShare, seaMax, 'special');
         renderBucket(grid, "Constructor", Math.max(0, Math.min(remNrm, conMax)), bShare, conMax, 'special');
