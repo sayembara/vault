@@ -3,50 +3,57 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SANRAT | Sponsor Control Center</title>
+    <title>SANRAT | Sponsor Policy Center</title>
     <style>
         :root { 
             --accent: #00ffcc; --bg: #0b0e14; --card: #161b22; --border: #30363d; 
             --danger: #ff4b2b; --warning: #ffcc00; --success: #00ffcc;
         }
         body { background: var(--bg); color: white; font-family: 'Inter', sans-serif; padding: 20px; line-height: 1.6; }
-        .container { max-width: 1200px; margin: 0 auto; }
+        .container { max-width: 1000px; margin: 0 auto; }
         
-        /* Header */
+        /* Header & Season Pulse */
         .header { display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 30px; border-bottom: 1px solid var(--border); padding-bottom: 20px; }
-        h1 { color: var(--accent); margin: 0; font-size: 1.8rem; }
+        h1 { color: var(--accent); margin: 0; font-size: 1.6rem; }
         
-        .section-title { font-size: 0.8rem; text-transform: uppercase; letter-spacing: 2px; color: #8b949e; margin: 30px 0 15px 0; display: flex; align-items: center; gap: 10px; }
+        .status-indicator { 
+            display: flex; align-items: center; gap: 10px; font-size: 0.8rem; color: var(--accent); 
+            background: rgba(0, 255, 204, 0.1); padding: 5px 12px; border-radius: 20px; border: 1px solid rgba(0, 255, 204, 0.2); margin-top: 10px; width: fit-content;
+        }
+        .pulse-dot { width: 8px; height: 8px; background-color: var(--accent); border-radius: 50%; animation: pulse-animation 2s infinite; }
+        @keyframes pulse-animation {
+            0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(0, 255, 204, 0.7); }
+            70% { transform: scale(1); box-shadow: 0 0 0 10px rgba(0, 255, 204, 0); }
+            100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(0, 255, 204, 0); }
+        }
+
+        .section-title { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 2px; color: #8b949e; margin: 30px 0 15px 0; display: flex; align-items: center; gap: 10px; }
         .section-title::after { content: ""; flex: 1; height: 1px; background: var(--border); }
 
-        .grid-3 { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 20px; }
-        .card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 20px; }
+        .grid-3 { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; }
+        .card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 24px; position: relative; }
         
-        /* Inputs */
+        /* Input Styling */
         .input-pair { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-top: 10px; }
         label { display: block; font-size: 0.7rem; color: #8b949e; margin-bottom: 5px; }
-        input { width: 100%; background: #0d1117; border: 1px solid var(--border); color: var(--accent); padding: 10px; border-radius: 6px; font-weight: bold; }
-        
-        /* Waterfall Buckets (N:B Format) */
-        .bucket-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 12px; }
-        .bucket { background: #0d1117; border: 1px solid #21262d; padding: 12px; border-radius: 8px; position: relative; }
-        .bucket-label { font-size: 0.65rem; color: #8b949e; font-weight: bold; }
-        .bucket-main { font-family: 'Courier New', monospace; font-size: 1rem; margin: 5px 0; }
+        input { width: 100%; background: #0d1117; border: 1px solid var(--border); color: var(--accent); padding: 12px; border-radius: 6px; font-weight: bold; outline: none; transition: 0.2s; }
+        input:focus { border-color: var(--accent); }
+
+        /* Bucket Display (N:B) */
+        .bucket-main { font-family: 'Courier New', monospace; font-size: 1.2rem; margin: 10px 0; }
         .target { color: #8b949e; }
         .balance { color: var(--accent); font-weight: bold; }
         
-        /* Status Indicators */
-        .status { font-size: 0.6rem; text-transform: uppercase; font-weight: 900; padding: 2px 6px; border-radius: 4px; display: inline-block; }
-        .status-below { background: rgba(255, 75, 43, 0.15); color: var(--danger); }
-        .status-min { background: rgba(255, 204, 0, 0.15); color: var(--warning); }
-        .status-max { background: rgba(0, 255, 204, 0.15); color: var(--success); }
+        .status { font-size: 0.65rem; text-transform: uppercase; font-weight: 900; padding: 3px 8px; border-radius: 4px; display: inline-block; }
+        .status-below { background: rgba(255, 75, 43, 0.1); color: var(--danger); }
+        .status-min { background: rgba(255, 204, 0, 0.1); color: var(--warning); }
+        .status-max { background: rgba(0, 255, 204, 0.1); color: var(--success); }
 
         /* Action Buttons */
-        .admin-actions { display: flex; gap: 15px; margin-top: 40px; padding-top: 20px; border-top: 1px solid var(--border); }
-        .btn { flex: 1; padding: 16px; border-radius: 8px; font-weight: 900; cursor: pointer; border: none; transition: 0.2s; text-transform: uppercase; letter-spacing: 1px; }
+        .admin-actions { display: flex; gap: 15px; margin-top: 40px; }
+        .btn { flex: 1; padding: 18px; border-radius: 8px; font-weight: 900; cursor: pointer; border: none; transition: 0.2s; text-transform: uppercase; letter-spacing: 1px; }
         .btn-save { background: var(--accent); color: #000; }
         .btn-reallocate { background: transparent; border: 1px solid var(--accent); color: var(--accent); }
-        .btn-wipe { background: transparent; border: 1px solid var(--danger); color: var(--danger); flex: 0.4; }
     </style>
 </head>
 <body>
@@ -54,45 +61,44 @@
 <div class="container">
     <div class="header">
         <div>
-            <h1>🤝 Sponsor Control Center</h1>
-            <p style="color: #8b949e;">Waterfall Policy & Real-time Bucket Tracking</p>
+            <h1>🤝 Sponsor Policy Center</h1>
+            <div class="status-indicator">
+                <span class="pulse-dot"></span>
+                <span id="active_round_text">SYNCING WITH MASTER...</span>
+            </div>
         </div>
         <div style="text-align: right;">
-            <label>Total Fund in Vault</label>
+            <label>Total Vault Balance</label>
             <div id="total_vault_display" style="font-size: 1.8rem; font-weight: 900; color: var(--accent);">0.00 TBNB</div>
         </div>
     </div>
 
-    <div class="section-title">Waterfall Limits (Min/Max)</div>
+    <div class="section-title">Waterfall Limit Settings</div>
     <div class="grid-3">
         <div class="card">
-            <h2>🗓️ Weekly Rules</h2>
+            <h2>🗓️ Weekly Limits</h2>
             <div class="input-pair">
-                <div><label>Min (Prio 1)</label><input type="number" id="wk_min" value="1000"></div>
-                <div><label>Max (Prio 4)</label><input type="number" id="wk_max" value="5000"></div>
+                <div><label>MIN (PRIO 1)</label><input type="number" id="wk_min" value="1000"></div>
+                <div><label>MAX (PRIO 4)</label><input type="number" id="wk_max" value="5000"></div>
             </div>
         </div>
         <div class="card">
-            <h2>🏆 Season Rules</h2>
+            <h2>🏆 Season Limits</h2>
             <div class="input-pair">
-                <div><label>Min (Prio 2)</label><input type="number" id="sea_min" value="5000"></div>
-                <div><label>Max (Prio 5)</label><input type="number" id="sea_max" value="20000"></div>
+                <div><label>MIN (PRIO 2)</label><input type="number" id="sea_min" value="5000"></div>
+                <div><label>MAX (PRIO 5)</label><input type="number" id="sea_max" value="20000"></div>
             </div>
         </div>
         <div class="card">
-            <h2>🛠️ Constructor Rules</h2>
+            <h2>🛠️ Constructor Limits</h2>
             <div class="input-pair">
-                <div><label>Min (Prio 3)</label><input type="number" id="con_min" value="2000"></div>
-                <div><label>Max (Prio 6)</label><input type="number" id="con_max" value="10000"></div>
+                <div><label>MIN (PRIO 3)</label><input type="number" id="con_min" value="2000"></div>
+                <div><label>MAX (PRIO 6)</label><input type="number" id="con_max" value="10000"></div>
             </div>
         </div>
     </div>
 
-    <div class="section-title">Round Buckets (N:B)</div>
-    <div class="bucket-grid" id="round_buckets_grid">
-        </div>
-
-    <div class="section-title">Specialized Pools</div>
+    <div class="section-title">Global Pool Allocations</div>
     <div class="grid-3">
         <div id="season_bucket_ui"></div>
         <div id="constructor_bucket_ui"></div>
@@ -102,17 +108,16 @@
     <div class="admin-actions">
         <button class="btn btn-save" onclick="savePolicy()">Save Policy</button>
         <button class="btn btn-reallocate" onclick="runWaterfall()">Reallocate Waterfall</button>
-        <button class="btn btn-wipe" onclick="wipeAll()">Wipe All Rounds</button>
     </div>
 </div>
 
 <script>
-    // 1. DYNAMIC STATE (This would be pulled from your Master Admin / Database)
-    let currentRound = 3; // The current round number (1-12)
-    let totalVault = 60000; // Total TBNB collected since Day 1
-    
+    // These variables will eventually be read from the Master Admin Page
+    let currentRound = 4; 
+    let totalVault = 65000; 
+
     function runWaterfall() {
-        // --- A. GET LIMITS FROM SPONSOR INPUTS ---
+        // A. FETCH LIMITS
         const wkMin = parseFloat(document.getElementById('wk_min').value) || 0;
         const wkMax = parseFloat(document.getElementById('wk_max').value) || 0;
         const seaMin = parseFloat(document.getElementById('sea_min').value) || 0;
@@ -121,96 +126,57 @@
         const conMax = parseFloat(document.getElementById('con_max').value) || 0;
 
         let remaining = totalVault;
-        let buckets = {
-            rounds: Array(12).fill(0),
-            season: 0,
-            constructor: 0,
-            overflow: 0,
-            pastSpent: 0
-        };
+        let buckets = { rounds: Array(12).fill(0), season: 0, constructor: 0, overflow: 0 };
 
-        // --- B. TEMPORAL ALLOCATION ---
-
-        // Step 1: Lock and deduct Past Rounds (Assuming they hit Max)
+        // B. TEMPORAL WATERFALL MATH
+        // 1. Lock Past Rounds
         for (let i = 0; i < currentRound - 1; i++) {
             buckets.rounds[i] = wkMax;
             remaining -= wkMax;
-            buckets.pastSpent += wkMax;
         }
 
-        // Step 2: Fill MINS for Current & Future Rounds (Priority 1)
+        // 2. Fill Current & Future Mins
         for (let i = currentRound - 1; i < 12; i++) {
             let amt = Math.min(remaining, wkMin);
             buckets.rounds[i] += amt;
             remaining -= amt;
         }
 
-        // Step 3: Fill Season MIN (Priority 2)
-        let sMinAmt = Math.min(remaining, seaMin);
-        buckets.season += sMinAmt;
-        remaining -= sMinAmt;
+        // 3. Fill Season & Constructor Mins
+        let sMin = Math.min(remaining, seaMin); buckets.season += sMin; remaining -= sMin;
+        let cMin = Math.min(remaining, conMin); buckets.constructor += cMin; remaining -= cMin;
 
-        // Step 4: Fill Constructor MIN (Priority 3)
-        let cMinAmt = Math.min(remaining, conMin);
-        buckets.constructor += cMinAmt;
-        remaining -= cMinAmt;
-
-        // Step 5: Fill ACTIVE Round to MAX (Priority 4 - Bonus to current racers)
+        // 4. Fill Active Round to Max
         let activeIdx = currentRound - 1;
-        let activeTopUp = Math.min(remaining, wkMax - buckets.rounds[activeIdx]);
-        buckets.rounds[activeIdx] += activeTopUp;
-        remaining -= activeTopUp;
+        let aTop = Math.min(remaining, wkMax - buckets.rounds[activeIdx]);
+        buckets.rounds[activeIdx] += aTop; remaining -= aTop;
 
-        // Step 6: Fill FUTURE Rounds to MAX (Priority 4 - Extended)
+        // 5. Fill Future Rounds to Max
         for (let i = currentRound; i < 12; i++) {
-            let topUp = Math.min(remaining, wkMax - buckets.rounds[i]);
-            buckets.rounds[i] += topUp;
-            remaining -= topUp;
+            let top = Math.min(remaining, wkMax - buckets.rounds[i]);
+            buckets.rounds[i] += top; remaining -= top;
         }
 
-        // Step 7: Fill Season MAX (Priority 5)
-        let sMaxTop = Math.min(remaining, seaMax - buckets.season);
-        buckets.season += sMaxTop;
-        remaining -= sMaxTop;
+        // 6. Fill Season & Constructor Max
+        let sMax = Math.min(remaining, seaMax - buckets.season); buckets.season += sMax; remaining -= sMax;
+        let cMax = Math.min(remaining, conMax - buckets.constructor); buckets.constructor += cMax; remaining -= cMax;
 
-        // Step 8: Fill Constructor MAX (Priority 6)
-        let cMaxTop = Math.min(remaining, conMax - buckets.constructor);
-        buckets.constructor += cMaxTop;
-        remaining -= cMaxTop;
-
-        // Step 9: Overflow
+        // 7. Overflow
         buckets.overflow = remaining;
 
-        // --- C. REFRESH UI ---
-        updateUI(buckets, wkMin, wkMax, seaMin, seaMax, conMin, conMax);
+        // C. RENDER DISPLAY
+        updateDisplay(buckets, seaMin, seaMax, conMin, conMax);
     }
 
-    function updateUI(b, wkMin, wkMax, seaMin, seaMax, conMin, conMax) {
+    function updateDisplay(b, seaMin, seaMax, conMin, conMax) {
         document.getElementById('total_vault_display').innerText = `${totalVault.toLocaleString()} TBNB`;
-        const grid = document.getElementById('round_buckets_grid');
-        grid.innerHTML = '';
+        document.getElementById('active_round_text').innerText = `SEASON 1 | ROUND ${currentRound} IS LIVE`;
 
-        for (let i = 0; i < 12; i++) {
-            let roundNum = i + 1;
-            let status = "future";
-            let label = `Round ${roundNum}`;
-            
-            if (roundNum < currentRound) {
-                status = "past";
-                label += " (PAST)";
-            } else if (roundNum === currentRound) {
-                status = "active";
-                label += " (LIVE)";
-            }
-
-            grid.innerHTML += renderBucketHTML(label, b.rounds[i], wkMin, wkMax, status);
-        }
-
-        // Special Buckets
-        document.getElementById('season_bucket_ui').innerHTML = renderBucketHTML('Season Pool', b.season, seaMin, seaMax, 'special');
-        document.getElementById('constructor_bucket_ui').innerHTML = renderBucketHTML('Constructor Pool', b.constructor, conMin, conMax, 'special');
+        document.getElementById('season_bucket_ui').innerHTML = renderBucketUI('Season Payout Pool', b.season, seaMin, seaMax);
+        document.getElementById('constructor_bucket_ui').innerHTML = renderBucketUI('Constructor Payout Pool', b.constructor, conMin, conMax);
+        
         document.getElementById('overflow_bucket_ui').innerHTML = `
-            <div class="card overflow">
+            <div class="card" style="border-color: #444;">
                 <span class="bucket-label">Vault Overflow</span>
                 <div class="bucket-main"><span class="balance">${b.overflow.toFixed(2)}</span></div>
                 <span class="status status-max">Secured</span>
@@ -218,29 +184,24 @@
         `;
     }
 
-    function renderBucketHTML(label, current, min, max, state) {
-        let statusClass = "status-below";
-        let statusText = "Below Min";
-        
-        if (current >= max) { statusClass = "status-max"; statusText = "Maxed"; }
-        else if (current >= min) { statusClass = "status-min"; statusText = "At Min"; }
-
-        // Styling past/active/future
-        let borderStyle = "";
-        if (state === 'past') borderStyle = "opacity: 0.5; border-color: #444;";
-        if (state === 'active') borderStyle = "border: 2px solid var(--accent); background: rgba(0,255,204,0.05);";
+    function renderBucketUI(label, current, min, max) {
+        let status = "status-below"; let text = "Below Min";
+        if (current >= max) { status = "status-max"; text = "Maxed"; }
+        else if (current >= min) { status = "status-min"; text = "At Min"; }
 
         return `
-            <div class="card" style="${borderStyle}">
+            <div class="card">
                 <span class="bucket-label">${label}</span>
-                <div class="bucket-main">
-                    <span class="target">${max}:</span><span class="balance">${current.toFixed(0)}</span>
-                </div>
-                <span class="status ${statusClass}">${statusText}</span>
+                <div class="bucket-main"><span class="target">${max}:</span><span class="balance">${current.toFixed(0)}</span></div>
+                <span class="status ${status}">${text}</span>
             </div>
         `;
     }
-</script>
 
+    function savePolicy() { alert("Policy Saved. Master Admin will now use these limits."); }
+
+    // On Load
+    runWaterfall();
+</script>
 </body>
 </html>
