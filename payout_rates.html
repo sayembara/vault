@@ -2,165 +2,132 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Band-Based Payout Simulator | SANRAT</title>
+    <title>Exponential Payout Engine | SANRAT</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         :root { --accent: #00ffcc; --bg: #0b0e14; --card: #161b22; --border: #30363d; --dim: #8b949e; }
         body { background: var(--bg); color: white; font-family: 'Inter', sans-serif; padding: 30px; }
-        
-        .controls { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 30px; }
-        .input-group { background: var(--card); border: 1px solid var(--border); padding: 15px; border-radius: 12px; }
+        .grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 20px; margin-bottom: 30px; }
+        .card { background: var(--card); border: 1px solid var(--border); padding: 15px; border-radius: 12px; }
         label { display: block; font-size: 0.65rem; color: var(--dim); text-transform: uppercase; margin-bottom: 10px; font-weight: 800; }
-        input { width: 100%; background: #0d1117; border: 1px solid var(--border); color: var(--accent); padding: 10px; border-radius: 6px; box-sizing: border-box; font-family: monospace; font-size: 1.2rem; }
-
-        .table-container { background: var(--card); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; margin-bottom: 30px; }
-        table { width: 100%; border-collapse: collapse; }
-        th { background: rgba(255,255,255,0.02); text-align: left; padding: 15px; font-size: 0.7rem; color: var(--dim); text-transform: uppercase; }
-        td { padding: 15px; border-bottom: 1px solid rgba(255,255,255,0.02); }
+        input { width: 100%; background: #0d1117; border: 1px solid var(--border); color: var(--accent); padding: 10px; border-radius: 6px; box-sizing: border-box; font-family: monospace; font-size: 1.2rem; outline: none;}
         
-        .band-name { font-weight: 900; color: var(--accent); }
-        .val-main { font-family: monospace; font-weight: bold; }
+        table { width: 100%; border-collapse: collapse; background: var(--card); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; margin-top: 20px;}
+        th { background: rgba(255,255,255,0.02); text-align: left; padding: 12px; font-size: 0.7rem; color: var(--dim); }
+        td { padding: 12px; border-bottom: 1px solid rgba(255,255,255,0.02); font-family: monospace; }
         
-        .chart-container { background: var(--card); border: 1px solid var(--border); padding: 20px; border-radius: 12px; height: 300px; }
-        .ladder-check { font-size: 0.7rem; font-weight: bold; padding: 4px 8px; border-radius: 4px; }
-        .ok { background: rgba(0,255,204,0.1); color: var(--accent); }
-        .fail { background: rgba(255,75,43,0.1); color: #ff4b2b; }
+        .chart-container { background: var(--card); border: 1px solid var(--border); padding: 20px; border-radius: 12px; height: 350px; margin-top: 20px; }
+        .p1-box { color: var(--accent); font-size: 1.5rem; font-weight: 900; }
     </style>
 </head>
 <body>
 
-<h1>Band-Based Payout Simulation</h1>
+<h1>Exponential Prize Engine</h1>
 
-<div class="controls">
-    <div class="input-group">
+<div class="grid">
+    <div class="card">
         <label>Total Participants (N)</label>
-        <input type="number" id="num_n" value="1000" oninput="calculate()">
+        <input type="number" id="N" value="1000" oninput="run()">
     </div>
-    <div class="input-group">
-        <label>Total Prize Pool (TBNB)</label>
-        <input type="number" id="total_pot" value="10000" oninput="calculate()">
+    <div class="card">
+        <label>Total Pot (P)</label>
+        <input type="number" id="P" value="10000" oninput="run()">
+    </div>
+    <div class="card">
+        <label>Decay Constant (β)</label>
+        <input type="number" id="beta" value="4" step="0.1" oninput="run()">
     </div>
 </div>
 
-<div class="table-container">
-    <table>
-        <thead>
-            <tr>
-                <th>Band</th>
-                <th>Participants</th>
-                <th>Share of Pot</th>
-                <th>Best Case (P1 of Band)</th>
-                <th>Worst Case (Last of Band)</th>
-                <th>Ladder Status</th>
-            </tr>
-        </thead>
-        <tbody id="payout_rows"></tbody>
-    </table>
+<div class="grid">
+    <div class="card">
+        <label>Winner (P1)</label>
+        <div id="p1_val" class="p1-box">0</div>
+    </div>
+    <div class="card">
+        <label>Payout Cutoff (80% of N)</label>
+        <div id="cutoff_val" class="p1-box" style="color: #b300ff;">0</div>
+    </div>
+    <div class="card">
+        <label>Total Distributed</label>
+        <div id="sum_val" class="p1-box" style="color: white;">0</div>
+    </div>
 </div>
 
 <div class="chart-container">
-    <canvas id="payoutChart"></canvas>
+    <canvas id="expChart"></canvas>
 </div>
 
+<table>
+    <thead>
+        <tr>
+            <th>Rank</th>
+            <th>Payout (TBNB)</th>
+            <th>% of Pot</th>
+        </tr>
+    </thead>
+    <tbody id="payout_list"></tbody>
+</table>
+
 <script>
-    let myChart;
+    let chart;
 
-    const bands = [
-        { name: "Band A (Top 1%)", percent: 0.01, pot_share: 0.25 },
-        { name: "Band B (Next 9%)", percent: 0.09, pot_share: 0.25 },
-        { name: "Band C (Next 20%)", percent: 0.20, pot_share: 0.20 },
-        { name: "Band D (Next 30%)", percent: 0.30, pot_share: 0.15 },
-        { name: "Band E (Next 20%)", percent: 0.20, pot_share: 0.15 },
-        { name: "Band F (Bottom 20%)", percent: 0.20, pot_share: 0.00 }
-    ];
+    function run() {
+        const N = parseInt(document.getElementById('N').value);
+        const P = parseFloat(document.getElementById('P').value);
+        const beta = parseFloat(document.getElementById('beta').value);
+        const cutoff = Math.floor(0.8 * N); // Formula uses 0.8N as sum limit
 
-    function calculate() {
-        const N = parseInt(document.getElementById('num_n').value) || 0;
-        const total_pot = parseFloat(document.getElementById('total_pot').value) || 0;
-        const tbody = document.getElementById('payout_rows');
-        tbody.innerHTML = '';
+        // 1. Calculate the denominator for Alpha (Normalization)
+        let sumPart = 0;
+        const denominator_const = 1 - Math.exp(-beta);
         
-        let current_rank = 1;
-        let chartLabels = [];
-        let chartData = [];
-        let bandResults = [];
+        for (let r = 1; r <= cutoff; r++) {
+            sumPart += Math.exp(-beta * (r - 1) / N) / denominator_const;
+        }
 
-        bands.forEach((band, index) => {
-            let band_size = Math.max(1, Math.round(N * band.percent));
-            
-            // Adjust last band to match total N
-            if (index === bands.length - 1) {
-                band_size = N - (current_rank - 1);
-            }
+        const alpha = N / sumPart;
 
-            if (band_size <= 0) return;
+        // 2. Generate Payouts
+        let payouts = [];
+        let totalSum = 0;
 
-            const band_pot = total_pot * band.pot_share;
-            let sum_weights = (band_size * (band_size + 1)) / 2;
-            let band_payouts = [];
+        for (let r = 1; r <= cutoff; r++) {
+            const val = (P / N) * ((alpha * Math.exp(-beta * (r - 1) / N)) / denominator_const);
+            payouts.push(val);
+            totalSum += val;
+        }
 
-            for (let i = 0; i < band_size; i++) {
-                let weight = (band_size - i);
-                let payout = band_pot * (weight / sum_weights);
-                
-                band_payouts.push(payout);
-                
-                // Only sample data for graph if N is large to avoid lag
-                if (N < 500 || i % Math.floor(N/100) === 0 || i === 0 || i === band_size - 1) {
-                    chartLabels.push(`Rank ${current_rank + i}`);
-                    chartData.push(payout);
-                }
-            }
+        // 3. UI Updates
+        document.getElementById('p1_val').innerText = payouts[0].toFixed(2);
+        document.getElementById('cutoff_val').innerText = payouts[payouts.length - 1].toFixed(2);
+        document.getElementById('sum_val').innerText = totalSum.toFixed(0);
 
-            const p_first = band_payouts[0] || 0;
-            const p_last = band_payouts[band_payouts.length - 1] || 0;
-
-            bandResults.push({ name: band.name, size: band_size, p1: p_first, pLast: p_last });
-            current_rank += band_size;
+        const list = document.getElementById('payout_list');
+        list.innerHTML = '';
+        // Show Top 10 and then some samples
+        payouts.slice(0, 10).forEach((v, i) => {
+            list.innerHTML += `<tr><td>${i+1}</td><td>${v.toFixed(4)}</td><td>${((v/P)*100).toFixed(2)}%</td></tr>`;
         });
 
-        // Render Table & Check Ladder
-        bandResults.forEach((res, i) => {
-            let ladderHtml = '-';
-            if (i < bandResults.length - 1 && bandResults[i+1].p1 > 0) {
-                const isOk = res.pLast >= bandResults[i+1].p1;
-                ladderHtml = isOk ? 
-                    '<span class="ladder-check ok">✓ LADDER OK</span>' : 
-                    '<span class="ladder-check fail">⚠ GAP ERROR</span>';
-            }
-
-            tbody.innerHTML += `
-                <tr>
-                    <td class="band-name">${res.name}</td>
-                    <td>${res.size} cars</td>
-                    <td>${(bands[i].pot_share * 100).toFixed(0)}%</td>
-                    <td class="val-main">${res.p1.toFixed(2)}</td>
-                    <td class="val-main">${res.pLast.toFixed(2)}</td>
-                    <td>${ladderHtml}</td>
-                </tr>
-            `;
-        });
-
-        updateChart(chartLabels, chartData);
+        updateChart(payouts);
     }
 
-    function updateChart(labels, data) {
-        const ctx = document.getElementById('payoutChart').getContext('2d');
-        if (myChart) myChart.destroy();
-        
-        myChart = new Chart(ctx, {
+    function updateChart(data) {
+        const ctx = document.getElementById('expChart').getContext('2d');
+        if (chart) chart.destroy();
+        chart = new Chart(ctx, {
             type: 'line',
             data: {
-                labels: labels,
+                labels: data.map((_, i) => i + 1),
                 datasets: [{
-                    label: 'Prize Amount (TBNB)',
+                    label: 'Exponential Payout',
                     data: data,
                     borderColor: '#00ffcc',
-                    borderWidth: 2,
-                    pointRadius: 0,
-                    fill: true,
                     backgroundColor: 'rgba(0, 255, 204, 0.1)',
-                    tension: 0.1
+                    fill: true,
+                    pointRadius: 0,
+                    tension: 0.2
                 }]
             },
             options: {
@@ -168,17 +135,14 @@
                 maintainAspectRatio: false,
                 scales: {
                     x: { display: false },
-                    y: { ticks: { color: '#8b949e' }, grid: { color: '#30363d' } }
+                    y: { grid: { color: '#30363d' }, ticks: { color: '#8b949e' } }
                 },
-                plugins: {
-                    legend: { display: false }
-                }
+                plugins: { legend: { display: false } }
             }
         });
     }
 
-    window.onload = calculate;
+    window.onload = run;
 </script>
-
 </body>
 </html>
