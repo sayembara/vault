@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SANRAT | Sponsor Policy (Fixed Sync)</title>
+    <title>SANRAT | Sponsor Policy (Stable Firebase)</title>
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-database-compat.js"></script>
     
@@ -29,18 +29,20 @@
         label { display: block; font-size: 0.6rem; color: #8b949e; margin-bottom: 5px; font-weight: 800; text-transform: uppercase; }
         input { width: 100%; background: #0d1117; border: 1px solid var(--border); color: var(--accent); padding: 10px; border-radius: 6px; font-weight: 900; outline: none; }
 
-        .bucket-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 12px; }
+        .bucket-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 12px; min-height: 100px; }
         .b-card { background: #0d1117; border: 1px solid var(--border); border-radius: 8px; padding: 15px; }
         .b-card.active { border: 1px solid var(--accent); background: rgba(0, 255, 204, 0.02); }
-        .b-card.special { border: 1px solid var(--boost); background: rgba(179, 0, 255, 0.02); }
+        .b-card.special { border: 1px solid var(--boost); }
         .b-card.past { opacity: 0.4; filter: grayscale(1); }
         .b-main { font-family: 'Courier New', monospace; font-size: 1.3rem; margin: 8px 0; }
         .val-total { color: var(--accent); font-weight: bold; }
         .b-breakdown { font-size: 0.55rem; border-top: 1px solid #222; padding-top: 8px; color: #666; display: flex; justify-content: space-between; }
 
-        .btn { flex: 1; padding: 15px; border-radius: 6px; font-weight: 900; cursor: pointer; border: none; text-transform: uppercase; transition: 0.2s; margin-top: 20px; }
-        .btn-save { background: var(--accent); color: #000; }
-        .btn-wipe { background: transparent; border: 2px solid var(--danger); color: var(--danger); margin-left: 10px; }
+        .controls { display: flex; gap: 15px; margin-top: 30px; }
+        .btn { flex: 1; padding: 20px; border-radius: 8px; font-weight: 900; cursor: pointer; border: none; text-transform: uppercase; transition: 0.2s; font-size: 1rem; }
+        .btn-save { background: var(--accent); color: #0b0e14; }
+        .btn-wipe { background: transparent; border: 2px solid var(--danger); color: var(--danger); }
+        .btn:hover { transform: translateY(-2px); filter: brightness(1.1); }
     </style>
 </head>
 <body>
@@ -49,7 +51,7 @@
     <div class="header">
         <div>
             <h1>🤝 Sponsor Policy</h1>
-            <div id="sync_status" style="font-size: 0.75rem; color: var(--accent); margin-top: 5px; font-weight: bold;">● LIVE SYNC ACTIVE</div>
+            <div id="sync_status" style="font-size: 0.75rem; color: #8b949e; margin-top: 5px; font-weight: bold;">INITIALIZING...</div>
         </div>
         <div class="vault-stats">
             <span style="font-size: 0.6rem; color: #8b949e; font-weight: 900;">VAULT TOTAL</span>
@@ -83,16 +85,16 @@
     </div>
 
     <div class="section-title">Live Preview (12 Rounds + 2 Specials)</div>
-    <div class="bucket-grid" id="sponsor_grid_mirror"></div>
+    <div id="sponsor_grid_mirror" class="bucket-grid"></div>
 
-    <div style="display: flex;">
+    <div class="controls">
         <button class="btn btn-save" onclick="updatePolicy()">Sync Policy to Firebase</button>
         <button class="btn btn-wipe" onclick="triggerWipe()">Wipe All Payouts</button>
     </div>
 </div>
 
 <script>
-    // Replace with your actual Firebase config
+    // --- REPLACE WITH YOUR CONFIG ---
     const firebaseConfig = {
         apiKey: "YOUR_API_KEY",
         authDomain: "YOUR_PROJECT.firebaseapp.com",
@@ -107,77 +109,74 @@
 
     let currentRound = 4;
     let treasury = { normal: 0, boost: 0 };
+    let hasLoadedPolicy = false;
 
-    // 1. Initial Load & Listeners
+    // 1. Initial Logic: Render instantly so buckets don't disappear
     window.onload = () => {
+        calculateAndRender();
+        initListeners();
+    };
+
+    function initListeners() {
         // Listen for Treasury
         db.ref('treasury').on('value', (snap) => {
             treasury = snap.val() || { normal: 0, boost: 0 };
             calculateAndRender();
         });
 
-        // Listen for Policy (Keeps inputs synced across devices)
+        // Listen for Policy
         db.ref('policy').on('value', (snap) => {
             const p = snap.val();
             if (p) {
-                document.getElementById('wk_min').value = p.wk_min;
-                document.getElementById('wk_max').value = p.wk_max;
-                document.getElementById('sea_min').value = p.sea_min;
-                document.getElementById('sea_max').value = p.sea_max;
-                document.getElementById('con_min').value = p.con_min;
-                document.getElementById('con_max').value = p.con_max;
+                document.getElementById('wk_min').value = p.wk_min || 1000;
+                document.getElementById('wk_max').value = p.wk_max || 5000;
+                document.getElementById('sea_min').value = p.sea_min || 5000;
+                document.getElementById('sea_max').value = p.sea_max || 20000;
+                document.getElementById('con_min').value = p.con_min || 2000;
+                document.getElementById('con_max').value = p.con_max || 10000;
+                document.getElementById('sync_status').innerText = "● LIVE SYNC ACTIVE";
+                hasLoadedPolicy = true;
                 calculateAndRender();
             }
         });
-    };
+    }
 
     function calculateAndRender() {
         const total = treasury.normal + treasury.boost;
         document.getElementById('sponsor_vault_display').innerText = total.toLocaleString() + " TBNB";
 
-        const wkMax = parseInt(document.getElementById('wk_max').value) || 0;
-        const wkMin = parseInt(document.getElementById('wk_min').value) || 0;
-        const seaMax = parseInt(document.getElementById('sea_max').value) || 0;
-        const conMax = parseInt(document.getElementById('con_max').value) || 0;
+        const wkMax = parseInt(document.getElementById('wk_max').value) || 5000;
+        const wkMin = parseInt(document.getElementById('wk_min').value) || 1000;
+        const seaMax = parseInt(document.getElementById('sea_max').value) || 20000;
+        const conMax = parseInt(document.getElementById('con_max').value) || 10000;
 
         const grid = document.getElementById('sponsor_grid_mirror');
         grid.innerHTML = '';
 
-        // ZERO GUARD: If treasury is empty, render all 14 buckets at 0
-        if (total <= 0) {
-            for(let i=1; i<=12; i++) renderBucket(grid, `Round ${i}`, 0, 0, wkMax, i < currentRound ? 'past' : '');
-            renderBucket(grid, "Season Pool", 0, 0, seaMax, 'special');
-            renderBucket(grid, "Constructor", 0, 0, conMax, 'special');
-            return;
-        }
-
-        // Waterfall Calculation
+        // Waterfall Math
         let remNrm = treasury.normal;
         const divisor = (12 - currentRound + 1) + 2;
-        const bShare = treasury.boost / divisor;
+        const bShare = total > 0 ? (treasury.boost / divisor) : 0;
 
-        // 12 Rounds
+        // Force render all 12 rounds
         for (let i = 1; i <= 12; i++) {
             let n = 0;
-            if (i < currentRound) {
-                n = wkMax;
-                remNrm -= wkMax;
-            } else {
-                n = Math.max(0, Math.min(remNrm, wkMin));
-                remNrm -= n;
+            if (total > 0) {
+                if (i < currentRound) { n = wkMax; remNrm -= wkMax; }
+                else { n = Math.max(0, Math.min(remNrm, wkMin)); remNrm -= n; }
             }
-            renderBucket(grid, `Round ${i}`, n, (i >= currentRound ? bShare : 0), wkMax, i < currentRound ? 'past' : (i === currentRound ? 'active' : ''));
+            renderBucket(grid, `Round ${i}`, n, (i >= currentRound && total > 0 ? bShare : 0), wkMax, i < currentRound ? 'past' : (i === currentRound ? 'active' : ''));
         }
 
-        // Specials
-        renderBucket(grid, "Season Pool", Math.min(remNrm, seaMax), bShare, seaMax, 'special');
-        renderBucket(grid, "Constructor", Math.min(remNrm, conMax), bShare, conMax, 'special');
+        // Force render 2 specials
+        renderBucket(grid, "Season Pool", (total > 0 ? Math.min(remNrm, seaMax) : 0), (total > 0 ? bShare : 0), seaMax, 'special');
+        renderBucket(grid, "Constructor", (total > 0 ? Math.min(remNrm, conMax) : 0), (total > 0 ? bShare : 0), conMax, 'special');
     }
 
     function renderBucket(container, label, n, b, max, state) {
         container.innerHTML += `
             <div class="b-card ${state}">
-                <span class="b-label">${label}</span>
+                <span style="font-size: 0.6rem; color: #8b949e; text-transform: uppercase; font-weight: 800;">${label}</span>
                 <div class="b-main">
                     <span style="color:#555">${max}</span> : 
                     <span class="val-total">${(n + b).toFixed(0)}</span>
@@ -190,29 +189,28 @@
         `;
     }
 
-    // FIREBASE PUSH FIX: This ensures ALL values are saved to the 'policy' node
     function updatePolicy() {
+        document.getElementById('sync_status').innerText = "SAVING...";
+        
         const policyData = {
             wk_min: parseInt(document.getElementById('wk_min').value),
             wk_max: parseInt(document.getElementById('wk_max').value),
             sea_min: parseInt(document.getElementById('sea_min').value),
             sea_max: parseInt(document.getElementById('sea_max').value),
             con_min: parseInt(document.getElementById('con_min').value),
-            con_max: parseInt(document.getElementById('con_max').value),
-            updatedAt: firebase.database.ServerValue.TIMESTAMP
+            con_max: parseInt(document.getElementById('con_max').value)
         };
 
         db.ref('policy').set(policyData)
             .then(() => {
                 document.getElementById('sync_status').innerText = "● SAVED TO FIREBASE";
                 setTimeout(() => document.getElementById('sync_status').innerText = "● LIVE SYNC ACTIVE", 2000);
-                calculateAndRender();
             })
-            .catch(err => alert("Error saving: " + err.message));
+            .catch(err => alert("Sync Failed: " + err.message));
     }
 
     function triggerWipe() {
-        if(confirm("Wipe Treasury? This will reset the Funding page too.")) {
+        if(confirm("Confirm Wipe: This will zero out the Treasury in Firebase.")) {
             db.ref('treasury').set({ normal: 0, boost: 0 });
         }
     }
